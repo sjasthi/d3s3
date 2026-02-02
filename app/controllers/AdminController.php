@@ -1,10 +1,10 @@
 <?php
 /*
- AdminController
+AdminController
 
- Handles routing and rendering for all admin-related views.
- Authentication and permission checks will be enforced by admin.php
- once login functionality is implemented.
+Handles routing and rendering for all admin-related views.
+Authentication and permission checks will be enforced by admin.php
+once login functionality is implemented.
 */
 ?>
 <?php
