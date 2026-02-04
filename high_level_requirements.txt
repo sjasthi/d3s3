@@ -1,0 +1,66 @@
+Gary, Andrew:
+
+I believe we have enough information and process details to make progress.
+
+I think we need to manage this data in our database (since the focus in on women's health, we will go with the forms they provided).  
+Security, Access, Reports, Trends, etc. will be based on this data.  We are building the framework. So, we can use some fake data to build, show and demo our work.
+
+We can discuss this in the evening.
+
+Thank you
+Jasthi
+
+- patient data
+we will have a patient registration system/module.
+Let us go with the custom unique key. (India has something called "Aadhaar card" just like Social Security Number; But many patients may not have it, may not remember it; So, we will create a unique ID as follows.
+YYYYMMDDNNN
+
+If I am the 5th patient seen on 4th Feb 2026, that patient gets the Unique ID as
+20260204005
+
+
+- case sheet data 
+(one patient will have multiple case sheets; For example, when I go to annual physical exam every year, the doctor opens a case sheet) So, it is 1 to N relationship between patient and case sheet.
+
+The id for the case_sheet can be a reference to the patient id
+20260204005_01
+20260204005_02
+and so on
+
+Case Sheet data is the heart of the system. The forms and data entry should be easier, user friendly, intuitive and quick.
+(Use Case 1 (Para Medics): Data entry should be responsive - should work on mobile, ipad, desktop - if paramedics are entering the data directly in the system)
+(Use Case 2 (Nurses / Data Entry):  Based on the filled-in form, operators wil be entering the data into the system
+(Use Case 3: Something to explore: Can we rely on AI to scan the forms so that the data gets entered into the system).
+
+- assets
+educational resources (videos, audios, PDFs, brochures)
+Default is Public and folks can mark some assets as Private
+We do not manage these resources in our system.
+We only manage the meta data of these resources
+(at least, that is the current assumption/position)
+
+- events
+medical camps
+educational seminars
+should be managed.
+So, we will have a event management system
+
+- users
+Of courses, we will have a users database (other than patients - we will keep patients in another table).
+Users will have different roles.
+
+- patient_feedback
+it can be a grievance or complaint or positive feedback.
+only registered / logged in patients can give the rating and feedback.
+A summarized sentiment analysis will be provided to the doctors.
+The feedback can be in Telugu or English or Voice.
+
+- case_closure
+Each case sheet on a patient leads to some closure
+(a) On the spot disposition
+(b) Medical advice (eg: prescriptions or medicines) and follow-up
+(c) referral to a specialist or hospital
+(d) pending (unknown)
+
+Every case_sheet must have a case_closure
+
