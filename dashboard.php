@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/app/middleware/auth.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,6 +24,12 @@
 			</li>
 		</ul>
 		<ul class="navbar-nav ml-auto">
+			<li class="nav-item d-flex align-items-center mr-3">
+				<div class="custom-control custom-switch theme-switch">
+					<input type="checkbox" class="custom-control-input" id="themeToggleDashboard" data-theme-toggle />
+					<label class="custom-control-label" for="themeToggleDashboard">Dark mode</label>
+				</div>
+			</li>
 			<li class="nav-item d-none d-md-inline-block mr-3 text-muted small">
 				<i class="fas fa-sun pr-1"></i>Optimized for outdoor tablet use
 			</li>
@@ -34,7 +41,7 @@
 		</ul>
 	</nav>
 
-	<?php include __DIR__ . '/public/_sidebar.php'; ?>
+	<?php require __DIR__ . '/app/views/_sidebar.php'; ?>
 
 	<div class="content-wrapper">
 		<div class="content-header">
@@ -186,5 +193,6 @@
 <script src="assets/js/jquery.min.js"></script>
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
+<script src="assets/js/theme-toggle.js"></script>
 </body>
 </html>

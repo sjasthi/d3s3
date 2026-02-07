@@ -1,0 +1,73 @@
+# ─── Directory listing ───────────────────────────────────────────────
+Options -Indexes
+
+# ─── Block access to sensitive files & directories ──────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Deny .git directory entirely
+    RewriteRule ^\.git(/|$)     -  [F,L]
+
+    # Deny .env files (actual env, backups, etc.)
+    RewriteRule ^\.env          -  [F,L]
+
+    # Deny htpasswd files
+    RewriteRule ^\.htpasswd     -  [F,L]
+</IfModule>
+
+# Fallback for servers without mod_rewrite
+<Files ".env">
+    Order Deny,Allow
+    Deny from all
+</Files>
+<Files ".env.*">
+    Order Deny,Allow
+    Deny from all
+</Files>
+# Re-allow the example template (it has no secrets)
+<Files ".env.example">
+    Order Allow,Deny
+    Allow from all
+</Files>
+<Files ".htpasswd">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# ─── Security headers ───────────────────────────────────────────────
+<IfModule mod_headers.c>
+    # Prevent MIME-type sniffing attacks
+    Header set X-Content-Type-Options "nosniff"
+
+    # Block clickjacking on every page
+    Header set X-Frame-Options "DENY"
+
+    # Stop browsers caching sensitive responses
+    Header set Cache-Control "no-store, no-cache, must-revalidate, private"
+
+    # Disable FLOSoftware version leakage
+    Header unset Server
+    Header unset X-Powered-By
+
+    # Strict Transport Security (enforces HTTPS — BlueHost supports it)
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Block cross-site scripting vectors
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# ─── PHP hardening (shared-host safe) ───────────────────────────────
+<IfModule mod_php.c>
+    # Expose no PHP version info in headers
+    php_flag  expose_php            Off
+
+    # Disable file uploads if not needed yet
+    php_flag  file_uploads          Off
+
+    # Limit upload size defensively
+    php_value upload_max_filesize   2M
+
+    # Prevent remote file inclusion
+    php_flag  allow_url_include     Off
+    php_flag  allow_url_fopen       Off
+</IfModule>

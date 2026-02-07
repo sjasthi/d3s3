@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>User Management | CareSystem</title>
+	<title>Profile | CareSystem</title>
 	<link rel="stylesheet" href="assets/css/bootstrap.min.css" />
 	<link rel="stylesheet" href="assets/icons/css/all.min.css" />
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
@@ -25,27 +25,27 @@
 		<ul class="navbar-nav ml-auto">
 			<li class="nav-item d-flex align-items-center mr-3">
 				<div class="custom-control custom-switch theme-switch">
-					<input type="checkbox" class="custom-control-input" id="themeToggleUsers" data-theme-toggle />
-					<label class="custom-control-label" for="themeToggleUsers">Dark mode</label>
+					<input type="checkbox" class="custom-control-input" id="themeToggleProfile" data-theme-toggle />
+					<label class="custom-control-label" for="themeToggleProfile">Dark mode</label>
 				</div>
 			</li>
 			<li class="nav-item">
-				<a class="btn btn-sm btn-outline-secondary" href="admin.php" role="button">
-					<i class="fas fa-arrow-left mr-1"></i>Admin Dashboard
+				<a class="btn btn-sm btn-outline-secondary" href="dashboard.php" role="button">
+					<i class="fas fa-arrow-left mr-1"></i>Back to Dashboard
 				</a>
 			</li>
 		</ul>
 	</nav>
 
-	<?php require __DIR__ . '/../_sidebar.php'; ?>
+	<?php require __DIR__ . '/_sidebar.php'; ?>
 
 	<div class="content-wrapper">
 		<div class="content-header">
 			<div class="container-fluid">
 				<div class="row mb-2">
 					<div class="col-sm-12">
-						<h1 class="m-0 text-dark">User Management</h1>
-						<p class="text-muted mb-0">View and manage employee accounts.</p>
+						<h1 class="m-0 text-dark">My Profile</h1>
+						<p class="text-muted mb-0">Update your personal details and password.</p>
 					</div>
 				</div>
 			</div>
@@ -61,17 +61,15 @@
 				</div>
 				<?php endif; ?>
 
-				<?php if ($action === 'edit' && $editUser !== null): ?>
-				<!-- ── Edit User ──────────────────────────────────── -->
 				<div class="card">
 					<div class="card-header border-0 d-flex align-items-center justify-content-between">
 						<h3 class="card-title mb-0">
-							<i class="fas fa-pencil-alt mr-2 text-primary"></i>
-							Edit: <?= htmlspecialchars($editUser['first_name'] . ' ' . $editUser['last_name']) ?>
+							<i class="fas fa-user-circle mr-2 text-primary"></i>
+							Profile Details
 						</h3>
-						<a href="users.php" class="btn btn-sm btn-outline-secondary">
-							<i class="fas fa-arrow-left mr-1"></i>Back to list
-						</a>
+						<div class="text-muted small">
+							<?= htmlspecialchars($profile['role'] ?? 'User') ?>
+						</div>
 					</div>
 
 					<?php if ($formError !== null): ?>
@@ -83,20 +81,17 @@
 					<?php endif; ?>
 
 					<div class="card-body">
-						<form method="POST" action="users.php" novalidate>
+						<form method="POST" action="profile.php" novalidate>
 							<input type="hidden" name="csrf_token"
 								   value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
-							<input type="hidden" name="user_id"
-								   value="<?= htmlspecialchars((string)$editUser['user_id']) ?>" />
 
-							<!-- Name row -->
 							<div class="row">
 								<div class="col-sm-6">
 									<div class="form-group">
 										<label for="first_name" class="small font-weight-bold text-muted">First Name</label>
 										<input type="text" name="first_name" id="first_name"
 											   class="form-control"
-											   value="<?= htmlspecialchars($editUser['first_name']) ?>"
+											   value="<?= htmlspecialchars($profile['first_name'] ?? '') ?>"
 											   required />
 									</div>
 								</div>
@@ -105,13 +100,12 @@
 										<label for="last_name" class="small font-weight-bold text-muted">Last Name</label>
 										<input type="text" name="last_name" id="last_name"
 											   class="form-control"
-											   value="<?= htmlspecialchars($editUser['last_name']) ?>"
+											   value="<?= htmlspecialchars($profile['last_name'] ?? '') ?>"
 											   required />
 									</div>
 								</div>
 							</div>
 
-							<!-- Email -->
 							<div class="form-group">
 								<label for="email" class="small font-weight-bold text-muted">Email</label>
 								<div class="input-group">
@@ -120,12 +114,11 @@
 									</div>
 									<input type="email" name="email" id="email"
 										   class="form-control"
-										   value="<?= htmlspecialchars($editUser['email']) ?>"
+										   value="<?= htmlspecialchars($profile['email'] ?? '') ?>"
 										   autocomplete="off" required />
 								</div>
 							</div>
 
-							<!-- Username -->
 							<div class="form-group">
 								<label for="username" class="small font-weight-bold text-muted">Username</label>
 								<div class="input-group">
@@ -134,34 +127,12 @@
 									</div>
 									<input type="text" name="username" id="username"
 										   class="form-control"
-										   value="<?= htmlspecialchars($editUser['username']) ?>"
+										   value="<?= htmlspecialchars($profile['username'] ?? '') ?>"
 										   autocomplete="off" required />
 								</div>
 								<small class="text-muted">3–60 characters: letters, numbers, underscores, or hyphens.</small>
 							</div>
 
-							<!-- Role + Active row -->
-							<div class="row">
-								<div class="col-sm-6">
-									<div class="form-group">
-										<label for="role" class="small font-weight-bold text-muted">Role</label>
-										<select class="form-control" name="role" id="role">
-											<option value="DATA_ENTRY_OPERATOR" <?= $editUser['role'] === 'DATA_ENTRY_OPERATOR' ? 'selected' : '' ?>>Data Entry Operator</option>
-											<option value="ADMIN"               <?= $editUser['role'] === 'ADMIN'               ? 'selected' : '' ?>>Administrator</option>
-											<option value="SUPER_ADMIN"         <?= $editUser['role'] === 'SUPER_ADMIN'         ? 'selected' : '' ?>>Super Administrator</option>
-										</select>
-									</div>
-								</div>
-								<div class="col-sm-6 d-flex align-items-end pb-3">
-									<div class="custom-control custom-switch">
-										<input type="checkbox" class="custom-control-input" id="is_active" name="is_active"
-											   <?= $editUser['is_active'] ? 'checked' : '' ?> />
-										<label class="custom-control-label" for="is_active">Account Active</label>
-									</div>
-								</div>
-							</div>
-
-							<!-- Password Reset (optional) -->
 							<hr />
 							<p class="small text-muted mb-3">
 								<i class="fas fa-lock mr-1"></i>
@@ -198,94 +169,30 @@
 								</div>
 							</div>
 
-							<!-- Actions -->
 							<div class="mt-3">
 								<button type="submit" class="btn btn-primary">
 									<i class="fas fa-save mr-1"></i>Save Changes
 								</button>
-								<a href="users.php" class="btn btn-link text-muted ml-2">Cancel</a>
+								<a href="dashboard.php" class="btn btn-link text-muted ml-2">Cancel</a>
 							</div>
 						</form>
 					</div>
-				</div>
 
-				<?php else: ?>
-				<!-- ── User List ──────────────────────────────────── -->
-				<?php
-				$roleLabels  = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DATA_ENTRY_OPERATOR' => 'Data Entry'];
-				$roleClasses = ['SUPER_ADMIN' => 'badge-danger', 'ADMIN' => 'badge-warning', 'DATA_ENTRY_OPERATOR' => 'badge-secondary'];
-				?>
-				<div class="card">
-					<div class="card-header border-0 d-flex align-items-center justify-content-between">
-						<h3 class="card-title mb-0">
-							<i class="fas fa-users mr-2 text-primary"></i>All Users
-						</h3>
-						<a href="emp_register.php" class="btn btn-sm btn-primary">
-							<i class="fas fa-user-plus mr-1"></i>Create User
-						</a>
-					</div>
-					<div class="card-body p-0">
-						<div class="table-responsive">
-							<table class="table table-hover mb-0">
-								<thead class="thead-light">
-									<tr>
-										<th>Name</th>
-										<th>Email</th>
-										<th>Username</th>
-										<th>Role</th>
-										<th>Status</th>
-										<th>Last Login</th>
-										<th class="text-right">Actions</th>
-									</tr>
-								</thead>
-								<tbody>
-									<?php foreach ($users as $user): ?>
-									<tr>
-										<td><strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong></td>
-										<td class="small"><?= htmlspecialchars($user['email']) ?></td>
-										<td class="small text-muted"><?= htmlspecialchars($user['username']) ?></td>
-										<td>
-											<span class="badge <?= htmlspecialchars($roleClasses[$user['role']] ?? 'badge-secondary') ?>">
-												<?= htmlspecialchars($roleLabels[$user['role']] ?? $user['role']) ?>
-											</span>
-										</td>
-										<td>
-											<?php if ($user['is_active']): ?>
-											<span class="badge badge-success">Active</span>
-											<?php else: ?>
-											<span class="badge badge-secondary">Inactive</span>
-											<?php endif; ?>
-										</td>
-										<td class="small text-muted">
-											<?= $user['last_login_at'] !== null ? htmlspecialchars($user['last_login_at']) : 'Never' ?>
-										</td>
-										<td class="text-right">
-											<a href="users.php?action=edit&amp;id=<?= (int)$user['user_id'] ?>"
-											   class="btn btn-sm btn-outline-primary">
-												<i class="fas fa-pencil-alt"></i>
-											</a>
-										</td>
-									</tr>
-									<?php endforeach; ?>
-									<?php if (empty($users)): ?>
-									<tr>
-										<td colspan="7" class="text-center text-muted py-4">No users found.</td>
-									</tr>
-									<?php endif; ?>
-								</tbody>
-							</table>
-						</div>
+					<div class="card-footer text-muted small">
+						<?php if (!empty($profile['last_login_at'])): ?>
+							Last login: <?= htmlspecialchars($profile['last_login_at']) ?>
+						<?php else: ?>
+							Last login: N/A
+						<?php endif; ?>
 					</div>
 				</div>
-				<?php endif; ?>
 
 			</div>
 		</section>
 	</div>
 
-	<footer class="main-footer">
-		<div class="float-right d-none d-sm-inline">CareSystem</div>
-		<strong>User Management</strong>
+	<footer class="main-footer text-sm">
+		<strong>CareSystem</strong> &middot; Manage your account details.
 	</footer>
 </div>
 

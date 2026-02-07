@@ -3,6 +3,7 @@
 	--brand-secondary: #0b5563;
 	--brand-accent: #e29d3f;
 	--surface: #f6fbff;
+	--surface-card: #ffffff;
 	--text-strong: #0c1f2f;
 	--text-muted: #4b6577;
 	--border-soft: #d8e7f1;
@@ -11,6 +12,14 @@
 body {
 	background-color: var(--surface);
 	color: var(--text-strong);
+}
+
+body.dark-mode {
+	--surface: #0f1720;
+	--surface-card: #151f2a;
+	--text-strong: #e6edf3;
+	--text-muted: #9fb0bf;
+	--border-soft: #233244;
 }
 
 .content-wrapper,
@@ -136,9 +145,13 @@ body {
 	color: var(--text-muted);
 }
 
+body.dark-mode .main-footer {
+	background: #121a22;
+}
+
 /* Admin Dashboard Tiles */
 .admin-tile {
-	background: #fff;
+	background: var(--surface-card);
 	border-radius: 8px;
 	padding: 30px 20px;
 	text-align: center;
@@ -178,4 +191,107 @@ body {
 	font-size: 0.95rem;
 	color: #4e5d78;
 	margin-top: 5px;
+}
+
+body.dark-mode .admin-tile-label {
+	color: var(--text-muted);
+}
+
+/* Theme Toggle */
+.theme-switch {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.theme-switch .custom-control-label {
+	color: var(--text-muted);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+body.dark-mode .theme-switch .custom-control-label {
+	color: var(--text-strong);
+}
+
+/* ── Login page ────────────────────────────────────────────── */
+body.login-page {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #0b3c4c 0%, #0b5563 100%);
+	margin: 0;
+	padding: 20px;
+	box-sizing: border-box;
+}
+
+.login-card {
+	width: 100%;
+	max-width: 400px;
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+	border: none;
+}
+
+.login-brand {
+	text-align: center;
+	padding: 32px 20px 20px;
+}
+
+.login-brand i {
+	font-size: 36px;
+	color: var(--brand-primary);
+	display: block;
+	margin-bottom: 10px;
+}
+
+.login-brand h2 {
+	margin: 0;
+	font-weight: 600;
+	color: var(--text-strong);
+	font-size: 1.4rem;
+}
+
+.login-brand p {
+	color: var(--text-muted);
+	font-size: 0.85rem;
+	margin: 4px 0 0;
+}
+
+.login-card .card-body {
+	padding: 0 30px 32px;
+}
+
+.login-card .form-control {
+	border-color: var(--border-soft);
+	transition: border-color 0.2s;
+}
+
+.login-card .form-control:focus {
+	border-color: var(--brand-primary);
+	box-shadow: 0 0 0 3px rgba(15, 143, 169, 0.15);
+}
+
+.login-card .input-group-text {
+	background: var(--surface);
+	border-color: var(--border-soft);
+	color: var(--text-muted);
+}
+
+.btn-login {
+	width: 100%;
+	background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	padding: 11px;
+	font-weight: 600;
+	font-size: 0.95rem;
+	transition: opacity 0.2s;
+	cursor: pointer;
+}
+
+.btn-login:hover {
+	opacity: 0.9;
 }

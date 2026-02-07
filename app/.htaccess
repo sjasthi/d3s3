@@ -1,0 +1,4 @@
+# Backend PHP – never served directly by the web server.
+# All requests must route through a root entry-point (index.php, dashboard.php, admin.php).
+Order Deny,Allow
+Deny from all

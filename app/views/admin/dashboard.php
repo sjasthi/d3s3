@@ -4,10 +4,10 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>Admin Dashboard | CareSystem</title>
-	<link rel="stylesheet" href="/d3s3/assets/css/bootstrap.min.css" />
-	<link rel="stylesheet" href="/d3s3/assets/icons/css/all.min.css" />
-	<link rel="stylesheet" href="/d3s3/assets/css/adminlte.min.css" />
-	<link rel="stylesheet" href="/d3s3/assets/css/theme.css" />
+	<link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="assets/icons/css/all.min.css" />
+	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
+	<link rel="stylesheet" href="assets/css/theme.css" />
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 <div class="wrapper">
@@ -23,6 +23,12 @@
 			</li>
 		</ul>
 		<ul class="navbar-nav ml-auto">
+			<li class="nav-item d-flex align-items-center mr-3">
+				<div class="custom-control custom-switch theme-switch">
+					<input type="checkbox" class="custom-control-input" id="themeToggleAdminDashboard" data-theme-toggle />
+					<label class="custom-control-label" for="themeToggleAdminDashboard">Dark mode</label>
+				</div>
+			</li>
 			<li class="nav-item">
 				<a class="btn btn-sm btn-primary" href="#" role="button">
 					<i class="fas fa-user-circle mr-1"></i>Admin Panel
@@ -31,7 +37,7 @@
 		</ul>
 	</nav>
 
-	<?php include $_SERVER['DOCUMENT_ROOT'] . '/d3s3/public/_sidebar.php'; ?>
+	<?php require __DIR__ . '/../_sidebar.php'; ?>
 
 	<div class="content-wrapper">
 		<div class="content-header">
@@ -49,7 +55,15 @@
 			<div class="container-fluid">
 				<div class="row">
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
-						<a href="#" class="admin-tile">
+						<a href="users.php" class="admin-tile">
+							<div class="admin-tile-icon">
+								<i class="fas fa-id-badge"></i>
+							</div>
+							<div class="admin-tile-label">Employee Management</div>
+						</a>
+					</div>
+					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
+						<a href="users.php" class="admin-tile">
 							<div class="admin-tile-icon">
 								<i class="fas fa-users"></i>
 							</div>
@@ -70,14 +84,6 @@
 								<i class="fas fa-user-injured"></i>
 							</div>
 							<div class="admin-tile-label">Patient Management</div>
-						</a>
-					</div>
-					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
-						<a href="#" class="admin-tile">
-							<div class="admin-tile-icon">
-								<i class="fas fa-id-badge"></i>
-							</div>
-							<div class="admin-tile-label">Employee Management</div>
 						</a>
 					</div>
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
@@ -113,7 +119,7 @@
 						</a>
 					</div>
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
-						<a href="#" class="admin-tile">
+						<a href="profile.php" class="admin-tile">
 							<div class="admin-tile-icon">
 								<i class="fas fa-user-circle"></i>
 							</div>
@@ -134,13 +140,14 @@
 	</div>
 
 	<footer class="main-footer">
-		<div class="float-right d-none d-sm-inline">CareSight</div>
+		<div class="float-right d-none d-sm-inline">CareSystem</div>
 		<strong>Admin Dashboard</strong>
 	</footer>
 </div>
 
-<script src="/d3s3/assets/js/jquery.min.js"></script>
-<script src="/d3s3/assets/js/bootstrap.bundle.min.js"></script>
-<script src="/d3s3/assets/js/adminlte.min.js"></script>
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/adminlte.min.js"></script>
+<script src="assets/js/theme-toggle.js"></script>
 </body>
 </html>
