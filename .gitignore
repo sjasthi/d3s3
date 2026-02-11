@@ -29,9 +29,8 @@ desktop.ini
 # ──────────────────────────────────────────────────────────────────
 # Environment & Secrets
 # ──────────────────────────────────────────────────────────────────
-.env
 .env.*
-!.env.example
+
 .htpasswd
 config.local.php
 secrets.php
