@@ -77,10 +77,12 @@ files/
 # Database
 # ──────────────────────────────────────────────────────────────────
 *.sql
+!sql/*.sql
 *.sqlite
 *.sqlite3
 *.db
-backups/
+backups/*
+!backups/.htaccess
 dumps/
 
 # Allow SQL files in the database directory (schema & test data only)
