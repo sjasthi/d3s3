@@ -83,7 +83,7 @@
 						</a>
 					</div>
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
-						<a href="#" class="admin-tile">
+						<a href="reports.php" class="admin-tile">
 							<div class="admin-tile-icon">
 								<i class="fas fa-chart-line"></i>
 							</div>

@@ -202,7 +202,7 @@
 	</div>
 
 	<footer class="main-footer">
-		<div class="float-right d-none d-sm-inline">CareSight</div>
+		<div class="float-right d-none d-sm-inline">CareSystem</div>
 		<strong>Create Employee Account</strong>
 	</footer>
 </div>
