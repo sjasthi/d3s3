@@ -1,0 +1,19 @@
+# 1. Handle all files as text by default and normalize to LF in the repo
+* text=auto
+
+# 2. Explicitly force LF for specific web/code files (best for PHP/Linux)
+*.php text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+
+# 3. Explicitly handle Markdown and other documentation
+*.md text eol=lf
+*.txt text
+
+# 4. Protect binary files from being corrupted by line ending changes
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
