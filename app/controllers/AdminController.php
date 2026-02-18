@@ -11,7 +11,31 @@ class AdminController
 {
     public function dashboard(): void
     {
+        $pdo = getDBConnection();
+        $events = $pdo->query(
+            'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
+               FROM events WHERE is_active = 1 ORDER BY start_datetime'
+        )->fetchAll();
         require __DIR__ . '/../views/admin/dashboard.php';
+    }
+
+    // ── Admin Panel (tiles) ─────────────────────────────────
+
+    public function adminPanel(): void
+    {
+        require __DIR__ . '/../views/admin/admin_panel.php';
+    }
+
+    // ── Calendar ──────────────────────────────────────────────
+
+    public function calendar(): void
+    {
+        $pdo = getDBConnection();
+        $events = $pdo->query(
+            'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
+               FROM events WHERE is_active = 1 ORDER BY start_datetime'
+        )->fetchAll();
+        require __DIR__ . '/../views/calendar.php';
     }
 
     // ── User Management ─────────────────────────────────────────
@@ -136,7 +160,7 @@ class AdminController
             return 'Username must be 3–60 characters (letters, numbers, underscores, or hyphens only).';
         }
 
-        $validRoles = ['SUPER_ADMIN', 'ADMIN', 'DATA_ENTRY_OPERATOR'];
+        $validRoles = ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'TRIAGE_NURSE', 'NURSE', 'GRIEVANCE_OFFICER', 'DATA_ENTRY_OPERATOR'];
         if (!in_array($role, $validRoles, true)) {
             return 'Invalid role selected.';
         }
@@ -179,6 +203,264 @@ class AdminController
         // ── PRG ─────────────────────────────────────────────────
         $_SESSION['users_success'] = 'User updated successfully.';
         header('Location: users.php');
+        exit;
+    }
+
+    // ── Asset Management ──────────────────────────────────────
+
+    /**
+     * GET  – render the asset list, edit form, or create form.
+     * POST – validate and persist a create, edit, or delete (PRG on success).
+     */
+    public function assets(): void
+    {
+        $pdo = getDBConnection();
+
+        // ── Role guard: ADMIN or SUPER_ADMIN only ──────────────
+        $stmt = $pdo->prepare('SELECT role FROM users WHERE user_id = ?');
+        $stmt->execute([$_SESSION['user_id']]);
+        $currentUser = $stmt->fetch();
+
+        if (!in_array($currentUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN'])) {
+            $_SESSION['dashboard_notice'] = 'You do not have permission to access this page.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+        // ── One-time flash ──────────────────────────────────────
+        $flashSuccess = null;
+        if (isset($_SESSION['assets_success'])) {
+            $flashSuccess = $_SESSION['assets_success'];
+            unset($_SESSION['assets_success']);
+        }
+
+        // ── Determine view mode ─────────────────────────────────
+        $action    = $_GET['action'] ?? 'list';
+        $editId    = isset($_GET['id']) ? (int)$_GET['id'] : null;
+        $formError = null;
+        $editAsset = null;
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $formAction = $_POST['form_action'] ?? 'edit';
+
+            if ($formAction === 'delete') {
+                $formError = $this->processDeleteAsset();
+            } elseif ($formAction === 'create') {
+                $formError = $this->processCreateAsset();
+                if ($formError !== null) {
+                    $action = 'create';
+                    $editAsset = [
+                        'asset_id'     => 0,
+                        'title'        => trim($_POST['title'] ?? ''),
+                        'description'  => trim($_POST['description'] ?? ''),
+                        'asset_type'   => $_POST['asset_type'] ?? 'OTHER',
+                        'category'     => trim($_POST['category'] ?? ''),
+                        'storage_type' => $_POST['storage_type'] ?? 'URL',
+                        'resource_url' => trim($_POST['resource_url'] ?? ''),
+                        'file_name'    => trim($_POST['file_name'] ?? ''),
+                        'file_size_bytes' => $_POST['file_size_bytes'] ?? null,
+                        'is_public'    => isset($_POST['is_public']) ? 1 : 0,
+                        'is_active'    => isset($_POST['is_active']) ? 1 : 0,
+                    ];
+                }
+            } else {
+                $formError = $this->processEditAsset();
+                if ($formError !== null) {
+                    $action = 'edit';
+                    $editAsset = [
+                        'asset_id'     => (int)($_POST['asset_id'] ?? 0),
+                        'title'        => trim($_POST['title'] ?? ''),
+                        'description'  => trim($_POST['description'] ?? ''),
+                        'asset_type'   => $_POST['asset_type'] ?? 'OTHER',
+                        'category'     => trim($_POST['category'] ?? ''),
+                        'storage_type' => $_POST['storage_type'] ?? 'URL',
+                        'resource_url' => trim($_POST['resource_url'] ?? ''),
+                        'file_name'    => trim($_POST['file_name'] ?? ''),
+                        'file_size_bytes' => $_POST['file_size_bytes'] ?? null,
+                        'is_public'    => isset($_POST['is_public']) ? 1 : 0,
+                        'is_active'    => isset($_POST['is_active']) ? 1 : 0,
+                    ];
+                }
+            }
+        } elseif ($action === 'edit' && $editId !== null) {
+            $stmt = $pdo->prepare('SELECT * FROM assets WHERE asset_id = ?');
+            $stmt->execute([$editId]);
+            $editAsset = $stmt->fetch();
+            if (!$editAsset) {
+                $action = 'list';
+            }
+        } elseif ($action === 'create') {
+            $editAsset = [
+                'asset_id'     => 0,
+                'title'        => '',
+                'description'  => '',
+                'asset_type'   => 'OTHER',
+                'category'     => '',
+                'storage_type' => 'URL',
+                'resource_url' => '',
+                'file_name'    => '',
+                'file_size_bytes' => null,
+                'is_public'    => 1,
+                'is_active'    => 1,
+            ];
+        }
+
+        // ── Fetch all assets for the list table ──────────────
+        $assetsList = $pdo->query(
+            'SELECT a.*, u.first_name, u.last_name
+               FROM assets a
+               LEFT JOIN users u ON a.uploaded_by_user_id = u.user_id
+              ORDER BY a.created_at DESC'
+        )->fetchAll();
+
+        require __DIR__ . '/../views/admin/assets.php';
+    }
+
+    /**
+     * Validate and insert a new asset.
+     * Returns an error string on failure, or exits via redirect on success.
+     */
+    private function processCreateAsset(): ?string
+    {
+        if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+            return 'Invalid request.';
+        }
+
+        $title       = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $assetType   = $_POST['asset_type'] ?? '';
+        $category    = trim($_POST['category'] ?? '');
+        $storageType = $_POST['storage_type'] ?? '';
+        $resourceUrl = trim($_POST['resource_url'] ?? '');
+        $fileName    = trim($_POST['file_name'] ?? '');
+        $fileSize    = $_POST['file_size_bytes'] ?? null;
+        $isPublic    = isset($_POST['is_public']) ? 1 : 0;
+        $isActive    = isset($_POST['is_active']) ? 1 : 0;
+
+        if ($title === '') {
+            return 'Title is required.';
+        }
+
+        $validTypes = ['VIDEO', 'PDF', 'IMAGE', 'DOCUMENT', 'OTHER'];
+        if (!in_array($assetType, $validTypes, true)) {
+            return 'Invalid asset type selected.';
+        }
+
+        $validStorage = ['URL', 'LOCAL', 'S3', 'OTHER'];
+        if (!in_array($storageType, $validStorage, true)) {
+            return 'Invalid storage type selected.';
+        }
+
+        if ($resourceUrl !== '' && !filter_var($resourceUrl, FILTER_VALIDATE_URL)) {
+            return 'Please enter a valid URL.';
+        }
+
+        $fileSize = ($fileSize !== null && $fileSize !== '') ? (int)$fileSize : null;
+
+        $pdo = getDBConnection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO assets (title, description, asset_type, category, storage_type,
+                                 resource_url, file_name, file_size_bytes, is_public, is_active,
+                                 uploaded_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $title, $description ?: null, $assetType, $category ?: null,
+            $storageType, $resourceUrl ?: null, $fileName ?: null, $fileSize,
+            $isPublic, $isActive, $_SESSION['user_id']
+        ]);
+
+        $_SESSION['assets_success'] = 'Asset created successfully.';
+        header('Location: assets.php');
+        exit;
+    }
+
+    /**
+     * Validate and update an existing asset.
+     * Returns an error string on failure, or exits via redirect on success.
+     */
+    private function processEditAsset(): ?string
+    {
+        if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+            return 'Invalid request.';
+        }
+
+        $assetId     = (int)($_POST['asset_id'] ?? 0);
+        $title       = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $assetType   = $_POST['asset_type'] ?? '';
+        $category    = trim($_POST['category'] ?? '');
+        $storageType = $_POST['storage_type'] ?? '';
+        $resourceUrl = trim($_POST['resource_url'] ?? '');
+        $fileName    = trim($_POST['file_name'] ?? '');
+        $fileSize    = $_POST['file_size_bytes'] ?? null;
+        $isPublic    = isset($_POST['is_public']) ? 1 : 0;
+        $isActive    = isset($_POST['is_active']) ? 1 : 0;
+
+        if ($assetId === 0) {
+            return 'Invalid asset.';
+        }
+
+        if ($title === '') {
+            return 'Title is required.';
+        }
+
+        $validTypes = ['VIDEO', 'PDF', 'IMAGE', 'DOCUMENT', 'OTHER'];
+        if (!in_array($assetType, $validTypes, true)) {
+            return 'Invalid asset type selected.';
+        }
+
+        $validStorage = ['URL', 'LOCAL', 'S3', 'OTHER'];
+        if (!in_array($storageType, $validStorage, true)) {
+            return 'Invalid storage type selected.';
+        }
+
+        if ($resourceUrl !== '' && !filter_var($resourceUrl, FILTER_VALIDATE_URL)) {
+            return 'Please enter a valid URL.';
+        }
+
+        $fileSize = ($fileSize !== null && $fileSize !== '') ? (int)$fileSize : null;
+
+        $pdo = getDBConnection();
+        $stmt = $pdo->prepare(
+            'UPDATE assets
+                SET title = ?, description = ?, asset_type = ?, category = ?,
+                    storage_type = ?, resource_url = ?, file_name = ?,
+                    file_size_bytes = ?, is_public = ?, is_active = ?
+              WHERE asset_id = ?'
+        );
+        $stmt->execute([
+            $title, $description ?: null, $assetType, $category ?: null,
+            $storageType, $resourceUrl ?: null, $fileName ?: null, $fileSize,
+            $isPublic, $isActive, $assetId
+        ]);
+
+        $_SESSION['assets_success'] = 'Asset updated successfully.';
+        header('Location: assets.php');
+        exit;
+    }
+
+    /**
+     * Delete an asset by ID.
+     * Returns an error string on failure, or exits via redirect on success.
+     */
+    private function processDeleteAsset(): ?string
+    {
+        if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+            return 'Invalid request.';
+        }
+
+        $assetId = (int)($_POST['asset_id'] ?? 0);
+        if ($assetId === 0) {
+            return 'Invalid asset.';
+        }
+
+        $pdo = getDBConnection();
+        $stmt = $pdo->prepare('DELETE FROM assets WHERE asset_id = ?');
+        $stmt->execute([$assetId]);
+
+        $_SESSION['assets_success'] = 'Asset deleted successfully.';
+        header('Location: assets.php');
         exit;
     }
 

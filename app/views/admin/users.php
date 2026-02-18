@@ -9,7 +9,8 @@
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
 </head>
-<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?>"
+      data-theme-server="<?= htmlspecialchars($_SESSION['theme'] ?? 'system') ?>">
 <div class="wrapper">
 	<nav class="main-header navbar navbar-expand navbar-white navbar-light">
 		<ul class="navbar-nav">
@@ -158,6 +159,10 @@
 										<label for="role" class="small font-weight-bold text-muted">Role</label>
 										<select class="form-control" name="role" id="role">
 											<option value="DATA_ENTRY_OPERATOR" <?= $editUser['role'] === 'DATA_ENTRY_OPERATOR' ? 'selected' : '' ?>>Data Entry Operator</option>
+											<option value="DOCTOR"              <?= $editUser['role'] === 'DOCTOR'              ? 'selected' : '' ?>>Doctor</option>
+											<option value="TRIAGE_NURSE"        <?= $editUser['role'] === 'TRIAGE_NURSE'        ? 'selected' : '' ?>>Triage Nurse</option>
+											<option value="NURSE"               <?= $editUser['role'] === 'NURSE'               ? 'selected' : '' ?>>Nurse</option>
+											<option value="GRIEVANCE_OFFICER"   <?= $editUser['role'] === 'GRIEVANCE_OFFICER'   ? 'selected' : '' ?>>Grievance Officer</option>
 											<option value="ADMIN"               <?= $editUser['role'] === 'ADMIN'               ? 'selected' : '' ?>>Administrator</option>
 											<option value="SUPER_ADMIN"         <?= $editUser['role'] === 'SUPER_ADMIN'         ? 'selected' : '' ?>>Super Administrator</option>
 										</select>
@@ -223,8 +228,8 @@
 				<?php else: ?>
 				<!-- ── User List ──────────────────────────────────── -->
 				<?php
-				$roleLabels  = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DATA_ENTRY_OPERATOR' => 'Data Entry'];
-				$roleClasses = ['SUPER_ADMIN' => 'badge-danger', 'ADMIN' => 'badge-warning', 'DATA_ENTRY_OPERATOR' => 'badge-secondary'];
+				$roleLabels  = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'DATA_ENTRY_OPERATOR' => 'Data Entry'];
+				$roleClasses = ['SUPER_ADMIN' => 'badge-danger', 'ADMIN' => 'badge-warning', 'DOCTOR' => 'badge-info', 'TRIAGE_NURSE' => 'badge-primary', 'NURSE' => 'badge-success', 'GRIEVANCE_OFFICER' => 'badge-dark', 'DATA_ENTRY_OPERATOR' => 'badge-secondary'];
 				?>
 				<div class="card">
 					<div class="card-header border-0">
