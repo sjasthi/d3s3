@@ -249,6 +249,26 @@ CREATE TABLE `patient_feedback` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `user_preferences`
+--
+
+CREATE TABLE `user_preferences` (
+  `pref_id` bigint(20) UNSIGNED NOT NULL,
+  `account_type` enum('STAFF','PATIENT') NOT NULL,
+  `account_id` int(10) UNSIGNED NOT NULL,
+  `theme` enum('light','dark','system') NOT NULL DEFAULT 'system',
+  `language` enum('en','te') NOT NULL DEFAULT 'en',
+  `font_size` enum('normal','large') NOT NULL DEFAULT 'normal',
+  `date_format` enum('DD/MM/YYYY','MM/DD/YYYY') NOT NULL DEFAULT 'DD/MM/YYYY',
+  `session_timeout_minutes` smallint(5) UNSIGNED NOT NULL DEFAULT 30,
+  `email_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -260,7 +280,7 @@ CREATE TABLE `users` (
   `phone_e164` varchar(20) DEFAULT NULL,
   `username` varchar(60) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `role` enum('SUPER_ADMIN','ADMIN','DOCTOR','NURSE','DATA_ENTRY_OPERATOR') NOT NULL DEFAULT 'DATA_ENTRY_OPERATOR',
+  `role` enum('SUPER_ADMIN','ADMIN','DOCTOR','TRIAGE_NURSE','NURSE','GRIEVANCE_OFFICER','DATA_ENTRY_OPERATOR') NOT NULL DEFAULT 'DATA_ENTRY_OPERATOR',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `last_login_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -346,6 +366,13 @@ ALTER TABLE `patient_feedback`
   ADD KEY `idx_feedback_related_user` (`related_user_id`);
 
 --
+-- Indexes for table `user_preferences`
+--
+ALTER TABLE `user_preferences`
+  ADD PRIMARY KEY (`pref_id`),
+  ADD UNIQUE KEY `uq_prefs_account` (`account_type`,`account_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -394,6 +421,12 @@ ALTER TABLE `patients`
 --
 ALTER TABLE `patient_feedback`
   MODIFY `feedback_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `user_preferences`
+--
+ALTER TABLE `user_preferences`
+  MODIFY `pref_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
