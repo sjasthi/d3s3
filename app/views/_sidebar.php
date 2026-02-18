@@ -1,12 +1,18 @@
 <?php
 $currentPage = $_SERVER['PHP_SELF'];
 $isAdminPage = (strpos($currentPage, 'admin.php') !== false);
+$isAdminPanel = ($isAdminPage && ($_GET['page'] ?? '') === 'panel');
+$isAdminDashboard = ($isAdminPage && !$isAdminPanel);
 $isDashboardPage = (strpos($currentPage, 'dashboard.php') !== false && !$isAdminPage);
 $isProfilePage = (strpos($currentPage, 'profile.php') !== false);
+$isSettingsPage = (strpos($currentPage, 'settings.php') !== false);
+$isAssetsPage = (strpos($currentPage, 'assets.php') !== false);
+$isCalendarPage = (strpos($currentPage, 'calendar.php') !== false);
+$isIntakePage = (strpos($currentPage, 'intake.php') !== false);
 
 $_userRole = $_SESSION['user_role'] ?? '';
 $_isAdminRole = in_array($_userRole, ['SUPER_ADMIN', 'ADMIN'], true);
-$_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
+$_isClinicalRole = in_array($_userRole, ['DOCTOR', 'TRIAGE_NURSE', 'NURSE'], true);
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-3">
 	<a href="#" class="brand-link text-center">
@@ -21,7 +27,7 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
 			<div class="info">
 				<span class="d-block text-white"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></span>
 				<?php
-				$_roleLabels = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DATA_ENTRY_OPERATOR' => 'Data Entry Operator', 'DOCTOR' => 'Doctor', 'NURSE' => 'Nurse'];
+				$_roleLabels = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'DATA_ENTRY_OPERATOR' => 'Data Entry Operator'];
 				?>
 				<small class="text-white-50"><?= htmlspecialchars($_roleLabels[$_userRole] ?? 'User') ?></small>
 			</div>
@@ -30,13 +36,19 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
 		<nav class="mt-3">
 			<ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
 				<li class="nav-item">
-					<a href="dashboard.php" class="nav-link <?= $isDashboardPage ? 'active' : '' ?>">
+					<a href="<?= $_isAdminRole ? 'admin.php' : 'dashboard.php' ?>" class="nav-link <?= ($isDashboardPage || $isAdminDashboard) ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-heart-pulse"></i>
 						<p>Dashboard</p>
 					</a>
 				</li>
 
 				<?php if ($_isClinicalRole): ?>
+				<li class="nav-item">
+					<a href="intake.php" class="nav-link <?= $isIntakePage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-clipboard-list"></i>
+						<p>Intake</p>
+					</a>
+				</li>
 				<li class="nav-item">
 					<a href="#" class="nav-link">
 						<i class="nav-icon fas fa-user-injured"></i>
@@ -59,7 +71,7 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
 				<?php endif; ?>
 
 				<li class="nav-item">
-					<a href="#" class="nav-link">
+					<a href="calendar.php" class="nav-link <?= $isCalendarPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-calendar-alt"></i>
 						<p>Calendar</p>
 					</a>
@@ -83,7 +95,7 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
 					</a>
 				</li>
 				<li class="nav-item">
-					<a href="#" class="nav-link">
+					<a href="settings.php" class="nav-link <?= $isSettingsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-cog"></i>
 						<p>Settings</p>
 					</a>
@@ -91,9 +103,15 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'NURSE'], true);
 
 				<?php if ($_isAdminRole): ?>
 				<li class="nav-item">
-					<a href="admin.php" class="nav-link <?= $isAdminPage ? 'active' : '' ?>">
+					<a href="admin.php?page=panel" class="nav-link <?= $isAdminPanel ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-user-shield"></i>
-						<p>Admin</p>
+						<p>Admin Panel</p>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a href="assets.php" class="nav-link <?= $isAssetsPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-boxes"></i>
+						<p>Assets</p>
 					</a>
 				</li>
 				<?php endif; ?>
