@@ -3,12 +3,14 @@
 /**
  * app/controllers/ClinicalController.php
  *
- * Handles the patient intake workflow:
+ * Handles the patient intake and doctor review workflow:
  *   - intake form: Step 1 (patient selection) + Step 2 (full tabbed form)
  *   - patient search (AJAX)
  *   - new patient registration (AJAX)
- *   - complete intake (POST)
- *   - doctor claim-for-review (POST)
+ *   - complete intake → INTAKE_COMPLETE
+ *   - doctor claim-for-review → DOCTOR_REVIEW
+ *   - doctor review form (5 tabs + audit log)
+ *   - close case sheet → CLOSED + full audit trail
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -31,12 +33,12 @@ class ClinicalController
 
 		$formError = null;
 		$caseSheet = null;
-		$patient = null;
+		$patient   = null;
 
 		// Step 2: If case_sheet_id in URL, load the full form
 		$caseSheetId = (int)($_GET['case_sheet_id'] ?? 0);
 		if ($caseSheetId > 0) {
-			$pdo = getDBConnection();
+			$pdo  = getDBConnection();
 			$stmt = $pdo->prepare('SELECT * FROM case_sheets WHERE case_sheet_id = ?');
 			$stmt->execute([$caseSheetId]);
 			$caseSheet = $stmt->fetch();
@@ -86,7 +88,6 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
-		// Get patient info for the flash message
 		$stmt = $pdo->prepare(
 			'SELECT cs.case_sheet_id, p.first_name, p.last_name, p.patient_code
 			   FROM case_sheets cs
@@ -101,15 +102,218 @@ class ClinicalController
 			exit;
 		}
 
-		// Update status to INTAKE_COMPLETE
-		$pdo->prepare('UPDATE case_sheets SET status = ? WHERE case_sheet_id = ? AND status = ?')
+		$pdo->prepare('UPDATE case_sheets SET status = ?, updated_at = NOW() WHERE case_sheet_id = ? AND status = ?')
 		    ->execute(['INTAKE_COMPLETE', $caseSheetId, 'INTAKE_IN_PROGRESS']);
+
+		$this->writeAuditLog(
+			$pdo, $caseSheetId, $_SESSION['user_id'],
+			'status', 'INTAKE_IN_PROGRESS', 'INTAKE_COMPLETE'
+		);
 
 		$_SESSION['intake_success'] = 'Intake completed for '
 			. htmlspecialchars($row['first_name'] . ' ' . ($row['last_name'] ?? ''))
 			. ' (' . htmlspecialchars($row['patient_code']) . '). Case sheet is now in the doctor queue.';
 
 		header('Location: intake.php');
+		exit;
+	}
+
+	// ── Doctor claims case sheet for review ──────────────────
+
+	public function claimForReview(): void
+	{
+		$this->requireDoctorRole();
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+			$_SESSION['intake_error'] = 'Invalid request token.';
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
+		if ($caseSheetId <= 0) {
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$pdo = getDBConnection();
+
+		// Only claim if still INTAKE_COMPLETE (prevents double-claim)
+		$stmt = $pdo->prepare(
+			'UPDATE case_sheets
+			    SET status = ?, assigned_doctor_user_id = ?, updated_at = NOW()
+			  WHERE case_sheet_id = ? AND status = ?'
+		);
+		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], $caseSheetId, 'INTAKE_COMPLETE']);
+
+		if ($stmt->rowCount() === 0) {
+			$_SESSION['intake_error'] = 'This case sheet is no longer available for review.';
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$this->writeAuditLog(
+			$pdo, $caseSheetId, $_SESSION['user_id'],
+			'status', 'INTAKE_COMPLETE', 'DOCTOR_REVIEW'
+		);
+
+		header('Location: review.php?case_sheet_id=' . $caseSheetId);
+		exit;
+	}
+
+	// ── Doctor review form ───────────────────────────────────
+
+	public function doctorReview(): void
+	{
+		$this->requireDoctorRole();
+
+		$flashError = null;
+		if (isset($_SESSION['review_error'])) {
+			$flashError = $_SESSION['review_error'];
+			unset($_SESSION['review_error']);
+		}
+
+		$caseSheetId = (int)($_GET['case_sheet_id'] ?? 0);
+		if ($caseSheetId <= 0) {
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$pdo = getDBConnection();
+
+		// Must be assigned to this doctor and status = DOCTOR_REVIEW
+		$stmt = $pdo->prepare(
+			'SELECT * FROM case_sheets
+			  WHERE case_sheet_id = ?
+			    AND assigned_doctor_user_id = ?
+			    AND status = ?'
+		);
+		$stmt->execute([$caseSheetId, $_SESSION['user_id'], 'DOCTOR_REVIEW']);
+		$caseSheet = $stmt->fetch();
+
+		if (!$caseSheet) {
+			$_SESSION['dashboard_notice'] = 'Case sheet not found or not assigned to you.';
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		// Load patient
+		$stmt = $pdo->prepare(
+			'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
+			        age_years, phone_e164, address_line1, city, state_province, postal_code,
+			        blood_group, allergies, emergency_contact_name, emergency_contact_phone
+			   FROM patients WHERE patient_id = ?'
+		);
+		$stmt->execute([$caseSheet['patient_id']]);
+		$patient = $stmt->fetch();
+
+		// Load nurse who created the intake
+		$intakeUser = null;
+		if (!empty($caseSheet['created_by_user_id'])) {
+			$stmt = $pdo->prepare('SELECT first_name, last_name FROM users WHERE user_id = ?');
+			$stmt->execute([$caseSheet['created_by_user_id']]);
+			$intakeUser = $stmt->fetch();
+		}
+
+		// Load audit log for this case sheet (most recent first)
+		$stmt = $pdo->prepare(
+			'SELECT al.field_name, al.old_value, al.new_value, al.changed_at,
+			        u.first_name, u.last_name
+			   FROM case_sheet_audit_log al
+			   JOIN users u ON u.user_id = al.user_id
+			  WHERE al.case_sheet_id = ?
+			  ORDER BY al.changed_at DESC
+			  LIMIT 100'
+		);
+		$stmt->execute([$caseSheetId]);
+		$auditLog = $stmt->fetchAll();
+
+		require __DIR__ . '/../views/review.php';
+	}
+
+	// ── Close (finalize) case sheet ─────────────────────────
+
+	public function closeCaseSheet(): void
+	{
+		$this->requireDoctorRole();
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+			$_SESSION['review_error'] = 'Invalid request token.';
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
+		if ($caseSheetId <= 0) {
+			header('Location: dashboard.php');
+			exit;
+		}
+
+		$closureType = $_POST['closure_type'] ?? 'DISCHARGED';
+		$validClosureTypes = ['DISCHARGED', 'FOLLOW_UP', 'REFERRAL', 'PENDING'];
+		if (!in_array($closureType, $validClosureTypes, true)) {
+			$closureType = 'DISCHARGED';
+		}
+
+		$pdo = getDBConnection();
+
+		// Fetch current values for audit trail
+		$stmt = $pdo->prepare(
+			'SELECT cs.status, cs.closure_type, cs.is_closed, cs.is_locked,
+			        p.first_name, p.last_name, p.patient_code
+			   FROM case_sheets cs
+			   JOIN patients p ON p.patient_id = cs.patient_id
+			  WHERE cs.case_sheet_id = ?
+			    AND cs.assigned_doctor_user_id = ?'
+		);
+		$stmt->execute([$caseSheetId, $_SESSION['user_id']]);
+		$row = $stmt->fetch();
+
+		if (!$row || $row['status'] !== 'DOCTOR_REVIEW') {
+			$_SESSION['review_error'] = 'Unable to close this case sheet.';
+			header('Location: review.php?case_sheet_id=' . $caseSheetId);
+			exit;
+		}
+
+		$userId = $_SESSION['user_id'];
+		$now    = date('Y-m-d H:i:s');
+
+		$pdo->prepare(
+			'UPDATE case_sheets
+			    SET status = ?, is_closed = 1, closed_at = ?, closed_by_user_id = ?,
+			        closure_type = ?, is_locked = 1, updated_at = ?
+			  WHERE case_sheet_id = ?'
+		)->execute(['CLOSED', $now, $userId, $closureType, $now, $caseSheetId]);
+
+		// Audit each closure field
+		$closureAudit = [
+			['status',            $row['status'],                      'CLOSED'],
+			['is_closed',         (string)(int)$row['is_closed'],      '1'],
+			['closure_type',      $row['closure_type'] ?? 'PENDING',   $closureType],
+			['closed_by_user_id', null,                                (string)$userId],
+			['closed_at',         null,                                $now],
+			['is_locked',         (string)(int)$row['is_locked'],      '1'],
+		];
+
+		foreach ($closureAudit as [$field, $old, $new]) {
+			$this->writeAuditLog($pdo, $caseSheetId, $userId, $field, $old, $new);
+		}
+
+		$_SESSION['dashboard_notice'] = 'Chart closed for '
+			. htmlspecialchars($row['first_name'] . ' ' . ($row['last_name'] ?? ''))
+			. ' (' . htmlspecialchars($row['patient_code']) . ').';
+
+		header('Location: dashboard.php');
 		exit;
 	}
 
@@ -126,7 +330,7 @@ class ClinicalController
 			exit;
 		}
 
-		$pdo = getDBConnection();
+		$pdo  = getDBConnection();
 		$like = '%' . $q . '%';
 		$stmt = $pdo->prepare(
 			'SELECT patient_id, patient_code, first_name, last_name,
@@ -188,7 +392,7 @@ class ClinicalController
 
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
-		$pdo = getDBConnection();
+		$pdo  = getDBConnection();
 		$stmt = $pdo->prepare(
 			'INSERT INTO patients (first_name, last_name, sex, date_of_birth, age_years, phone_e164, first_seen_date)
 			 VALUES (?, ?, ?, ?, ?, ?, CURDATE())'
@@ -196,7 +400,7 @@ class ClinicalController
 		$stmt->execute([$firstName, $lastName ?: null, $sex, $dob, $ageYears, $phone ?: null]);
 		$patientId = (int)$pdo->lastInsertId();
 
-		// Fetch the auto-generated patient_code from the trigger
+		// Fetch the auto-generated patient_code (set by database trigger)
 		$row = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ?');
 		$row->execute([$patientId]);
 		$patientCode = $row->fetchColumn();
@@ -208,54 +412,6 @@ class ClinicalController
 			'first_name'   => $firstName,
 			'last_name'    => $lastName,
 		]);
-		exit;
-	}
-
-	// ── Doctor claims case sheet for review ──────────────────
-
-	public function claimForReview(): void
-	{
-		$this->requireDoctorRole();
-
-		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-			header('Location: dashboard.php');
-			exit;
-		}
-
-		if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
-			$_SESSION['intake_error'] = 'Invalid request token.';
-			header('Location: dashboard.php');
-			exit;
-		}
-
-		$caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
-		if ($caseSheetId <= 0) {
-			header('Location: dashboard.php');
-			exit;
-		}
-
-		$pdo = getDBConnection();
-
-		// Only claim if still INTAKE_COMPLETE (prevents double-claim)
-		$stmt = $pdo->prepare(
-			'UPDATE case_sheets
-			    SET status = ?, assigned_doctor_user_id = ?
-			  WHERE case_sheet_id = ? AND status = ?'
-		);
-		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], $caseSheetId, 'INTAKE_COMPLETE']);
-
-		if ($stmt->rowCount() === 0) {
-			$_SESSION['intake_error'] = 'This case sheet is no longer available for review.';
-			header('Location: dashboard.php');
-			exit;
-		}
-
-		// Get patient_id for the redirect
-		$row = $pdo->prepare('SELECT patient_id FROM case_sheets WHERE case_sheet_id = ?');
-		$row->execute([$caseSheetId]);
-		$patientId = $row->fetchColumn();
-
-		header('Location: case-sheet.php?case_sheet_id=' . $caseSheetId . '&patient_id=' . $patientId);
 		exit;
 	}
 
@@ -284,15 +440,13 @@ class ClinicalController
 			return 'Chief complaint is required.';
 		}
 
-		// Verify patient exists
-		$pdo = getDBConnection();
+		$pdo  = getDBConnection();
 		$stmt = $pdo->prepare('SELECT patient_id FROM patients WHERE patient_id = ? AND is_active = 1');
 		$stmt->execute([$patientId]);
 		if (!$stmt->fetch()) {
 			return 'Patient not found.';
 		}
 
-		// Create case sheet with INTAKE_IN_PROGRESS status
 		$stmt = $pdo->prepare(
 			'INSERT INTO case_sheets
 			    (patient_id, visit_type, status, created_by_user_id, chief_complaint)
@@ -308,9 +462,34 @@ class ClinicalController
 
 		$newId = (int)$pdo->lastInsertId();
 
-		// Redirect to Step 2 (full form)
+		$this->writeAuditLog(
+			$pdo, $newId, $_SESSION['user_id'],
+			'status', null, 'INTAKE_IN_PROGRESS'
+		);
+
 		header('Location: intake.php?case_sheet_id=' . $newId);
 		exit;
+	}
+
+	// ── Shared audit log writer ──────────────────────────────
+
+	public static function writeAuditLog(
+		PDO $pdo,
+		int $caseSheetId,
+		int $userId,
+		string $field,
+		?string $oldValue,
+		?string $newValue
+	): void {
+		if ($oldValue === $newValue) {
+			return; // No change — no log entry needed
+		}
+
+		$pdo->prepare(
+			'INSERT INTO case_sheet_audit_log
+			    (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
+			 VALUES (?, ?, ?, ?, ?, NOW())'
+		)->execute([$caseSheetId, $userId, $field, $oldValue, $newValue]);
 	}
 
 	// ── Role guards ─────────────────────────────────────────

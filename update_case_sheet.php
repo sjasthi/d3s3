@@ -1,13 +1,17 @@
 <?php
 /**
  * update_case_sheet.php
- * API endpoint to update case sheet information.
- * Supports direct columns and JSON-stored fields across multiple JSON columns:
- *   - vitals_json: vitals, personal/reproductive, general exam fields
- *   - exam_notes (JSON): examination fields (exam_*)
- *   - assessment (JSON): history/condition fields (condition_*, family_history_*, surgical_history)
- *   - diagnosis (JSON): lab/cytology fields (lab_*, cytology_*)
- *   - plan_notes (JSON): summary fields (summary_*)
+ * API endpoint to update a single case sheet field and log the change.
+ *
+ * Every write is audited: old value → new value, user, timestamp.
+ *
+ * Field routing:
+ *   $direct_columns  → UPDATE case_sheets SET `field` = ?
+ *   $vitals_fields   → JSON merge into vitals_json
+ *   $exam_fields     → JSON merge into exam_notes
+ *   $history_fields  → JSON merge into assessment
+ *   $lab_fields      → JSON merge into diagnosis
+ *   $summary_fields  → JSON merge into plan_notes
  */
 
 error_reporting(E_ALL);
@@ -22,13 +26,13 @@ if (!isset($_SESSION['user_id'])) {
 	exit;
 }
 
-// Accept JSON body (original pattern) or POST form
+// Accept JSON body or POST form
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
 	$input = $_POST;
 }
 
-// CSRF check (from JSON body or header)
+// CSRF check
 $token = $input['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
 	echo json_encode(['success' => false, 'message' => 'Invalid request token.']);
@@ -38,40 +42,55 @@ if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
 require_once __DIR__ . '/app/config/database.php';
 $pdo = getDBConnection();
 
-$case_sheet_id = $input['case_sheet_id'] ?? null;
-$field = $input['field'] ?? null;
-$value = $input['value'] ?? null;
+$caseSheetId = $input['case_sheet_id'] ?? null;
+$field       = $input['field'] ?? null;
+$value       = $input['value'] ?? null;
+$userId      = (int)$_SESSION['user_id'];
 
-if (!$case_sheet_id || !$field) {
+if (!$caseSheetId || !$field) {
 	echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
 	exit;
 }
 
-// Whitelist of allowed direct columns
-$allowed_columns = [
+// ── Field whitelists ────────────────────────────────────────
+
+// Direct columns (stored as-is in their own column)
+$direct_columns = [
+	// Visit / intake
 	'visit_type', 'chief_complaint', 'history_present_illness',
-	'prescriptions', 'advice', 'follow_up_date',
-	'referral_to', 'referral_reason', 'follow_up_notes', 'disposition',
+	// Doctor treatment plan
+	'prescriptions', 'advice',
+	// Follow-up and referrals
+	'follow_up_date', 'follow_up_notes',
+	'referral_to', 'referral_reason',
+	'disposition', 'closure_type',
+	// Doctor-specific documentation columns
+	'doctor_exam_notes', 'doctor_assessment',
+	'doctor_diagnosis', 'doctor_plan_notes',
 ];
 
-// Fields stored inside vitals_json (vitals, personal/reproductive, general exam)
+// Nurse intake JSON fields → stored in vitals_json
 $vitals_fields = [
+	// Classic vitals
 	'bp_systolic', 'bp_diastolic', 'pulse', 'temperature',
 	'weight_kg', 'height_cm', 'spo2', 'respiratory_rate', 'blood_sugar',
 	'bmi', 'obesity_overweight',
-	// Personal tab fields
+	// Personal / symptoms
 	'symptoms_complaints', 'duration_of_symptoms',
+	// Reproductive
 	'number_of_children', 'has_uterus',
 	'type_of_delivery', 'delivery_location', 'delivery_source',
+	// Menstrual
 	'menstrual_age_of_onset', 'menstrual_cycle_frequency',
 	'menstrual_duration_of_flow', 'menstrual_lmp', 'menstrual_mh',
-	// General tab fields
+	// General exam vitals (legacy names from original form)
 	'general_pulse', 'general_bp_systolic', 'general_bp_diastolic',
 	'general_height', 'general_weight', 'general_bmi', 'general_obesity_overweight',
-	'general_heart', 'general_lungs', 'general_liver', 'general_spleen', 'general_lymph_glands',
+	'general_heart', 'general_lungs', 'general_liver',
+	'general_spleen', 'general_lymph_glands',
 ];
 
-// Fields stored inside exam_notes (JSON) — examinations tab
+// Nurse examination fields → stored in exam_notes (JSON)
 $exam_fields = [
 	'exam_mouth', 'exam_lips', 'exam_buccal_mucosa',
 	'exam_teeth', 'exam_tongue', 'exam_oropharynx',
@@ -84,7 +103,7 @@ $exam_fields = [
 	'exam_gynae_ps', 'exam_gynae_pv', 'exam_gynae_via', 'exam_gynae_vili',
 ];
 
-// Fields stored inside assessment (JSON) — history tab
+// Nurse history fields → stored in assessment (JSON)
 $history_fields = [
 	'condition_dm', 'condition_htn', 'condition_tsh', 'condition_heart_disease',
 	'condition_others', 'surgical_history',
@@ -92,7 +111,7 @@ $history_fields = [
 	'family_history_bp', 'family_history_thyroid', 'family_history_other',
 ];
 
-// Fields stored inside diagnosis (JSON) — labs tab
+// Nurse lab fields → stored in diagnosis (JSON)
 $lab_fields = [
 	'lab_hb_percentage', 'lab_hb_gms', 'lab_fbs', 'lab_tsh', 'lab_sr_creatinine',
 	'lab_others',
@@ -101,52 +120,90 @@ $lab_fields = [
 	'cytology_biopsy', 'cytology_biopsy_notes',
 ];
 
-// Fields stored inside plan_notes (JSON) — summary tab
+// Nurse summary fields → stored in plan_notes (JSON)
 $summary_fields = [
 	'summary_risk_level', 'summary_referral',
 	'summary_patient_acceptance', 'summary_doctor_summary',
 ];
 
-/**
- * Merge a field into a JSON column.
- */
-function mergeJsonField(PDO $pdo, string $column, string $field, $value, $case_sheet_id): void
+// ── Audit helpers ───────────────────────────────────────────
+
+function writeAudit(PDO $pdo, $caseSheetId, int $userId, string $field, ?string $old, ?string $new): void
 {
+	if ($old === $new) {
+		return; // Value unchanged — no log entry
+	}
+	$pdo->prepare(
+		'INSERT INTO case_sheet_audit_log
+		    (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
+		 VALUES (?, ?, ?, ?, ?, NOW())'
+	)->execute([$caseSheetId, $userId, $field, $old, $new]);
+}
+
+/**
+ * Merge a single key into a JSON column, log the change, and update updated_at.
+ */
+function mergeJsonField(PDO $pdo, string $column, string $field, $value, $caseSheetId, int $userId): void
+{
+	// Read current JSON
 	$stmt = $pdo->prepare("SELECT `$column` FROM case_sheets WHERE case_sheet_id = ?");
-	$stmt->execute([$case_sheet_id]);
+	$stmt->execute([$caseSheetId]);
 	$currentJson = $stmt->fetchColumn();
 	$data = ($currentJson && is_string($currentJson)) ? json_decode($currentJson, true) : [];
 	if (!is_array($data)) {
 		$data = [];
 	}
-	$data[$field] = $value;
 
+	// Capture old value for audit (null if key never set)
+	$oldValue = array_key_exists($field, $data) ? (string)$data[$field] : null;
+	$newValue = (string)$value;
+
+	// Merge and save
+	$data[$field] = $value;
 	$pdo->prepare("UPDATE case_sheets SET `$column` = ?, updated_at = NOW() WHERE case_sheet_id = ?")
-	    ->execute([json_encode($data), $case_sheet_id]);
+	    ->execute([json_encode($data), $caseSheetId]);
+
+	writeAudit($pdo, $caseSheetId, $userId, $field, $oldValue, $newValue);
 }
 
+// ── Route the field and write ───────────────────────────────
+
 try {
-	if (in_array($field, $allowed_columns, true)) {
-		$stmt = $pdo->prepare(
-			"UPDATE case_sheets SET `$field` = ?, updated_at = NOW() WHERE case_sheet_id = ?"
-		);
-		$stmt->execute([$value, $case_sheet_id]);
+	if (in_array($field, $direct_columns, true)) {
+		// Read old value for audit
+		$stmt = $pdo->prepare("SELECT `$field` FROM case_sheets WHERE case_sheet_id = ?");
+		$stmt->execute([$caseSheetId]);
+		$oldValue = $stmt->fetchColumn();
+		$oldValue = ($oldValue !== false) ? (string)$oldValue : null;
+
+		// Write new value
+		$pdo->prepare("UPDATE case_sheets SET `$field` = ?, updated_at = NOW() WHERE case_sheet_id = ?")
+		    ->execute([$value, $caseSheetId]);
+
+		writeAudit($pdo, $caseSheetId, $userId, $field, $oldValue, (string)$value);
+
 	} elseif (in_array($field, $vitals_fields, true)) {
-		mergeJsonField($pdo, 'vitals_json', $field, $value, $case_sheet_id);
+		mergeJsonField($pdo, 'vitals_json', $field, $value, $caseSheetId, $userId);
+
 	} elseif (in_array($field, $exam_fields, true)) {
-		mergeJsonField($pdo, 'exam_notes', $field, $value, $case_sheet_id);
+		mergeJsonField($pdo, 'exam_notes', $field, $value, $caseSheetId, $userId);
+
 	} elseif (in_array($field, $history_fields, true)) {
-		mergeJsonField($pdo, 'assessment', $field, $value, $case_sheet_id);
+		mergeJsonField($pdo, 'assessment', $field, $value, $caseSheetId, $userId);
+
 	} elseif (in_array($field, $lab_fields, true)) {
-		mergeJsonField($pdo, 'diagnosis', $field, $value, $case_sheet_id);
+		mergeJsonField($pdo, 'diagnosis', $field, $value, $caseSheetId, $userId);
+
 	} elseif (in_array($field, $summary_fields, true)) {
-		mergeJsonField($pdo, 'plan_notes', $field, $value, $case_sheet_id);
+		mergeJsonField($pdo, 'plan_notes', $field, $value, $caseSheetId, $userId);
+
 	} else {
 		echo json_encode(['success' => false, 'message' => 'Invalid field']);
 		exit;
 	}
 
-	echo json_encode(['success' => true, 'message' => 'Case sheet updated', 'field' => $field]);
+	echo json_encode(['success' => true, 'field' => $field]);
+
 } catch (PDOException $e) {
 	error_log('Database error in update_case_sheet.php: ' . $e->getMessage());
 	echo json_encode(['success' => false, 'message' => 'A database error occurred.']);
