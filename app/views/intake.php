@@ -511,7 +511,7 @@
 												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_breast']) ? 'Edit' : 'Draw' ?> Breast Diagram
 											</button>
 											<div id="breastDiagramPreview" class="mt-2<?= empty($cs['diag_breast']) ? ' d-none' : '' ?>">
-												<img src="<?= !empty($cs['diag_breast']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_breast']) : '' ?>"
+												<img src="" data-diag-field="diag_breast" data-diag-type="breast"
 												     alt="Breast Examination Diagram" class="img-thumbnail diagram-preview-img">
 											</div>
 											<input type="hidden" id="diag_breast" value="<?= htmlspecialchars($cs['diag_breast'] ?? '') ?>">
@@ -532,7 +532,7 @@
 												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_pelvic']) ? 'Edit' : 'Draw' ?> Pelvic Diagram
 											</button>
 											<div id="pelvicDiagramPreview" class="mt-2<?= empty($cs['diag_pelvic']) ? ' d-none' : '' ?>">
-												<img src="<?= !empty($cs['diag_pelvic']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_pelvic']) : '' ?>"
+												<img src="" data-diag-field="diag_pelvic" data-diag-type="pelvic"
 												     alt="Pelvic Examination Diagram" class="img-thumbnail diagram-preview-img">
 											</div>
 											<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
@@ -558,7 +558,7 @@
 												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_via']) ? 'Edit' : 'Draw' ?> VIA Diagram
 											</button>
 											<div id="viaDiagramPreview" class="mt-2<?= empty($cs['diag_via']) ? ' d-none' : '' ?>">
-												<img src="<?= !empty($cs['diag_via']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_via']) : '' ?>"
+												<img src="" data-diag-field="diag_via" data-diag-type="via"
 												     alt="VIA Diagram" class="img-thumbnail diagram-preview-img">
 											</div>
 											<input type="hidden" id="diag_via" value="<?= htmlspecialchars($cs['diag_via'] ?? '') ?>">
@@ -570,7 +570,7 @@
 												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_vili']) ? 'Edit' : 'Draw' ?> VILI Diagram
 											</button>
 											<div id="viliDiagramPreview" class="mt-2<?= empty($cs['diag_vili']) ? ' d-none' : '' ?>">
-												<img src="<?= !empty($cs['diag_vili']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_vili']) : '' ?>"
+												<img src="" data-diag-field="diag_vili" data-diag-type="vili"
 												     alt="VILI Diagram" class="img-thumbnail diagram-preview-img">
 											</div>
 											<input type="hidden" id="diag_vili" value="<?= htmlspecialchars($cs['diag_vili'] ?? '') ?>">
@@ -843,7 +843,7 @@
 						</div>
 						<div class="col-sm-4 text-sm-right">
 							<button type="button" class="btn btn-sm btn-warning" id="diagUndoBtn"><i class="fas fa-undo mr-1"></i>Undo</button>
-							<button type="button" class="btn btn-sm btn-info"    id="diagRedoBtn"><i class="fas fa-redo mr-1"></i>Redo</button>
+							<button type="button" class="btn btn-sm btn-info"    id="diagRedoBtn" disabled title="Redo not available with stroke model"><i class="fas fa-redo mr-1"></i>Redo</button>
 							<button type="button" class="btn btn-sm btn-danger"  id="diagClearBtn"><i class="fas fa-trash mr-1"></i>Clear</button>
 						</div>
 					</div>
@@ -863,7 +863,14 @@
 </div>
 
 <script>
-/* ── Diagram editor ─────────────────────────────────────────────────── */
+/* ── Diagram editor (stroke-JSON storage) ──────────────────────────── */
+/*
+ * Only the nurse's annotations are stored — never the template image.
+ * Each diagram field holds a compact JSON array of strokes:
+ *   [ { tool, color, thickness, points: [[x,y], ...] }, ... ]
+ * On load the template PNG is drawn first, then strokes are replayed on top.
+ * Typical size: 1–15 KB vs 150–400 KB for a full-composite PNG.
+ */
 (function () {
 	var CSRF_TOKEN    = document.querySelector('input[name="csrf_token"]')?.value || '';
 	var CASE_SHEET_ID = <?= isset($csId) ? (int)$csId : 'null' ?>;
@@ -873,7 +880,10 @@
 	var canvas = null, ctx = null;
 	var isDrawing = false;
 	var currentTool = 'pen', currentColor = '#000000', currentThickness = 4;
-	var history = [], historyStep = -1;
+	/* Stroke storage: array of completed strokes */
+	var strokes = [];
+	/* Current stroke being drawn */
+	var currentStroke = null;
 
 	var templatePaths = {
 		breast: 'assets/images/diagrams/BreastExaminationDiagram.png',
@@ -888,6 +898,9 @@
 		vili:   'VILI Diagram'
 	};
 
+	/* Cached template images so we only fetch each file once per session */
+	var templateCache = {};
+
 	/* Called by the Draw/Edit buttons in the form */
 	window.openDiagram = function (type, fieldId, previewId) {
 		activeDiagram = { type: type, fieldId: fieldId, previewId: previewId };
@@ -901,70 +914,127 @@
 		ctx    = canvas.getContext('2d');
 		canvas.width  = 800;
 		canvas.height = 600;
-		history = []; historyStep = -1;
-		loadTemplate();
+
+		/* Load existing strokes from the hidden field */
+		var raw = document.getElementById(activeDiagram.fieldId)?.value || '';
+		try { strokes = raw ? JSON.parse(raw) : []; } catch (e) { strokes = []; }
+
+		loadTemplateAndRedraw();
 	});
 
-	/* Reset state when modal closes */
+	/* Reset when modal closes */
 	$('#diagramEditorModal').on('hidden.bs.modal', function () {
 		activeDiagram = null;
-		if (canvas) { canvas.width = canvas.width; } // clear
-		history = []; historyStep = -1;
+		strokes = []; currentStroke = null;
 	});
 
-	function loadTemplate() {
+	/* ── Rendering ─────────────────────────────────────────────── */
+
+	function loadTemplateAndRedraw() {
+		var src = templatePaths[activeDiagram.type];
+		if (templateCache[src]) {
+			drawAll(templateCache[src]);
+		} else {
+			var img = new Image();
+			img.onload = function () {
+				templateCache[src] = img;
+				drawAll(img);
+			};
+			img.onerror = function () {
+				ctx.fillStyle = '#f8d7da';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = '#721c24';
+				ctx.font = '18px sans-serif'; ctx.textAlign = 'center';
+				ctx.fillText('Template image could not be loaded', canvas.width / 2, canvas.height / 2);
+				replayStrokes();
+			};
+			img.src = src;
+		}
+	}
+
+	function drawAll(templateImg) {
+		/* 1. White background */
 		ctx.fillStyle = '#ffffff';
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		/* 2. Template centred, aspect-ratio preserved */
+		var scale = Math.min(canvas.width / templateImg.width, canvas.height / templateImg.height);
+		var w = templateImg.width * scale, h = templateImg.height * scale;
+		var x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+		ctx.drawImage(templateImg, x, y, w, h);
+		/* 3. All saved strokes */
+		replayStrokes();
+	}
 
-		var img = new Image();
-		img.onload = function () {
-			var scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+	function replayStrokes() {
+		strokes.forEach(function (stroke) { drawStroke(stroke); });
+	}
+
+	function drawStroke(stroke) {
+		if (!stroke.points || stroke.points.length < 2) return;
+		ctx.save();
+		if (stroke.tool === 'eraser') {
+			ctx.globalCompositeOperation = 'destination-out';
+			ctx.strokeStyle = 'rgba(0,0,0,1)';
+			ctx.lineWidth   = stroke.thickness * 3;
+		} else {
+			ctx.globalCompositeOperation = 'source-over';
+			ctx.strokeStyle = stroke.color;
+			ctx.lineWidth   = stroke.thickness;
+		}
+		ctx.lineCap = ctx.lineJoin = 'round';
+		ctx.beginPath();
+		ctx.moveTo(stroke.points[0][0], stroke.points[0][1]);
+		for (var i = 1; i < stroke.points.length; i++) {
+			ctx.lineTo(stroke.points[i][0], stroke.points[i][1]);
+		}
+		ctx.stroke();
+		ctx.restore();
+	}
+
+	/* ── Thumbnail generation ──────────────────────────────────── */
+
+	function buildThumbnail() {
+		/* Render a 300x225 composite of template + strokes for the preview */
+		var src = templatePaths[activeDiagram.type];
+		var thumb = document.createElement('canvas');
+		thumb.width  = 300; thumb.height = 225;
+		var tc = thumb.getContext('2d');
+		var img = templateCache[src];
+		if (img) {
+			var scale = Math.min(300 / img.width, 225 / img.height);
 			var w = img.width * scale, h = img.height * scale;
-			var x = (canvas.width  - w) / 2;
-			var y = (canvas.height - h) / 2;
-			ctx.drawImage(img, x, y, w, h);
-
-			/* Overlay any previously saved drawing */
-			var existing = document.getElementById(activeDiagram.fieldId)?.value;
-			if (existing) {
-				var overlay = new Image();
-				overlay.onload = function () {
-					ctx.drawImage(overlay, 0, 0);
-					saveHistory();
-				};
-				overlay.src = 'data:image/png;base64,' + existing;
+			var x = (300 - w) / 2, y = (225 - h) / 2;
+			tc.fillStyle = '#ffffff'; tc.fillRect(0, 0, 300, 225);
+			tc.drawImage(img, x, y, w, h);
+		}
+		/* Scale and replay strokes onto thumbnail */
+		var sx = 300 / canvas.width, sy = 225 / canvas.height;
+		strokes.forEach(function (stroke) {
+			if (!stroke.points || stroke.points.length < 2) return;
+			tc.save();
+			if (stroke.tool === 'eraser') {
+				tc.globalCompositeOperation = 'destination-out';
+				tc.strokeStyle = 'rgba(0,0,0,1)';
+				tc.lineWidth   = stroke.thickness * 3 * sx;
 			} else {
-				saveHistory();
+				tc.globalCompositeOperation = 'source-over';
+				tc.strokeStyle = stroke.color;
+				tc.lineWidth   = stroke.thickness * sx;
 			}
-		};
-		img.onerror = function () {
-			ctx.fillStyle = '#f8d7da';
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.fillStyle = '#721c24';
-			ctx.font = '18px sans-serif'; ctx.textAlign = 'center';
-			ctx.fillText('Template image could not be loaded', canvas.width / 2, canvas.height / 2);
-			saveHistory();
-		};
-		img.src = templatePaths[activeDiagram.type];
+			tc.lineCap = tc.lineJoin = 'round';
+			tc.beginPath();
+			tc.moveTo(stroke.points[0][0] * sx, stroke.points[0][1] * sy);
+			for (var i = 1; i < stroke.points.length; i++) {
+				tc.lineTo(stroke.points[i][0] * sx, stroke.points[i][1] * sy);
+			}
+			tc.stroke();
+			tc.restore();
+		});
+		return thumb.toDataURL('image/png');
 	}
 
-	function saveHistory() {
-		historyStep++;
-		if (historyStep < history.length) history.length = historyStep;
-		history.push(canvas.toDataURL());
-		if (history.length > 30) { history.shift(); historyStep--; }
-	}
+	/* ── Toolbar ───────────────────────────────────────────────── */
 
-	function restoreHistory(step) {
-		var img = new Image();
-		img.onload = function () {
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, 0, 0);
-		};
-		img.src = history[step];
-	}
-
-	/* ── Toolbar interactions ─────────────────────────────────── */
 	document.querySelectorAll('#diagramEditorModal [data-tool]').forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			document.querySelectorAll('#diagramEditorModal [data-tool]').forEach(function (b) { b.classList.remove('active'); });
@@ -980,97 +1050,113 @@
 	});
 
 	document.getElementById('diagUndoBtn').addEventListener('click', function () {
-		if (historyStep > 0) { historyStep--; restoreHistory(historyStep); }
-	});
-	document.getElementById('diagRedoBtn').addEventListener('click', function () {
-		if (historyStep < history.length - 1) { historyStep++; restoreHistory(historyStep); }
-	});
-	document.getElementById('diagClearBtn').addEventListener('click', function () {
-		if (confirm('Clear all marks from the diagram?')) {
-			history = []; historyStep = -1;
-			loadTemplate();
+		if (strokes.length > 0) {
+			strokes.pop();
+			loadTemplateAndRedraw();
 		}
 	});
 
-	/* ── Drawing (mouse) ───────────────────────────────────────── */
-	function getPos(e) {
+	document.getElementById('diagRedoBtn').setAttribute('disabled', 'disabled'); // redo not applicable with stroke model
+
+	document.getElementById('diagClearBtn').addEventListener('click', function () {
+		if (strokes.length === 0) return;
+		if (confirm('Clear all marks from the diagram?')) {
+			strokes = [];
+			loadTemplateAndRedraw();
+		}
+	});
+
+	/* ── Drawing input ─────────────────────────────────────────── */
+
+	function getPos(clientX, clientY) {
 		var rect = canvas.getBoundingClientRect();
-		var scaleX = canvas.width  / rect.width;
-		var scaleY = canvas.height / rect.height;
-		return {
-			x: (e.clientX - rect.left) * scaleX,
-			y: (e.clientY - rect.top)  * scaleY
-		};
+		return [
+			(clientX - rect.left) * (canvas.width  / rect.width),
+			(clientY - rect.top)  * (canvas.height / rect.height)
+		];
 	}
 
 	function startDraw(x, y) {
 		isDrawing = true;
-		ctx.beginPath();
-		ctx.moveTo(x, y);
+		currentStroke = { tool: currentTool, color: currentColor, thickness: currentThickness, points: [[x, y]] };
 	}
 
-	function draw(x, y) {
-		if (!isDrawing) return;
-		if (currentTool === 'pen') {
-			ctx.strokeStyle = currentColor;
-			ctx.lineWidth   = currentThickness;
+	function continueDraw(x, y) {
+		if (!isDrawing || !currentStroke) return;
+		currentStroke.points.push([x, y]);
+		/* Live render: just draw the latest segment */
+		if (currentStroke.points.length >= 2) {
+			var pts = currentStroke.points;
+			var prev = pts[pts.length - 2];
+			ctx.save();
+			if (currentTool === 'eraser') {
+				ctx.globalCompositeOperation = 'destination-out';
+				ctx.strokeStyle = 'rgba(0,0,0,1)';
+				ctx.lineWidth   = currentThickness * 3;
+			} else {
+				ctx.globalCompositeOperation = 'source-over';
+				ctx.strokeStyle = currentColor;
+				ctx.lineWidth   = currentThickness;
+			}
 			ctx.lineCap = ctx.lineJoin = 'round';
+			ctx.beginPath();
+			ctx.moveTo(prev[0], prev[1]);
 			ctx.lineTo(x, y);
 			ctx.stroke();
-		} else if (currentTool === 'eraser') {
-			var r = currentThickness * 3;
-			ctx.clearRect(x - r / 2, y - r / 2, r, r);
+			ctx.restore();
 		}
 	}
 
 	function endDraw() {
-		if (isDrawing) { isDrawing = false; saveHistory(); }
+		if (!isDrawing || !currentStroke) return;
+		isDrawing = false;
+		if (currentStroke.points.length >= 2) {
+			strokes.push(currentStroke);
+		}
+		currentStroke = null;
 	}
 
-	/* Mouse events (queued to ensure canvas is ready) */
 	document.addEventListener('DOMContentLoaded', function () {
 		var c = document.getElementById('diagramCanvas');
 
-		c.addEventListener('mousedown',  function (e) { var p = getPos(e); startDraw(p.x, p.y); });
-		c.addEventListener('mousemove',  function (e) { var p = getPos(e); draw(p.x, p.y); });
+		c.addEventListener('mousedown',  function (e) { var p = getPos(e.clientX, e.clientY); startDraw(p[0], p[1]); });
+		c.addEventListener('mousemove',  function (e) { var p = getPos(e.clientX, e.clientY); continueDraw(p[0], p[1]); });
 		c.addEventListener('mouseup',    endDraw);
 		c.addEventListener('mouseleave', endDraw);
 
-		/* ── Touch support (tablet / stylus) ────────────────────── */
-		function touchPos(touch) {
-			var rect = c.getBoundingClientRect();
-			var scaleX = c.width  / rect.width;
-			var scaleY = c.height / rect.height;
-			return {
-				x: (touch.clientX - rect.left) * scaleX,
-				y: (touch.clientY - rect.top)  * scaleY
-			};
-		}
-		c.addEventListener('touchstart', function (e) { e.preventDefault(); var p = touchPos(e.touches[0]); startDraw(p.x, p.y); }, { passive: false });
-		c.addEventListener('touchmove',  function (e) { e.preventDefault(); var p = touchPos(e.touches[0]); draw(p.x, p.y);      }, { passive: false });
+		/* Touch / stylus */
+		c.addEventListener('touchstart', function (e) { e.preventDefault(); var t = e.touches[0]; var p = getPos(t.clientX, t.clientY); startDraw(p[0], p[1]); },    { passive: false });
+		c.addEventListener('touchmove',  function (e) { e.preventDefault(); var t = e.touches[0]; var p = getPos(t.clientX, t.clientY); continueDraw(p[0], p[1]); }, { passive: false });
 		c.addEventListener('touchend',   function (e) { e.preventDefault(); endDraw(); }, { passive: false });
 	});
 
 	/* ── Save ──────────────────────────────────────────────────── */
-	document.getElementById('diagSaveBtn').addEventListener('click', function () {
-		var base64 = canvas.toDataURL('image/png').split(',')[1];
 
-		/* Update hidden field + thumbnail */
-		var field   = document.getElementById(activeDiagram.fieldId);
+	document.getElementById('diagSaveBtn').addEventListener('click', function () {
+		var strokeJSON = JSON.stringify(strokes);
+
+		/* Write JSON to hidden field */
+		var field = document.getElementById(activeDiagram.fieldId);
+		if (field) field.value = strokeJSON;
+
+		/* Update preview thumbnail (composite for display only) */
 		var preview = document.getElementById(activeDiagram.previewId);
-		if (field)   field.value = base64;
 		if (preview) {
-			var img = preview.querySelector('img');
-			if (img) img.src = 'data:image/png;base64,' + base64;
-			preview.classList.remove('d-none');
+			var imgEl = preview.querySelector('img');
+			if (imgEl) imgEl.src = strokes.length ? buildThumbnail() : '';
+			if (strokes.length) {
+				preview.classList.remove('d-none');
+			} else {
+				preview.classList.add('d-none');
+			}
 		}
 
-		/* Update the button label */
+		/* Update button label */
 		document.querySelectorAll('button[onclick*="' + activeDiagram.fieldId + '"]').forEach(function (btn) {
 			btn.innerHTML = '<i class="fas fa-draw-polygon mr-1"></i>Edit ' + modalTitles[activeDiagram.type];
 		});
 
-		/* Auto-save to DB if case sheet exists */
+		/* Auto-save stroke JSON to DB */
 		if (CASE_SHEET_ID) {
 			var csrfInput = document.querySelector('input[name="csrf_token"]');
 			var token = csrfInput ? csrfInput.value : '';
@@ -1081,12 +1167,77 @@
 					csrf_token:    token,
 					case_sheet_id: CASE_SHEET_ID,
 					field:         activeDiagram.fieldId,
-					value:         base64
+					value:         strokeJSON
 				})
 			}).catch(function (err) { console.error('Diagram save error:', err); });
 		}
 
 		$('#diagramEditorModal').modal('hide');
+	});
+}());
+</script>
+
+<script>
+/* ── Render existing diagram thumbnails on page load ────────────────── */
+/* For any diagram field that has saved stroke JSON, build a preview     */
+/* thumbnail so the nurse sees their previous marks immediately.         */
+(function () {
+	var templatePaths = {
+		breast: 'assets/images/diagrams/BreastExaminationDiagram.png',
+		pelvic: 'assets/images/diagrams/PelvicExaminationDiagram.png',
+		via:    'assets/images/diagrams/VIAVILIDiagram.png',
+		vili:   'assets/images/diagrams/VIAVILIDiagram.png'
+	};
+
+	function renderThumbnail(imgEl, templateType, strokes) {
+		var thumb = document.createElement('canvas');
+		thumb.width = 300; thumb.height = 225;
+		var tc = thumb.getContext('2d');
+
+		var tpl = new Image();
+		tpl.onload = function () {
+			var scale = Math.min(300 / tpl.width, 225 / tpl.height);
+			var w = tpl.width * scale, h = tpl.height * scale;
+			tc.fillStyle = '#ffffff'; tc.fillRect(0, 0, 300, 225);
+			tc.drawImage(tpl, (300 - w) / 2, (225 - h) / 2, w, h);
+			var sx = 300 / 800, sy = 225 / 600;
+			strokes.forEach(function (stroke) {
+				if (!stroke.points || stroke.points.length < 2) return;
+				tc.save();
+				if (stroke.tool === 'eraser') {
+					tc.globalCompositeOperation = 'destination-out';
+					tc.strokeStyle = 'rgba(0,0,0,1)';
+					tc.lineWidth   = stroke.thickness * 3 * sx;
+				} else {
+					tc.globalCompositeOperation = 'source-over';
+					tc.strokeStyle = stroke.color;
+					tc.lineWidth   = stroke.thickness * sx;
+				}
+				tc.lineCap = tc.lineJoin = 'round';
+				tc.beginPath();
+				tc.moveTo(stroke.points[0][0] * sx, stroke.points[0][1] * sy);
+				for (var i = 1; i < stroke.points.length; i++) {
+					tc.lineTo(stroke.points[i][0] * sx, stroke.points[i][1] * sy);
+				}
+				tc.stroke();
+				tc.restore();
+			});
+			imgEl.src = thumb.toDataURL('image/png');
+		};
+		tpl.src = templatePaths[templateType];
+	}
+
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('img[data-diag-field]').forEach(function (imgEl) {
+			var field = document.getElementById(imgEl.dataset.diagField);
+			if (!field || !field.value) return;
+			try {
+				var strokes = JSON.parse(field.value);
+				if (Array.isArray(strokes) && strokes.length > 0) {
+					renderThumbnail(imgEl, imgEl.dataset.diagType, strokes);
+				}
+			} catch (e) { /* not JSON — old PNG data, ignore */ }
+		});
 	});
 }());
 </script>
