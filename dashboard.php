@@ -11,8 +11,10 @@ $calendarEvents = $pdo->query(
 $_userRole = $_SESSION['user_role'] ?? '';
 $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'TRIAGE_NURSE', 'NURSE'], true);
 
-// Doctor queue: case sheets with completed intake awaiting review
+// Doctor queue: case sheets with completed intake awaiting claim
 $doctorQueue = [];
+// Doctor's active reviews: cases already claimed by this doctor
+$myActiveReviews = [];
 if ($_userRole === 'DOCTOR') {
 	$stmt = $pdo->prepare(
 		'SELECT cs.case_sheet_id, cs.patient_id, cs.visit_type, cs.chief_complaint,
@@ -27,6 +29,19 @@ if ($_userRole === 'DOCTOR') {
 	);
 	$stmt->execute(['INTAKE_COMPLETE']);
 	$doctorQueue = $stmt->fetchAll();
+
+	$stmt = $pdo->prepare(
+		'SELECT cs.case_sheet_id, cs.patient_id, cs.visit_type, cs.chief_complaint,
+		        cs.visit_datetime, cs.updated_at,
+		        p.first_name, p.last_name, p.patient_code, p.sex, p.age_years
+		   FROM case_sheets cs
+		   JOIN patients p ON p.patient_id = cs.patient_id
+		  WHERE cs.status = ?
+		    AND cs.assigned_doctor_user_id = ?
+		  ORDER BY cs.updated_at DESC'
+	);
+	$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id']]);
+	$myActiveReviews = $stmt->fetchAll();
 }
 ?>
 <!DOCTYPE html>
@@ -61,9 +76,6 @@ if ($_userRole === 'DOCTOR') {
 					<input type="checkbox" class="custom-control-input" id="themeToggleDashboard" data-theme-toggle />
 					<label class="custom-control-label" for="themeToggleDashboard">Dark mode</label>
 				</div>
-			</li>
-			<li class="nav-item d-none d-md-inline-block mr-3 text-muted small">
-				<i class="fas fa-sun pr-1"></i>Optimized for outdoor tablet use
 			</li>
 			<?php if ($_isClinicalRole): ?>
 			<li class="nav-item">
@@ -151,6 +163,54 @@ if ($_userRole === 'DOCTOR') {
 					<i class="fas fa-check-circle text-success mr-2"></i>No patients waiting for review.
 				</div>
 				<?php endif; ?>
+
+			<?php if ($_userRole === 'DOCTOR' && !empty($myActiveReviews)): ?>
+				<div class="card card-outline card-info mb-4">
+					<div class="card-header d-flex align-items-center">
+						<h3 class="card-title mb-0">
+							<i class="fas fa-stethoscope mr-2"></i>My Active Reviews
+							<span class="badge badge-info ml-2"><?= count($myActiveReviews) ?></span>
+						</h3>
+					</div>
+					<div class="card-body p-0">
+						<div class="table-responsive">
+							<table class="table table-hover table-striped mb-0">
+								<thead>
+									<tr>
+										<th>Patient</th>
+										<th>Visit Type</th>
+										<th>Chief Complaint</th>
+										<th>Visit Time</th>
+										<th>Last Updated</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($myActiveReviews as $r): ?>
+									<tr>
+										<td>
+											<strong><?= htmlspecialchars($r['first_name'] . ' ' . ($r['last_name'] ?? '')) ?></strong>
+											<br><small class="text-muted"><?= htmlspecialchars($r['patient_code']) ?>
+											<?= $r['sex'] && $r['sex'] !== 'UNKNOWN' ? ' &middot; ' . htmlspecialchars($r['sex']) : '' ?>
+											<?= $r['age_years'] ? ' &middot; ' . (int)$r['age_years'] . 'y' : '' ?></small>
+										</td>
+										<td><span class="badge badge-secondary"><?= htmlspecialchars($r['visit_type']) ?></span></td>
+										<td><?= htmlspecialchars($r['chief_complaint'] ?? '') ?></td>
+										<td><small><?= date('g:i A', strtotime($r['visit_datetime'])) ?></small></td>
+										<td><small class="text-muted"><?= date('M j g:i A', strtotime($r['updated_at'])) ?></small></td>
+										<td>
+											<a href="review.php?case_sheet_id=<?= (int)$r['case_sheet_id'] ?>" class="btn btn-sm btn-info">
+												<i class="fas fa-notes-medical mr-1"></i>Continue
+											</a>
+										</td>
+									</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			<?php endif; ?>
 
 				<div class="row">
 					<div class="col-lg-7">

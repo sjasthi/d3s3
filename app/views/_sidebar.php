@@ -9,6 +9,7 @@ $isSettingsPage = (strpos($currentPage, 'settings.php') !== false);
 $isAssetsPage = (strpos($currentPage, 'assets.php') !== false);
 $isCalendarPage = (strpos($currentPage, 'calendar.php') !== false);
 $isIntakePage = (strpos($currentPage, 'intake.php') !== false);
+$isReviewPage = (strpos($currentPage, 'review.php') !== false);
 
 $_userRole = $_SESSION['user_role'] ?? '';
 $_isAdminRole = in_array($_userRole, ['SUPER_ADMIN', 'ADMIN'], true);
@@ -49,6 +50,14 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'TRIAGE_NURSE', 'NURSE'], tru
 						<p>Intake</p>
 					</a>
 				</li>
+				<?php if ($_userRole === 'DOCTOR'): ?>
+				<li class="nav-item">
+					<a href="dashboard.php" class="nav-link <?= $isReviewPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-notes-medical"></i>
+						<p>My Reviews</p>
+					</a>
+				</li>
+				<?php endif; ?>
 				<li class="nav-item">
 					<a href="#" class="nav-link">
 						<i class="nav-icon fas fa-user-injured"></i>
