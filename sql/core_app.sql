@@ -63,6 +63,8 @@ CREATE TABLE `case_sheets` (
   `patient_id` int(10) UNSIGNED NOT NULL,
   `visit_datetime` datetime NOT NULL DEFAULT current_timestamp(),
   `visit_type` enum('CAMP','CLINIC','FOLLOW_UP','EMERGENCY','OTHER') NOT NULL DEFAULT 'CAMP',
+  `status` enum('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW','CLOSED') NOT NULL DEFAULT 'INTAKE_IN_PROGRESS',
+  `queue_position` float UNSIGNED DEFAULT NULL,
   `created_by_user_id` int(10) UNSIGNED DEFAULT NULL,
   `assigned_doctor_user_id` int(10) UNSIGNED DEFAULT NULL,
   `chief_complaint` varchar(255) DEFAULT NULL,
@@ -78,6 +80,10 @@ CREATE TABLE `case_sheets` (
   `referral_to` varchar(255) DEFAULT NULL,
   `referral_reason` text DEFAULT NULL,
   `follow_up_notes` text DEFAULT NULL,
+  `doctor_exam_notes` text DEFAULT NULL,
+  `doctor_assessment` text DEFAULT NULL,
+  `doctor_diagnosis` text DEFAULT NULL,
+  `doctor_plan_notes` text DEFAULT NULL,
   `is_closed` tinyint(1) NOT NULL DEFAULT 0,
   `closed_at` datetime DEFAULT NULL,
   `closed_by_user_id` int(10) UNSIGNED DEFAULT NULL,
@@ -86,6 +92,22 @@ CREATE TABLE `case_sheets` (
   `is_locked` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `case_sheet_audit_log`
+--
+
+CREATE TABLE `case_sheet_audit_log` (
+  `audit_id` bigint(20) UNSIGNED NOT NULL,
+  `case_sheet_id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `field_name` varchar(100) NOT NULL,
+  `old_value` longtext DEFAULT NULL,
+  `new_value` longtext DEFAULT NULL,
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -310,11 +332,21 @@ ALTER TABLE `assets`
   ADD KEY `idx_assets_category` (`category`);
 
 --
+-- Indexes for table `case_sheet_audit_log`
+--
+ALTER TABLE `case_sheet_audit_log`
+  ADD PRIMARY KEY (`audit_id`),
+  ADD KEY `idx_audit_case_sheet` (`case_sheet_id`,`changed_at`),
+  ADD KEY `idx_audit_user` (`user_id`);
+
+--
 -- Indexes for table `case_sheets`
 --
 ALTER TABLE `case_sheets`
   ADD PRIMARY KEY (`case_sheet_id`),
   ADD KEY `idx_case_sheets_patient` (`patient_id`,`visit_datetime`),
+  ADD KEY `idx_case_sheets_status` (`status`,`visit_datetime`),
+  ADD KEY `idx_case_sheets_queue` (`status`,`queue_position`,`visit_datetime`),
   ADD KEY `idx_case_sheets_closed` (`is_closed`,`closed_at`),
   ADD KEY `idx_case_sheets_visit_date` (`visit_datetime`);
 
@@ -393,6 +425,12 @@ ALTER TABLE `assets`
   MODIFY `asset_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `case_sheet_audit_log`
+--
+ALTER TABLE `case_sheet_audit_log`
+  MODIFY `audit_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `case_sheets`
 --
 ALTER TABLE `case_sheets`
@@ -437,6 +475,13 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `case_sheet_audit_log`
+--
+ALTER TABLE `case_sheet_audit_log`
+  ADD CONSTRAINT `fk_audit_case_sheet` FOREIGN KEY (`case_sheet_id`) REFERENCES `case_sheets` (`case_sheet_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 --
 -- Constraints for table `case_sheets`
