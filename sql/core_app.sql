@@ -197,7 +197,7 @@ CREATE TRIGGER `trg_patients_before_insert` BEFORE INSERT ON `patients` FOR EACH
 
   
   INSERT INTO patient_daily_sequence (seq_date, last_n)
-  VALUES (v_date, 0)
+  VALUES (v_date, LAST_INSERT_ID(1))
   ON DUPLICATE KEY UPDATE last_n = LAST_INSERT_ID(last_n + 1);
 
   SET v_n = LAST_INSERT_ID();
