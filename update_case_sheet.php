@@ -67,6 +67,8 @@ $direct_columns = [
 	// Doctor-specific documentation columns
 	'doctor_exam_notes', 'doctor_assessment',
 	'doctor_diagnosis', 'doctor_plan_notes',
+	// Examination diagrams (base64 PNG, stored directly — can be large)
+	'diag_breast', 'diag_pelvic', 'diag_via', 'diag_vili',
 ];
 
 // Nurse intake JSON fields → stored in vitals_json

@@ -31,6 +31,15 @@
 		}
 		.auto-save-indicator.saving { background-color: #ffc107; color: #000; }
 		.auto-save-indicator.error { background-color: #dc3545; }
+
+		/* Diagram editor */
+		.diagram-preview-img { max-width: 300px; max-height: 220px; cursor: pointer; }
+		.diagram-canvas-container {
+			overflow: auto; max-height: 65vh; background: #f8f9fa;
+			padding: 16px; border: 2px solid #dee2e6; border-radius: 6px; text-align: center;
+		}
+		#diagramCanvas { border: 1px solid #adb5bd; background: white; cursor: crosshair; touch-action: none; }
+		.modal-xl { max-width: 92%; }
 		/* Extra top padding when the navbar is taller due to intake tabs */
 		body.has-intake-tabs .content-wrapper { padding-top: 30px; }
 	</style>
@@ -495,6 +504,19 @@
 										<div class="col-md-4 mb-3"><label>Right</label><input type="text" class="form-control" name="exam_breast_right" data-field="exam_breast_right" value="<?= htmlspecialchars($examData['exam_breast_right'] ?? '') ?>" /></div>
 										<div class="col-md-4 mb-3"><label>Axillary Nodes</label><input type="text" class="form-control" name="exam_breast_axillary_nodes" data-field="exam_breast_axillary_nodes" value="<?= htmlspecialchars($examData['exam_breast_axillary_nodes'] ?? '') ?>" /></div>
 									</div>
+									<div class="row">
+										<div class="col-12 mb-3">
+											<label class="d-block">Breast Examination Diagram</label>
+											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('breast','diag_breast','breastDiagramPreview')">
+												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_breast']) ? 'Edit' : 'Draw' ?> Breast Diagram
+											</button>
+											<div id="breastDiagramPreview" class="mt-2<?= empty($cs['diag_breast']) ? ' d-none' : '' ?>">
+												<img src="<?= !empty($cs['diag_breast']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_breast']) : '' ?>"
+												     alt="Breast Examination Diagram" class="img-thumbnail diagram-preview-img">
+											</div>
+											<input type="hidden" id="diag_breast" value="<?= htmlspecialchars($cs['diag_breast'] ?? '') ?>">
+										</div>
+									</div>
 
 									<h5 class="mt-4 mb-3">Pelvic Examination Introitus</h5>
 									<div class="row">
@@ -502,6 +524,19 @@
 										<div class="col-md-3 mb-3"><label>Uterus</label><input type="text" class="form-control" name="exam_pelvic_uterus" data-field="exam_pelvic_uterus" value="<?= htmlspecialchars($examData['exam_pelvic_uterus'] ?? '') ?>" /></div>
 										<div class="col-md-3 mb-3"><label>Ovaries</label><input type="text" class="form-control" name="exam_pelvic_ovaries" data-field="exam_pelvic_ovaries" value="<?= htmlspecialchars($examData['exam_pelvic_ovaries'] ?? '') ?>" /></div>
 										<div class="col-md-3 mb-3"><label>Adnexa</label><input type="text" class="form-control" name="exam_pelvic_adnexa" data-field="exam_pelvic_adnexa" value="<?= htmlspecialchars($examData['exam_pelvic_adnexa'] ?? '') ?>" /></div>
+									</div>
+									<div class="row">
+										<div class="col-12 mb-3">
+											<label class="d-block">Pelvic Examination Diagram</label>
+											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('pelvic','diag_pelvic','pelvicDiagramPreview')">
+												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_pelvic']) ? 'Edit' : 'Draw' ?> Pelvic Diagram
+											</button>
+											<div id="pelvicDiagramPreview" class="mt-2<?= empty($cs['diag_pelvic']) ? ' d-none' : '' ?>">
+												<img src="<?= !empty($cs['diag_pelvic']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_pelvic']) : '' ?>"
+												     alt="Pelvic Examination Diagram" class="img-thumbnail diagram-preview-img">
+											</div>
+											<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
+										</div>
 									</div>
 
 									<h5 class="mt-4 mb-3">Rectal Examination</h5>
@@ -516,8 +551,30 @@
 										<div class="col-md-6 mb-3"><label>P/V</label><input type="text" class="form-control" name="exam_gynae_pv" data-field="exam_gynae_pv" value="<?= htmlspecialchars($examData['exam_gynae_pv'] ?? '') ?>" /></div>
 									</div>
 									<div class="row">
-										<div class="col-md-6 mb-3"><label>VIA</label><input type="text" class="form-control" name="exam_gynae_via" data-field="exam_gynae_via" value="<?= htmlspecialchars($examData['exam_gynae_via'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>VILI</label><input type="text" class="form-control" name="exam_gynae_vili" data-field="exam_gynae_vili" value="<?= htmlspecialchars($examData['exam_gynae_vili'] ?? '') ?>" /></div>
+										<div class="col-md-6 mb-3">
+											<label>VIA</label>
+											<input type="text" class="form-control mb-2" name="exam_gynae_via" data-field="exam_gynae_via" value="<?= htmlspecialchars($examData['exam_gynae_via'] ?? '') ?>" />
+											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('via','diag_via','viaDiagramPreview')">
+												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_via']) ? 'Edit' : 'Draw' ?> VIA Diagram
+											</button>
+											<div id="viaDiagramPreview" class="mt-2<?= empty($cs['diag_via']) ? ' d-none' : '' ?>">
+												<img src="<?= !empty($cs['diag_via']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_via']) : '' ?>"
+												     alt="VIA Diagram" class="img-thumbnail diagram-preview-img">
+											</div>
+											<input type="hidden" id="diag_via" value="<?= htmlspecialchars($cs['diag_via'] ?? '') ?>">
+										</div>
+										<div class="col-md-6 mb-3">
+											<label>VILI</label>
+											<input type="text" class="form-control mb-2" name="exam_gynae_vili" data-field="exam_gynae_vili" value="<?= htmlspecialchars($examData['exam_gynae_vili'] ?? '') ?>" />
+											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('vili','diag_vili','viliDiagramPreview')">
+												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_vili']) ? 'Edit' : 'Draw' ?> VILI Diagram
+											</button>
+											<div id="viliDiagramPreview" class="mt-2<?= empty($cs['diag_vili']) ? ' d-none' : '' ?>">
+												<img src="<?= !empty($cs['diag_vili']) ? 'data:image/png;base64,' . htmlspecialchars($cs['diag_vili']) : '' ?>"
+												     alt="VILI Diagram" class="img-thumbnail diagram-preview-img">
+											</div>
+											<input type="hidden" id="diag_vili" value="<?= htmlspecialchars($cs['diag_vili'] ?? '') ?>">
+										</div>
 									</div>
 								</form>
 								<div class="tab-navigation">
@@ -746,6 +803,292 @@
 		$('#intakeCreateForm').on('submit', function (e) { if (!$patientId.val()) { e.preventDefault(); alert('Please select or register a patient first.'); } });
 	}
 })();
+</script>
+
+<!-- ── Diagram Editor Modal ─────────────────────────────────────────── -->
+<div class="modal fade" id="diagramEditorModal" tabindex="-1" role="dialog" aria-labelledby="diagramEditorTitle" aria-hidden="true">
+	<div class="modal-dialog modal-xl" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="diagramEditorTitle">Diagram Editor</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<!-- Toolbar -->
+				<div class="p-3 bg-light border rounded mb-3">
+					<div class="row align-items-end">
+						<div class="col-sm-5 mb-2 mb-sm-0">
+							<label class="mb-1 small font-weight-bold">Drawing Tool</label>
+							<div class="btn-group btn-group-sm" role="group">
+								<button type="button" class="btn btn-outline-dark active" data-tool="pen" data-color="#000000">
+									<i class="fas fa-pen mr-1"></i>Black
+								</button>
+								<button type="button" class="btn btn-outline-danger" data-tool="pen" data-color="#e63946">
+									<i class="fas fa-pen mr-1"></i>Red
+								</button>
+								<button type="button" class="btn btn-outline-secondary" data-tool="eraser">
+									<i class="fas fa-eraser mr-1"></i>Eraser
+								</button>
+							</div>
+						</div>
+						<div class="col-sm-3 mb-2 mb-sm-0">
+							<label for="diagLineThickness" class="mb-1 small font-weight-bold">Thickness</label>
+							<select class="form-control form-control-sm" id="diagLineThickness">
+								<option value="2">Fine (2 px)</option>
+								<option value="4" selected>Normal (4 px)</option>
+								<option value="6">Medium (6 px)</option>
+								<option value="8">Thick (8 px)</option>
+								<option value="12">Very thick (12 px)</option>
+							</select>
+						</div>
+						<div class="col-sm-4 text-sm-right">
+							<button type="button" class="btn btn-sm btn-warning" id="diagUndoBtn"><i class="fas fa-undo mr-1"></i>Undo</button>
+							<button type="button" class="btn btn-sm btn-info"    id="diagRedoBtn"><i class="fas fa-redo mr-1"></i>Redo</button>
+							<button type="button" class="btn btn-sm btn-danger"  id="diagClearBtn"><i class="fas fa-trash mr-1"></i>Clear</button>
+						</div>
+					</div>
+				</div>
+				<!-- Canvas -->
+				<div class="diagram-canvas-container">
+					<canvas id="diagramCanvas"></canvas>
+				</div>
+				<p class="text-muted small mt-2 mb-0"><i class="fas fa-info-circle mr-1"></i>Draw on the diagram above. Click <strong>Save Diagram</strong> when finished.</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" id="diagSaveBtn"><i class="fas fa-save mr-1"></i>Save Diagram</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+/* ── Diagram editor ─────────────────────────────────────────────────── */
+(function () {
+	var CSRF_TOKEN    = document.querySelector('input[name="csrf_token"]')?.value || '';
+	var CASE_SHEET_ID = <?= isset($csId) ? (int)$csId : 'null' ?>;
+
+	/* State */
+	var activeDiagram = null; // { type, fieldId, previewId }
+	var canvas = null, ctx = null;
+	var isDrawing = false;
+	var currentTool = 'pen', currentColor = '#000000', currentThickness = 4;
+	var history = [], historyStep = -1;
+
+	var templatePaths = {
+		breast: 'assets/images/diagrams/BreastExaminationDiagram.png',
+		pelvic: 'assets/images/diagrams/PelvicExaminationDiagram.png',
+		via:    'assets/images/diagrams/VIAVILIDiagram.png',
+		vili:   'assets/images/diagrams/VIAVILIDiagram.png'
+	};
+	var modalTitles = {
+		breast: 'Breast Examination Diagram',
+		pelvic: 'Pelvic Examination Diagram',
+		via:    'VIA Diagram',
+		vili:   'VILI Diagram'
+	};
+
+	/* Called by the Draw/Edit buttons in the form */
+	window.openDiagram = function (type, fieldId, previewId) {
+		activeDiagram = { type: type, fieldId: fieldId, previewId: previewId };
+		document.getElementById('diagramEditorTitle').textContent = modalTitles[type] + ' Editor';
+		$('#diagramEditorModal').modal('show');
+	};
+
+	/* Initialise canvas when modal fully opens */
+	$('#diagramEditorModal').on('shown.bs.modal', function () {
+		canvas = document.getElementById('diagramCanvas');
+		ctx    = canvas.getContext('2d');
+		canvas.width  = 800;
+		canvas.height = 600;
+		history = []; historyStep = -1;
+		loadTemplate();
+	});
+
+	/* Reset state when modal closes */
+	$('#diagramEditorModal').on('hidden.bs.modal', function () {
+		activeDiagram = null;
+		if (canvas) { canvas.width = canvas.width; } // clear
+		history = []; historyStep = -1;
+	});
+
+	function loadTemplate() {
+		ctx.fillStyle = '#ffffff';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+		var img = new Image();
+		img.onload = function () {
+			var scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+			var w = img.width * scale, h = img.height * scale;
+			var x = (canvas.width  - w) / 2;
+			var y = (canvas.height - h) / 2;
+			ctx.drawImage(img, x, y, w, h);
+
+			/* Overlay any previously saved drawing */
+			var existing = document.getElementById(activeDiagram.fieldId)?.value;
+			if (existing) {
+				var overlay = new Image();
+				overlay.onload = function () {
+					ctx.drawImage(overlay, 0, 0);
+					saveHistory();
+				};
+				overlay.src = 'data:image/png;base64,' + existing;
+			} else {
+				saveHistory();
+			}
+		};
+		img.onerror = function () {
+			ctx.fillStyle = '#f8d7da';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#721c24';
+			ctx.font = '18px sans-serif'; ctx.textAlign = 'center';
+			ctx.fillText('Template image could not be loaded', canvas.width / 2, canvas.height / 2);
+			saveHistory();
+		};
+		img.src = templatePaths[activeDiagram.type];
+	}
+
+	function saveHistory() {
+		historyStep++;
+		if (historyStep < history.length) history.length = historyStep;
+		history.push(canvas.toDataURL());
+		if (history.length > 30) { history.shift(); historyStep--; }
+	}
+
+	function restoreHistory(step) {
+		var img = new Image();
+		img.onload = function () {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, 0, 0);
+		};
+		img.src = history[step];
+	}
+
+	/* ── Toolbar interactions ─────────────────────────────────── */
+	document.querySelectorAll('#diagramEditorModal [data-tool]').forEach(function (btn) {
+		btn.addEventListener('click', function () {
+			document.querySelectorAll('#diagramEditorModal [data-tool]').forEach(function (b) { b.classList.remove('active'); });
+			btn.classList.add('active');
+			currentTool  = btn.dataset.tool;
+			if (btn.dataset.color) currentColor = btn.dataset.color;
+			if (canvas) canvas.style.cursor = currentTool === 'eraser' ? 'cell' : 'crosshair';
+		});
+	});
+
+	document.getElementById('diagLineThickness').addEventListener('change', function () {
+		currentThickness = parseInt(this.value);
+	});
+
+	document.getElementById('diagUndoBtn').addEventListener('click', function () {
+		if (historyStep > 0) { historyStep--; restoreHistory(historyStep); }
+	});
+	document.getElementById('diagRedoBtn').addEventListener('click', function () {
+		if (historyStep < history.length - 1) { historyStep++; restoreHistory(historyStep); }
+	});
+	document.getElementById('diagClearBtn').addEventListener('click', function () {
+		if (confirm('Clear all marks from the diagram?')) {
+			history = []; historyStep = -1;
+			loadTemplate();
+		}
+	});
+
+	/* ── Drawing (mouse) ───────────────────────────────────────── */
+	function getPos(e) {
+		var rect = canvas.getBoundingClientRect();
+		var scaleX = canvas.width  / rect.width;
+		var scaleY = canvas.height / rect.height;
+		return {
+			x: (e.clientX - rect.left) * scaleX,
+			y: (e.clientY - rect.top)  * scaleY
+		};
+	}
+
+	function startDraw(x, y) {
+		isDrawing = true;
+		ctx.beginPath();
+		ctx.moveTo(x, y);
+	}
+
+	function draw(x, y) {
+		if (!isDrawing) return;
+		if (currentTool === 'pen') {
+			ctx.strokeStyle = currentColor;
+			ctx.lineWidth   = currentThickness;
+			ctx.lineCap = ctx.lineJoin = 'round';
+			ctx.lineTo(x, y);
+			ctx.stroke();
+		} else if (currentTool === 'eraser') {
+			var r = currentThickness * 3;
+			ctx.clearRect(x - r / 2, y - r / 2, r, r);
+		}
+	}
+
+	function endDraw() {
+		if (isDrawing) { isDrawing = false; saveHistory(); }
+	}
+
+	/* Mouse events (queued to ensure canvas is ready) */
+	document.addEventListener('DOMContentLoaded', function () {
+		var c = document.getElementById('diagramCanvas');
+
+		c.addEventListener('mousedown',  function (e) { var p = getPos(e); startDraw(p.x, p.y); });
+		c.addEventListener('mousemove',  function (e) { var p = getPos(e); draw(p.x, p.y); });
+		c.addEventListener('mouseup',    endDraw);
+		c.addEventListener('mouseleave', endDraw);
+
+		/* ── Touch support (tablet / stylus) ────────────────────── */
+		function touchPos(touch) {
+			var rect = c.getBoundingClientRect();
+			var scaleX = c.width  / rect.width;
+			var scaleY = c.height / rect.height;
+			return {
+				x: (touch.clientX - rect.left) * scaleX,
+				y: (touch.clientY - rect.top)  * scaleY
+			};
+		}
+		c.addEventListener('touchstart', function (e) { e.preventDefault(); var p = touchPos(e.touches[0]); startDraw(p.x, p.y); }, { passive: false });
+		c.addEventListener('touchmove',  function (e) { e.preventDefault(); var p = touchPos(e.touches[0]); draw(p.x, p.y);      }, { passive: false });
+		c.addEventListener('touchend',   function (e) { e.preventDefault(); endDraw(); }, { passive: false });
+	});
+
+	/* ── Save ──────────────────────────────────────────────────── */
+	document.getElementById('diagSaveBtn').addEventListener('click', function () {
+		var base64 = canvas.toDataURL('image/png').split(',')[1];
+
+		/* Update hidden field + thumbnail */
+		var field   = document.getElementById(activeDiagram.fieldId);
+		var preview = document.getElementById(activeDiagram.previewId);
+		if (field)   field.value = base64;
+		if (preview) {
+			var img = preview.querySelector('img');
+			if (img) img.src = 'data:image/png;base64,' + base64;
+			preview.classList.remove('d-none');
+		}
+
+		/* Update the button label */
+		document.querySelectorAll('button[onclick*="' + activeDiagram.fieldId + '"]').forEach(function (btn) {
+			btn.innerHTML = '<i class="fas fa-draw-polygon mr-1"></i>Edit ' + modalTitles[activeDiagram.type];
+		});
+
+		/* Auto-save to DB if case sheet exists */
+		if (CASE_SHEET_ID) {
+			var csrfInput = document.querySelector('input[name="csrf_token"]');
+			var token = csrfInput ? csrfInput.value : '';
+			fetch('update_case_sheet.php', {
+				method:  'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+				body: JSON.stringify({
+					csrf_token:    token,
+					case_sheet_id: CASE_SHEET_ID,
+					field:         activeDiagram.fieldId,
+					value:         base64
+				})
+			}).catch(function (err) { console.error('Diagram save error:', err); });
+		}
+
+		$('#diagramEditorModal').modal('hide');
+	});
+}());
 </script>
 </body>
 </html>
