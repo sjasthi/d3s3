@@ -131,3 +131,8 @@ This document defines:
 - Detailed role-based access mapping.
 
 This will serve as a baseline for system design, development, and QA validation.
+
+##4. Later TBD
+
+- Medical Disclaimers, NDAs etc.
+- Any other legal procedures/documents
