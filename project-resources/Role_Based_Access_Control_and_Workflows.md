@@ -123,7 +123,22 @@ Created → Triage → Clinical Review → Doctor Review → Closure
 
 ---
 
+### Access Matrix
 
+| Role \ Object | Assets | Case Sheets | Events | Patient Data | Users | Feedback | Messages | Tasks (To Do List) |
+|----------------|---------|--------------|--------|--------------|--------|-----------|------------|-------------------|
+| SUPER_ADMIN | RW | RW | RW | RW | RW | RW | RW | RW |
+| ADMIN | RW | RW | RW | RW | RW | RW | RW | RW |
+| DOCTOR | R | RW | R | RW | N | R | RW | RW |
+| TRIAGE_NURSE | R | RW | R | RW | N | R | RW | RW |
+| NURSE | R | RW | R | RW | N | R | RW | RW |
+| PARAMEDIC | R | RW | R | RW | N | R | RW | RW |
+| GRIEVANCE_OFFICER | N | R | N | R | N | RW | RW | RW |
+| EDUCATION_TEAM | RW | N | RW | N | N | R | RW | RW |
+| DATA_ENTRY_OPERATOR | R | RW | R | RW | N | N | RW | RW |
+
+
+---
 
 ## 3. Summary
 
