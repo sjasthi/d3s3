@@ -6,7 +6,7 @@
 ### 1.1 Case Sheet Workflow
 
 The Case Sheet is a central object in the system that involves multiple roles from inception to closure. The workflow must support both forward progression and backward transitions.
-(TODO: India Team to visit the field and get clarifiations on the workflow!  Different modes of communication - medical camp? phone? in-person consultation?
+(TODO: India Team to visit the field and get clarifiations on the workflow!  Different modes of communication - medical camp? phone? in-person consultation?  What are all the different paths/ways a Case Sheet can be closed? Who is closing the case sheet? Under what conditions (exit criteria)?  
 
 #### Actors Involved
 - Paramedic
