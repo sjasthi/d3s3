@@ -99,6 +99,7 @@ Created → Triage → Clinical Review → Doctor Review → Closure
 - Users
 - Patient Feedback
 - Messages
+- Tasks (TODO lists)
 
 ### Access Levels
 
