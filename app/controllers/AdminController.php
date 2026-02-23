@@ -160,7 +160,7 @@ class AdminController
             return 'Username must be 3–60 characters (letters, numbers, underscores, or hyphens only).';
         }
 
-        $validRoles = ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'TRIAGE_NURSE', 'NURSE', 'GRIEVANCE_OFFICER', 'DATA_ENTRY_OPERATOR'];
+        $validRoles = ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'TRIAGE_NURSE', 'NURSE', 'PARAMEDIC', 'GRIEVANCE_OFFICER', 'EDUCATION_TEAM', 'DATA_ENTRY_OPERATOR'];
         if (!in_array($role, $validRoles, true)) {
             return 'Invalid role selected.';
         }

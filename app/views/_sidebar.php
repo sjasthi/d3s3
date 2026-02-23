@@ -28,7 +28,7 @@ $_isClinicalRole = in_array($_userRole, ['DOCTOR', 'TRIAGE_NURSE', 'NURSE'], tru
 			<div class="info">
 				<span class="d-block text-white"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></span>
 				<?php
-				$_roleLabels = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'DATA_ENTRY_OPERATOR' => 'Data Entry Operator'];
+				$_roleLabels = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'PARAMEDIC' => 'Paramedic', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'EDUCATION_TEAM' => 'Education Team', 'DATA_ENTRY_OPERATOR' => 'Data Entry Operator'];
 				?>
 				<small class="text-white-50"><?= htmlspecialchars($_roleLabels[$_userRole] ?? 'User') ?></small>
 			</div>

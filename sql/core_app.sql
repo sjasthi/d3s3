@@ -306,7 +306,7 @@ CREATE TABLE `users` (
   `phone_e164` varchar(20) DEFAULT NULL,
   `username` varchar(60) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `role` enum('SUPER_ADMIN','ADMIN','DOCTOR','TRIAGE_NURSE','NURSE','GRIEVANCE_OFFICER','DATA_ENTRY_OPERATOR') NOT NULL DEFAULT 'DATA_ENTRY_OPERATOR',
+  `role` enum('SUPER_ADMIN','ADMIN','DOCTOR','TRIAGE_NURSE','NURSE','PARAMEDIC','GRIEVANCE_OFFICER','EDUCATION_TEAM','DATA_ENTRY_OPERATOR') NOT NULL DEFAULT 'DATA_ENTRY_OPERATOR',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `last_login_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),

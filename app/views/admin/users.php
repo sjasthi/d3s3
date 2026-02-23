@@ -162,7 +162,9 @@
 											<option value="DOCTOR"              <?= $editUser['role'] === 'DOCTOR'              ? 'selected' : '' ?>>Doctor</option>
 											<option value="TRIAGE_NURSE"        <?= $editUser['role'] === 'TRIAGE_NURSE'        ? 'selected' : '' ?>>Triage Nurse</option>
 											<option value="NURSE"               <?= $editUser['role'] === 'NURSE'               ? 'selected' : '' ?>>Nurse</option>
+											<option value="PARAMEDIC"           <?= $editUser['role'] === 'PARAMEDIC'           ? 'selected' : '' ?>>Paramedic</option>
 											<option value="GRIEVANCE_OFFICER"   <?= $editUser['role'] === 'GRIEVANCE_OFFICER'   ? 'selected' : '' ?>>Grievance Officer</option>
+											<option value="EDUCATION_TEAM"      <?= $editUser['role'] === 'EDUCATION_TEAM'      ? 'selected' : '' ?>>Education Team</option>
 											<option value="ADMIN"               <?= $editUser['role'] === 'ADMIN'               ? 'selected' : '' ?>>Administrator</option>
 											<option value="SUPER_ADMIN"         <?= $editUser['role'] === 'SUPER_ADMIN'         ? 'selected' : '' ?>>Super Administrator</option>
 										</select>
@@ -228,8 +230,8 @@
 				<?php else: ?>
 				<!-- ── User List ──────────────────────────────────── -->
 				<?php
-				$roleLabels  = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'DATA_ENTRY_OPERATOR' => 'Data Entry'];
-				$roleClasses = ['SUPER_ADMIN' => 'badge-danger', 'ADMIN' => 'badge-warning', 'DOCTOR' => 'badge-info', 'TRIAGE_NURSE' => 'badge-primary', 'NURSE' => 'badge-success', 'GRIEVANCE_OFFICER' => 'badge-dark', 'DATA_ENTRY_OPERATOR' => 'badge-secondary'];
+				$roleLabels  = ['SUPER_ADMIN' => 'Super Admin', 'ADMIN' => 'Admin', 'DOCTOR' => 'Doctor', 'TRIAGE_NURSE' => 'Triage Nurse', 'NURSE' => 'Nurse', 'PARAMEDIC' => 'Paramedic', 'GRIEVANCE_OFFICER' => 'Grievance Officer', 'EDUCATION_TEAM' => 'Education Team', 'DATA_ENTRY_OPERATOR' => 'Data Entry'];
+				$roleClasses = ['SUPER_ADMIN' => 'badge-danger', 'ADMIN' => 'badge-warning', 'DOCTOR' => 'badge-info', 'TRIAGE_NURSE' => 'badge-primary', 'NURSE' => 'badge-success', 'PARAMEDIC' => 'badge-primary', 'GRIEVANCE_OFFICER' => 'badge-dark', 'EDUCATION_TEAM' => 'badge-light', 'DATA_ENTRY_OPERATOR' => 'badge-secondary'];
 				?>
 				<div class="card">
 					<div class="card-header border-0">

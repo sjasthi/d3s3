@@ -61,10 +61,12 @@ $roleLabel = [
 	'DOCTOR'             => 'Doctor',
 	'TRIAGE_NURSE'       => 'Triage Nurse',
 	'NURSE'              => 'Nurse',
+	'PARAMEDIC'          => 'Paramedic',
 	'SUPER_ADMIN'        => 'Super Admin',
 	'ADMIN'              => 'Admin',
 	'DATA_ENTRY_OPERATOR'=> 'Data Entry Operator',
 	'GRIEVANCE_OFFICER'  => 'Grievance Officer',
+	'EDUCATION_TEAM'     => 'Education Team',
 ][$_userRole] ?? 'User';
 ?>
 <!DOCTYPE html>
