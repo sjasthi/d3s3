@@ -49,6 +49,16 @@
 
 		<section class="content">
 			<div class="container-fluid">
+
+				<?php if (isset($flashSuccess) && $flashSuccess !== null): ?>
+				<div class="alert alert-success alert-dismissible fade show" role="alert">
+					<i class="fas fa-check-circle mr-2"></i><?= htmlspecialchars($flashSuccess) ?>
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<?php endif; ?>
+
 				<div class="row">
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
 						<a href="users.php" class="admin-tile">
@@ -112,6 +122,14 @@
 								<i class="fas fa-cog"></i>
 							</div>
 							<div class="admin-tile-label">Settings</div>
+						</a>
+					</div>
+					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">
+						<a href="permissions.php" class="admin-tile">
+							<div class="admin-tile-icon">
+								<i class="fas fa-shield-alt"></i>
+							</div>
+							<div class="admin-tile-label">Permissions</div>
 						</a>
 					</div>
 					<div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4">

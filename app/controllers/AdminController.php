@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/permissions.php';
 
 class AdminController
 {
@@ -23,6 +24,11 @@ class AdminController
 
     public function adminPanel(): void
     {
+        $flashSuccess = null;
+        if (isset($_SESSION['permissions_success'])) {
+            $flashSuccess = $_SESSION['permissions_success'];
+            unset($_SESSION['permissions_success']);
+        }
         require __DIR__ . '/../views/admin/admin_panel.php';
     }
 
@@ -30,6 +36,13 @@ class AdminController
 
     public function calendar(): void
     {
+        // ── Role guard: events resource ────────────────────────
+        if (!can($_SESSION['user_role'] ?? '', 'events')) {
+            $_SESSION['dashboard_notice'] = 'You do not have permission to access this page.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
         $pdo = getDBConnection();
         $events = $pdo->query(
             'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
@@ -48,12 +61,8 @@ class AdminController
     {
         $pdo = getDBConnection();
 
-        // ── Role guard: ADMIN or SUPER_ADMIN only ──────────────
-        $stmt = $pdo->prepare('SELECT role FROM users WHERE user_id = ?');
-        $stmt->execute([$_SESSION['user_id']]);
-        $currentUser = $stmt->fetch();
-
-        if (!in_array($currentUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN'])) {
+        // ── Role guard: users resource ─────────────────────────
+        if (!can($_SESSION['user_role'] ?? '', 'users')) {
             $_SESSION['dashboard_notice'] = 'You do not have permission to access this page.';
             header('Location: dashboard.php');
             exit;
@@ -216,16 +225,14 @@ class AdminController
     {
         $pdo = getDBConnection();
 
-        // ── Role guard: ADMIN or SUPER_ADMIN only ──────────────
-        $stmt = $pdo->prepare('SELECT role FROM users WHERE user_id = ?');
-        $stmt->execute([$_SESSION['user_id']]);
-        $currentUser = $stmt->fetch();
-
-        if (!in_array($currentUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN'])) {
+        // ── Role guard: assets resource ────────────────────────
+        $currentRole = $_SESSION['user_role'] ?? '';
+        if (!can($currentRole, 'assets')) {
             $_SESSION['dashboard_notice'] = 'You do not have permission to access this page.';
             header('Location: dashboard.php');
             exit;
         }
+        $canWriteAssets = can($currentRole, 'assets', 'W');
 
         // ── One-time flash ──────────────────────────────────────
         $flashSuccess = null;
@@ -241,6 +248,12 @@ class AdminController
         $editAsset = null;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!$canWriteAssets) {
+                $_SESSION['dashboard_notice'] = 'You do not have permission to modify assets.';
+                header('Location: assets.php');
+                exit;
+            }
+
             $formAction = $_POST['form_action'] ?? 'edit';
 
             if ($formAction === 'delete') {
@@ -283,13 +296,20 @@ class AdminController
                 }
             }
         } elseif ($action === 'edit' && $editId !== null) {
-            $stmt = $pdo->prepare('SELECT * FROM assets WHERE asset_id = ?');
-            $stmt->execute([$editId]);
-            $editAsset = $stmt->fetch();
-            if (!$editAsset) {
+            if (!$canWriteAssets) {
                 $action = 'list';
+            } else {
+                $stmt = $pdo->prepare('SELECT * FROM assets WHERE asset_id = ?');
+                $stmt->execute([$editId]);
+                $editAsset = $stmt->fetch();
+                if (!$editAsset) {
+                    $action = 'list';
+                }
             }
         } elseif ($action === 'create') {
+            if (!$canWriteAssets) {
+                $action = 'list';
+            }
             $editAsset = [
                 'asset_id'     => 0,
                 'title'        => '',
@@ -474,16 +494,8 @@ class AdminController
     {
         $pdo = getDBConnection();
 
-        // ── Role guard: ADMIN or SUPER_ADMIN only ──────────────
-        $stmt = $pdo->prepare('SELECT role FROM users WHERE user_id = ?');
-        $stmt->execute([$_SESSION['user_id']]);
-        $currentUser = $stmt->fetch();
-
-        if (!in_array($currentUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN'])) {
-            $_SESSION['dashboard_notice'] = 'You do not have permission to access this page.';
-            header('Location: dashboard.php');
-            exit;
-        }
+        // Reports are accessible by all authenticated users.
+        // Role-scoped filtering can be added within the view later if needed.
 
         // ── Exportable tables whitelist ────────────────────────
         $exportables = [
