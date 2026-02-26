@@ -83,8 +83,8 @@ files/
 backups/*
 !backups/.htaccess
 dumps/
-sql/migrations/
-sql/CaseSheetChanges/
+# sql/migrations/
+# sql/CaseSheetChanges/
 
 # Allow SQL files in the database directory (schema & test data only)
 !/database/*.sql
