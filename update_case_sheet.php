@@ -115,6 +115,7 @@ $exam_fields = [
 $history_fields = [
 	'condition_dm', 'condition_htn', 'condition_tsh', 'condition_heart_disease',
 	'condition_others', 'surgical_history',
+	'allergies_json', 'no_known_allergies',
 	'family_history_cancer', 'family_history_tuberculosis', 'family_history_diabetes',
 	'family_history_bp', 'family_history_thyroid', 'family_history_other',
 ];

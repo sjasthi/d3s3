@@ -34,6 +34,15 @@ switch ($action) {
 	case 'complete':
 		$controller->completeIntake();
 		break;
+	case 'update-patient':
+		$controller->updatePatient();
+		break;
+	case 'order-lab-test':
+		$controller->orderLabTest();
+		break;
+	case 'get-lab-orders':
+		$controller->getLabOrders();
+		break;
 	default:
 		$controller->intake();
 		break;

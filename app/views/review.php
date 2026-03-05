@@ -15,7 +15,7 @@
 		}
 		#reviewTabs.nav-pills .nav-link:hover { background-color: #f8f9fa; border-color: #dee2e6; }
 		#reviewTabs.nav-pills .nav-link.active {
-			color: #28a745; background-color: #e6f4ea; border-color: #28a745; font-weight: 600;
+			color: #007bff; background-color: #e7f3ff; border-color: #007bff; font-weight: 600;
 		}
 		.tab-navigation { margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; }
 		.auto-save-indicator {
@@ -30,8 +30,8 @@
 		.intake-summary-label { font-size: 0.75rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
 		.intake-summary-value { font-size: 0.95rem; color: #212529; margin-bottom: 0; }
 		.intake-summary-empty { color: #adb5bd; font-style: italic; }
-		.summary-section { border-left: 3px solid #dee2e6; padding-left: 12px; margin-bottom: 1.5rem; }
-		.summary-section h6 { color: #495057; font-weight: 700; margin-bottom: 0.75rem; }
+		.summary-section { border: 1px solid rgba(0,0,0,.125); border-radius: 0.25rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; }
+		.summary-section h6 { color: #495057; font-weight: 700; margin: 0 0 0.75rem; padding: 0.6rem 1rem; background-color: rgba(0,0,0,.03); border-bottom: 1px solid rgba(0,0,0,.125); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
 		.audit-row-changed td { background-color: rgba(255, 193, 7, 0.08); }
 	</style>
 </head>
@@ -332,7 +332,7 @@
 
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary" disabled><i class="fas fa-chevron-left"></i> Previous</button>
-									<button type="button" class="btn btn-success btn-next-tab" data-target="#tab-examination">Begin Examination <i class="fas fa-chevron-right"></i></button>
+									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-examination">Begin Examination <i class="fas fa-chevron-right"></i></button>
 								</div>
 							</div>
 
@@ -340,21 +340,27 @@
 							<!-- TAB 2: EXAMINATION (doctor)                       -->
 							<!-- ══════════════════════════════════════════════════ -->
 							<div class="tab-pane fade" id="tab-examination" role="tabpanel">
-								<h4 class="mb-1">Clinical Examination</h4>
-								<p class="text-muted mb-4">Record your findings from the physical examination.</p>
-								<form class="doctor-auto-save">
-									<div class="form-group">
-										<label for="doctor_exam_notes">Examination Findings</label>
-										<textarea class="form-control" id="doctor_exam_notes" name="doctor_exam_notes"
-										          data-field="doctor_exam_notes" rows="12"
-										          placeholder="Document your clinical examination findings here — e.g. general appearance, systems review, specific findings..."
-										><?= htmlspecialchars($cs['doctor_exam_notes'] ?? '') ?></textarea>
-										<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
+								<div class="card card-outline card-primary mb-3">
+									<div class="card-header">
+										<h3 class="card-title"><i class="fas fa-stethoscope mr-2"></i>Clinical Examination</h3>
 									</div>
-								</form>
+									<div class="card-body">
+										<p class="text-muted mb-3">Record your findings from the physical examination.</p>
+										<form class="doctor-auto-save">
+											<div class="form-group">
+												<label for="doctor_exam_notes">Examination Findings</label>
+												<textarea class="form-control" id="doctor_exam_notes" name="doctor_exam_notes"
+												          data-field="doctor_exam_notes" rows="12"
+												          placeholder="Document your clinical examination findings here — e.g. general appearance, systems review, specific findings..."
+												><?= htmlspecialchars($cs['doctor_exam_notes'] ?? '') ?></textarea>
+												<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
+											</div>
+										</form>
+									</div>
+								</div>
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-summary"><i class="fas fa-chevron-left"></i> Intake Summary</button>
-									<button type="button" class="btn btn-success btn-next-tab" data-target="#tab-assessment">Assessment &amp; Diagnosis <i class="fas fa-chevron-right"></i></button>
+									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-assessment">Assessment &amp; Diagnosis <i class="fas fa-chevron-right"></i></button>
 								</div>
 							</div>
 
@@ -362,28 +368,34 @@
 							<!-- TAB 3: ASSESSMENT & DIAGNOSIS (doctor)            -->
 							<!-- ══════════════════════════════════════════════════ -->
 							<div class="tab-pane fade" id="tab-assessment" role="tabpanel">
-								<h4 class="mb-1">Assessment &amp; Diagnosis</h4>
-								<p class="text-muted mb-4">Record your clinical assessment and formal diagnosis.</p>
-								<form class="doctor-auto-save">
-									<div class="form-group">
-										<label for="doctor_assessment">Clinical Assessment</label>
-										<textarea class="form-control" id="doctor_assessment" name="doctor_assessment"
-										          data-field="doctor_assessment" rows="6"
-										          placeholder="Your clinical impression and assessment of the patient's condition..."
-										><?= htmlspecialchars($cs['doctor_assessment'] ?? '') ?></textarea>
+								<div class="card card-outline card-warning mb-3">
+									<div class="card-header">
+										<h3 class="card-title"><i class="fas fa-clipboard-list mr-2"></i>Assessment &amp; Diagnosis</h3>
 									</div>
-									<div class="form-group">
-										<label for="doctor_diagnosis">Diagnosis</label>
-										<textarea class="form-control" id="doctor_diagnosis" name="doctor_diagnosis"
-										          data-field="doctor_diagnosis" rows="6"
-										          placeholder="Formal diagnosis (primary and secondary diagnoses, ICD codes if applicable)..."
-										><?= htmlspecialchars($cs['doctor_diagnosis'] ?? '') ?></textarea>
+									<div class="card-body">
+										<p class="text-muted mb-3">Record your clinical assessment and formal diagnosis.</p>
+										<form class="doctor-auto-save">
+											<div class="form-group">
+												<label for="doctor_assessment">Clinical Assessment</label>
+												<textarea class="form-control" id="doctor_assessment" name="doctor_assessment"
+												          data-field="doctor_assessment" rows="6"
+												          placeholder="Your clinical impression and assessment of the patient's condition..."
+												><?= htmlspecialchars($cs['doctor_assessment'] ?? '') ?></textarea>
+											</div>
+											<div class="form-group">
+												<label for="doctor_diagnosis">Diagnosis</label>
+												<textarea class="form-control" id="doctor_diagnosis" name="doctor_diagnosis"
+												          data-field="doctor_diagnosis" rows="6"
+												          placeholder="Formal diagnosis (primary and secondary diagnoses, ICD codes if applicable)..."
+												><?= htmlspecialchars($cs['doctor_diagnosis'] ?? '') ?></textarea>
+											</div>
+											<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
+										</form>
 									</div>
-									<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
-								</form>
+								</div>
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-examination"><i class="fas fa-chevron-left"></i> Examination</button>
-									<button type="button" class="btn btn-success btn-next-tab" data-target="#tab-plan">Treatment Plan <i class="fas fa-chevron-right"></i></button>
+									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-plan">Treatment Plan <i class="fas fa-chevron-right"></i></button>
 								</div>
 							</div>
 
@@ -391,35 +403,41 @@
 							<!-- TAB 4: TREATMENT PLAN (doctor)                    -->
 							<!-- ══════════════════════════════════════════════════ -->
 							<div class="tab-pane fade" id="tab-plan" role="tabpanel">
-								<h4 class="mb-1">Treatment Plan</h4>
-								<p class="text-muted mb-4">Document the treatment plan, prescriptions, and advice for this patient.</p>
-								<form class="doctor-auto-save">
-									<div class="form-group">
-										<label for="doctor_plan_notes">Treatment Plan / Clinical Notes</label>
-										<textarea class="form-control" id="doctor_plan_notes" name="doctor_plan_notes"
-										          data-field="doctor_plan_notes" rows="5"
-										          placeholder="Overall treatment plan and any additional clinical notes..."
-										><?= htmlspecialchars($cs['doctor_plan_notes'] ?? '') ?></textarea>
+								<div class="card card-outline card-success mb-3">
+									<div class="card-header">
+										<h3 class="card-title"><i class="fas fa-prescription-bottle mr-2"></i>Treatment Plan</h3>
 									</div>
-									<div class="form-group">
-										<label for="prescriptions">Prescriptions</label>
-										<textarea class="form-control" id="prescriptions" name="prescriptions"
-										          data-field="prescriptions" rows="5"
-										          placeholder="List medications, dosage, frequency, and duration..."
-										><?= htmlspecialchars($cs['prescriptions'] ?? '') ?></textarea>
+									<div class="card-body">
+										<p class="text-muted mb-3">Document the treatment plan, prescriptions, and advice for this patient.</p>
+										<form class="doctor-auto-save">
+											<div class="form-group">
+												<label for="doctor_plan_notes">Treatment Plan / Clinical Notes</label>
+												<textarea class="form-control" id="doctor_plan_notes" name="doctor_plan_notes"
+												          data-field="doctor_plan_notes" rows="5"
+												          placeholder="Overall treatment plan and any additional clinical notes..."
+												><?= htmlspecialchars($cs['doctor_plan_notes'] ?? '') ?></textarea>
+											</div>
+											<div class="form-group">
+												<label for="prescriptions">Prescriptions</label>
+												<textarea class="form-control" id="prescriptions" name="prescriptions"
+												          data-field="prescriptions" rows="5"
+												          placeholder="List medications, dosage, frequency, and duration..."
+												><?= htmlspecialchars($cs['prescriptions'] ?? '') ?></textarea>
+											</div>
+											<div class="form-group">
+												<label for="advice">Advice &amp; Instructions</label>
+												<textarea class="form-control" id="advice" name="advice"
+												          data-field="advice" rows="4"
+												          placeholder="Dietary advice, lifestyle changes, warning signs to watch for..."
+												><?= htmlspecialchars($cs['advice'] ?? '') ?></textarea>
+											</div>
+											<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
+										</form>
 									</div>
-									<div class="form-group">
-										<label for="advice">Advice &amp; Instructions</label>
-										<textarea class="form-control" id="advice" name="advice"
-										          data-field="advice" rows="4"
-										          placeholder="Dietary advice, lifestyle changes, warning signs to watch for..."
-										><?= htmlspecialchars($cs['advice'] ?? '') ?></textarea>
-									</div>
-									<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
-								</form>
+								</div>
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-assessment"><i class="fas fa-chevron-left"></i> Assessment</button>
-									<button type="button" class="btn btn-success btn-next-tab" data-target="#tab-followup">Follow-up &amp; Referrals <i class="fas fa-chevron-right"></i></button>
+									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-followup">Follow-up &amp; Referrals <i class="fas fa-chevron-right"></i></button>
 								</div>
 							</div>
 
@@ -427,64 +445,70 @@
 							<!-- TAB 5: FOLLOW-UP & REFERRALS + CLOSE CHART        -->
 							<!-- ══════════════════════════════════════════════════ -->
 							<div class="tab-pane fade" id="tab-followup" role="tabpanel">
-								<h4 class="mb-1">Follow-up &amp; Referrals</h4>
-								<p class="text-muted mb-4">Specify any follow-up appointments, referrals, and final disposition.</p>
-								<form class="doctor-auto-save">
-									<h5 class="mb-3">Follow-up</h5>
-									<div class="row">
-										<div class="col-md-4 mb-3">
-											<label for="follow_up_date">Follow-up Date</label>
-											<input type="date" class="form-control" id="follow_up_date" name="follow_up_date"
-											       data-field="follow_up_date"
-											       value="<?= htmlspecialchars($cs['follow_up_date'] ?? '') ?>" />
-										</div>
-										<div class="col-md-8 mb-3">
-											<label for="follow_up_notes">Follow-up Instructions</label>
-											<textarea class="form-control" id="follow_up_notes" name="follow_up_notes"
-											          data-field="follow_up_notes" rows="3"
-											          placeholder="Who to follow up with, what to monitor, what to bring to next appointment..."
-											><?= htmlspecialchars($cs['follow_up_notes'] ?? '') ?></textarea>
-										</div>
+								<div class="card card-outline card-info mb-4">
+									<div class="card-header">
+										<h3 class="card-title"><i class="fas fa-calendar-check mr-2"></i>Follow-up &amp; Referrals</h3>
 									</div>
+									<div class="card-body">
+										<p class="text-muted mb-3">Specify any follow-up appointments, referrals, and final disposition.</p>
+										<form class="doctor-auto-save">
+											<h5 class="mb-3">Follow-up</h5>
+											<div class="row">
+												<div class="col-md-4 mb-3">
+													<label for="follow_up_date">Follow-up Date</label>
+													<input type="date" class="form-control" id="follow_up_date" name="follow_up_date"
+													       data-field="follow_up_date"
+													       value="<?= htmlspecialchars($cs['follow_up_date'] ?? '') ?>" />
+												</div>
+												<div class="col-md-8 mb-3">
+													<label for="follow_up_notes">Follow-up Instructions</label>
+													<textarea class="form-control" id="follow_up_notes" name="follow_up_notes"
+													          data-field="follow_up_notes" rows="3"
+													          placeholder="Who to follow up with, what to monitor, what to bring to next appointment..."
+													><?= htmlspecialchars($cs['follow_up_notes'] ?? '') ?></textarea>
+												</div>
+											</div>
 
-									<h5 class="mb-3">Referrals</h5>
-									<div class="row">
-										<div class="col-md-4 mb-3">
-											<label for="referral_to">Referral To</label>
-											<input type="text" class="form-control" id="referral_to" name="referral_to"
-											       data-field="referral_to"
-											       value="<?= htmlspecialchars($cs['referral_to'] ?? '') ?>"
-											       placeholder="Doctor name, specialty, or facility..." />
-										</div>
-										<div class="col-md-8 mb-3">
-											<label for="referral_reason">Referral Reason</label>
-											<textarea class="form-control" id="referral_reason" name="referral_reason"
-											          data-field="referral_reason" rows="3"
-											          placeholder="Reason for referral and any relevant clinical information to include..."
-											><?= htmlspecialchars($cs['referral_reason'] ?? '') ?></textarea>
-										</div>
-									</div>
+											<h5 class="mb-3">Referrals</h5>
+											<div class="row">
+												<div class="col-md-4 mb-3">
+													<label for="referral_to">Referral To</label>
+													<input type="text" class="form-control" id="referral_to" name="referral_to"
+													       data-field="referral_to"
+													       value="<?= htmlspecialchars($cs['referral_to'] ?? '') ?>"
+													       placeholder="Doctor name, specialty, or facility..." />
+												</div>
+												<div class="col-md-8 mb-3">
+													<label for="referral_reason">Referral Reason</label>
+													<textarea class="form-control" id="referral_reason" name="referral_reason"
+													          data-field="referral_reason" rows="3"
+													          placeholder="Reason for referral and any relevant clinical information to include..."
+													><?= htmlspecialchars($cs['referral_reason'] ?? '') ?></textarea>
+												</div>
+											</div>
 
-									<h5 class="mb-3">History of Present Illness</h5>
-									<div class="mb-3">
-										<label for="history_present_illness">HPI Narrative</label>
-										<textarea class="form-control" id="history_present_illness" name="history_present_illness"
-										          data-field="history_present_illness" rows="4"
-										          placeholder="Narrative history of the present illness as obtained during consultation..."
-										><?= htmlspecialchars($cs['history_present_illness'] ?? '') ?></textarea>
-									</div>
+											<h5 class="mb-3">History of Present Illness</h5>
+											<div class="mb-3">
+												<label for="history_present_illness">HPI Narrative</label>
+												<textarea class="form-control" id="history_present_illness" name="history_present_illness"
+												          data-field="history_present_illness" rows="4"
+												          placeholder="Narrative history of the present illness as obtained during consultation..."
+												><?= htmlspecialchars($cs['history_present_illness'] ?? '') ?></textarea>
+											</div>
 
-									<div class="row">
-										<div class="col-md-6 mb-3">
-											<label for="disposition">Disposition</label>
-											<input type="text" class="form-control" id="disposition" name="disposition"
-											       data-field="disposition"
-											       value="<?= htmlspecialchars($cs['disposition'] ?? '') ?>"
-											       placeholder="e.g. Discharged home, Admitted, Transfer..." />
-										</div>
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label for="disposition">Disposition</label>
+													<input type="text" class="form-control" id="disposition" name="disposition"
+													       data-field="disposition"
+													       value="<?= htmlspecialchars($cs['disposition'] ?? '') ?>"
+													       placeholder="e.g. Discharged home, Admitted, Transfer..." />
+												</div>
+											</div>
+											<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
+										</form>
 									</div>
-									<small class="text-muted">Auto-saved. Every change is logged with your name and timestamp.</small>
-								</form>
+								</div>
 
 								<!-- ─── Close Chart ─────────────────────────────── -->
 								<div class="card card-outline card-danger mt-5">

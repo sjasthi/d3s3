@@ -4,9 +4,9 @@
  * Returns the current patient queue as JSON.
  *
  * Role access:
- *   DOCTOR        → sees INTAKE_COMPLETE (ready for doctor)
- *   NURSE / TRIAGE_NURSE → sees INTAKE_IN_PROGRESS + INTAKE_COMPLETE
- *   Any clinical  → all active, non-closed cases for today
+ *   DOCTOR        → sees all INTAKE_COMPLETE cases (any date)
+ *   NURSE / TRIAGE_NURSE → sees INTAKE_IN_PROGRESS + INTAKE_COMPLETE (any date)
+ *   Any clinical  → all open, non-closed cases regardless of visit date
  *
  * Response: { rows: [...], updated_at: <unix ts> }
  */
@@ -66,7 +66,6 @@ $stmt = $pdo->prepare(
 	   LEFT JOIN users u  ON u.user_id    = cs.created_by_user_id
 	   LEFT JOIN users ad ON ad.user_id   = cs.assigned_doctor_user_id
 	  WHERE cs.status IN ($placeholders)
-	    AND DATE(cs.visit_datetime) = CURDATE()
 	  ORDER BY COALESCE(cs.queue_position, 999999) ASC, cs.visit_datetime ASC"
 );
 $stmt->execute($statuses);

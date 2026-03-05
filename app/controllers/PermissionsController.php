@@ -42,6 +42,7 @@ class PermissionsController
         'feedback',
         'messages',
         'tasks',
+        'appointments',
     ];
 
     /** Human-friendly resource labels. */
@@ -54,6 +55,7 @@ class PermissionsController
         'feedback'     => 'Feedback',
         'messages'     => 'Messages',
         'tasks'        => 'Tasks',
+        'appointments' => 'Appointments',
     ];
 
     /** Human-friendly role labels. */

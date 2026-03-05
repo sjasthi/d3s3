@@ -393,14 +393,15 @@
 
 	/* ── Label maps for modal change list ──────────────────────────── */
 	var RESOURCE_LABELS = {
-		assets:       'Assets',
-		case_sheets:  'Case Sheets',
-		events:       'Events',
-		patient_data: 'Patient Data',
-		users:        'Users',
-		feedback:     'Feedback',
-		messages:     'Messages',
-		tasks:        'Tasks'
+		assets:        'Assets',
+		case_sheets:   'Case Sheets',
+		events:        'Events',
+		patient_data:  'Patient Data',
+		users:         'Users',
+		feedback:      'Feedback',
+		messages:      'Messages',
+		tasks:         'Tasks',
+		appointments:  'Appointments'
 	};
 
 	var ROLE_LABELS = {

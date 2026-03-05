@@ -46,25 +46,42 @@ A PHP/MySQL web application for patient care management, built as a capstone pro
 ```
 d3s3/
 ├── index.php, login.php, dashboard.php, ...   # Entry points
+├── patients.php, appointments.php             # Patient & scheduling entry points
+├── feedback.php, messages.php, tasks.php      # Staff feature entry points
+├── assets.php, calendar.php, reports.php      # Resource & planning entry points
 ├── app/
 │   ├── config/
 │   │   ├── database.php        # PDO connection (reads .env)
-│   │   └── session.php         # Secure session configuration
+│   │   ├── session.php         # Secure session configuration
+│   │   └── permissions.php     # 9-role × 8-resource access matrix + can() helper
 │   ├── controllers/
-│   │   ├── UserController.php  # Login, profile, registration
-│   │   └── AdminController.php # Dashboard, user management
+│   │   ├── UserController.php       # Login, profile, registration
+│   │   ├── AdminController.php      # Admin dashboard, user management
+│   │   ├── ClinicalController.php   # Intake, case sheets, queue
+│   │   ├── PatientController.php    # Patient records, profile, access log
+│   │   ├── AppointmentController.php# Appointments list, doctor assignment
+│   │   ├── LabResultsController.php # Lab results (placeholder)
+│   │   ├── FeedbackController.php   # Grievance/feedback tracking
+│   │   ├── MessagingController.php  # Internal messaging
+│   │   └── TaskController.php       # Task management
 │   ├── middleware/
 │   │   └── auth.php            # Session guard
 │   └── views/
 │       ├── login.php
 │       ├── profile.php
 │       ├── _sidebar.php
+│       ├── patients.php         # Patient search / list
+│       ├── patient_profile.php  # 4-tab patient profile
+│       ├── appointments.php     # Appointments list & assignment
+│       ├── feedback.php, feedback_detail.php, feedback_submit.php
+│       ├── messages.php
+│       ├── tasks.php
 │       └── admin/
 │           ├── dashboard.php
 │           ├── users.php
 │           └── emp_register.php
 ├── assets/                     # CSS, JS, icons
-├── sql/                        # Database schema & SQL files
+├── sql/                        # Database schema & migrations
 ├── .env.example                # Environment template
 ├── .htaccess                   # Apache config & security headers
 └── .user.ini                   # PHP-FPM settings (production)
@@ -150,6 +167,29 @@ d3s3/
 - To-do / task list (`tasks.php`) available to all roles
 - Staff can create, update, and delete their own tasks
 - Admins can view all tasks across the system
+
+### Patient Records *(2026-02-26)*
+- Patient search and list page (`patients.php`) with live AJAX search by name or patient code
+- Four-tab patient profile view:
+  - **Personal Info** — demographics and contact details
+  - **Medical History** — all case sheets with expandable clinical notes
+  - **Grievances** — linked feedback records (gated by `feedback` permission)
+  - **Access Log** — full audit trail of who viewed this record (ADMIN / SUPER_ADMIN only)
+- Every profile view is automatically written to `patient_record_access_log` (migration 018) with access type, IP address, user agent, and timestamp
+
+### Appointments *(2026-02-26)*
+- Appointments page (`appointments.php`) for clinical roles with three tabs: Today, Next 7 Days, and Pending Assignment
+- Nurse/Triage Nurse can assign `INTAKE_COMPLETE` case sheets to a specific doctor via a modal
+- Doctor view shows their assigned appointments only
+- AJAX patient search and doctor list endpoints for the assignment workflow
+
+### Lab Results *(2026-02-26 — placeholder)*
+- `lab_results.php` entry point and `LabResultsController` scaffolded
+- Full implementation pending
+
+### Security Hardening *(2026-03-02)*
+- `logout.php` now performs a full three-step session teardown: clears `$_SESSION`, expires the session cookie in the browser via `setcookie()`, then calls `session_destroy()`
+- `session.php` now explicitly sets `lifetime` and `path` in `session_set_cookie_params()` instead of relying on php.ini defaults
 
 ## License
 

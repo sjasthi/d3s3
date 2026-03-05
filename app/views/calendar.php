@@ -69,14 +69,7 @@
 						<span aria-hidden="true">&times;</span>
 					</button>
 				</div>
-				<div class="modal-body">
-					<p><strong>Type:</strong> <span id="eventType"></span></p>
-					<p><strong>When:</strong> <span id="eventWhen"></span></p>
-					<p><strong>Location:</strong> <span id="eventLocation"></span></p>
-					<p><strong>Status:</strong> <span id="eventStatus"></span></p>
-					<p><strong>Description:</strong></p>
-					<p id="eventDescription" class="text-muted"></p>
-				</div>
+				<div class="modal-body"></div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 				</div>
@@ -130,6 +123,29 @@ document.addEventListener('DOMContentLoaded', function () {
 		e.color = typeColors[e.eventType] || '#6c757d';
 	});
 
+	// Appointment events
+	var apptEvents = <?= json_encode(array_map(function ($a) {
+		$start = $a['scheduled_date'];
+		if (!empty($a['scheduled_time'])) {
+			$start .= 'T' . $a['scheduled_time'];
+		}
+		$patient = trim($a['first_name'] . ' ' . ($a['last_name'] ?? ''));
+		$doctor  = 'Dr. ' . trim($a['doc_first'] . ' ' . $a['doc_last']);
+		return [
+			'id'          => 'appt-' . $a['appointment_id'],
+			'title'       => $patient . ' \u00b7 ' . $doctor,
+			'start'       => $start,
+			'color'       => '#6f42c1',
+			'eventType'   => 'APPOINTMENT',
+			'patient'     => $patient,
+			'patientCode' => $a['patient_code'],
+			'doctor'      => $doctor,
+			'apptStatus'  => $a['status'],
+		];
+	}, $appointments), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+
+	events = events.concat(apptEvents);
+
 	var calendarEl = document.getElementById('calendar');
 	var calendar = new FullCalendar.Calendar(calendarEl, {
 		initialView: 'dayGridMonth',
@@ -140,17 +156,45 @@ document.addEventListener('DOMContentLoaded', function () {
 		},
 		events: events,
 		eventClick: function (info) {
-			var e = info.event;
-			document.getElementById('eventModalLabel').textContent = e.title;
-			document.getElementById('eventType').textContent = typeLabels[e.extendedProps.eventType] || e.extendedProps.eventType;
-			document.getElementById('eventLocation').textContent = e.extendedProps.location || 'Not specified';
-			document.getElementById('eventStatus').textContent = e.extendedProps.status;
-			document.getElementById('eventDescription').textContent = e.extendedProps.description || 'No description provided.';
+			var e    = info.event;
+			var ep   = e.extendedProps;
+			var isAppt = (ep.eventType === 'APPOINTMENT');
 
-			var start = e.start ? e.start.toLocaleString() : '';
-			var end = e.end ? ' – ' + e.end.toLocaleString() : '';
-			document.getElementById('eventWhen').textContent = start + end;
+			var fmtDate = { dateStyle: 'medium' };
+			var fmtTime = { timeStyle: 'short' };
+			var start = e.start
+				? e.start.toLocaleDateString([], fmtDate) + (e.allDay ? '' : ' ' + e.start.toLocaleTimeString([], fmtTime))
+				: '';
+			var end = (!e.allDay && e.end) ? ' \u2013 ' + e.end.toLocaleTimeString([], fmtTime) : '';
+			var when = start + end;
 
+			var esc = function (s) { return $('<span>').text(s || '').html(); };
+
+			var bodyHtml;
+			if (isAppt) {
+				var statusLabel = {SCHEDULED:'Scheduled',CONFIRMED:'Confirmed',IN_PROGRESS:'In Progress'}[ep.apptStatus] || ep.apptStatus;
+				var statusColor = {SCHEDULED:'info',CONFIRMED:'primary',IN_PROGRESS:'warning'}[ep.apptStatus] || 'secondary';
+				bodyHtml =
+					'<p><strong>Patient:</strong> ' + esc(ep.patient) +
+					' <small class="text-muted">(' + esc(ep.patientCode) + ')</small></p>' +
+					'<p><strong>Doctor:</strong> ' + esc(ep.doctor) + '</p>' +
+					'<p><strong>When:</strong> ' + esc(when) + '</p>' +
+					'<p><strong>Status:</strong> <span class="badge badge-' + statusColor + '">' + esc(statusLabel) + '</span></p>' +
+					'<div class="mt-3"><a href="appointments.php" class="btn btn-sm btn-primary">' +
+					'<i class="fas fa-calendar-alt mr-1"></i>Go to Appointments</a></div>';
+				document.getElementById('eventModalLabel').textContent = ep.patient;
+			} else {
+				bodyHtml =
+					'<p><strong>Type:</strong> ' + esc(typeLabels[ep.eventType] || ep.eventType) + '</p>' +
+					'<p><strong>When:</strong> ' + esc(when) + '</p>' +
+					'<p><strong>Location:</strong> ' + esc(ep.location || 'Not specified') + '</p>' +
+					'<p><strong>Status:</strong> ' + esc(ep.status) + '</p>' +
+					'<p class="mb-1"><strong>Description:</strong></p>' +
+					'<p class="text-muted">' + esc(ep.description || 'No description provided.') + '</p>';
+				document.getElementById('eventModalLabel').textContent = e.title;
+			}
+
+			document.querySelector('#eventModal .modal-body').innerHTML = bodyHtml;
 			$('#eventModal').modal('show');
 		},
 		height: 'auto'

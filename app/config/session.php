@@ -11,9 +11,11 @@ if (session_status() === PHP_SESSION_NONE) {
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
     session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
         'secure'   => $isHttps,
-        'httponly'  => true,
-        'samesite'  => 'Strict',
+        'httponly' => true,
+        'samesite' => 'Strict',
     ]);
     session_start();
 }
