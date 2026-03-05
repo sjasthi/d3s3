@@ -43,11 +43,39 @@ class AdminController
             exit;
         }
 
-        $pdo = getDBConnection();
+        $pdo    = getDBConnection();
+        $role   = $_SESSION['user_role'] ?? '';
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+
         $events = $pdo->query(
             'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
                FROM events WHERE is_active = 1 ORDER BY start_datetime'
         )->fetchAll();
+
+        // Appointment events (shown to roles that have appointment access)
+        $appointments = [];
+        if (can($role, 'appointments')) {
+            $apptSql = "SELECT a.appointment_id, a.scheduled_date, a.scheduled_time,
+                               a.status,
+                               p.first_name, p.last_name, p.patient_code,
+                               d.first_name AS doc_first, d.last_name AS doc_last
+                          FROM appointments a
+                          JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
+                          JOIN patients    p  ON p.patient_id     = cs.patient_id
+                          JOIN users       d  ON d.user_id        = a.doctor_user_id
+                         WHERE a.scheduled_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                           AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')";
+            $apptParams = [];
+            if ($role === 'DOCTOR') {
+                $apptSql .= ' AND a.doctor_user_id = ?';
+                $apptParams[] = $userId;
+            }
+            $apptSql .= ' ORDER BY a.scheduled_date, a.scheduled_time';
+            $stmt = $pdo->prepare($apptSql);
+            $stmt->execute($apptParams);
+            $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
         require __DIR__ . '/../views/calendar.php';
     }
 

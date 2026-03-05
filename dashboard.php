@@ -9,25 +9,51 @@ $_userRole       = $_SESSION['user_role'] ?? '';
 $_isClinicalRole = can($_userRole, 'case_sheets', 'W');
 
 // ── Data for clinical roles ──────────────────────────────────────────────────
-$todayStats     = ['total_today' => 0, 'in_progress' => 0, 'ready' => 0, 'in_review' => 0, 'closed_today' => 0];
+$todayStats      = ['total_today' => 0, 'in_progress' => 0, 'ready' => 0, 'in_review' => 0, 'closed_today' => 0];
 $myActiveReviews = [];
 $calendarEvents  = [];
 $nextEvent       = null;
+$staleSheets     = [];
 
 if ($_isClinicalRole) {
-	// Today's queue stats
-	$row = $pdo->query(
+	// ── Today's visit count (patients who came in today) ─────────────────
+	$rowToday = $pdo->query(
 		"SELECT COUNT(*) AS total_today,
-		        SUM(status = 'INTAKE_IN_PROGRESS') AS in_progress,
-		        SUM(status = 'INTAKE_COMPLETE')    AS ready,
-		        SUM(status = 'DOCTOR_REVIEW')      AS in_review,
-		        SUM(status = 'CLOSED')             AS closed_today
+		        SUM(status = 'CLOSED' AND DATE(closed_at) = CURDATE()) AS closed_today
 		   FROM case_sheets
 		  WHERE DATE(visit_datetime) = CURDATE()"
 	)->fetch(PDO::FETCH_ASSOC);
-	if ($row) {
-		$todayStats = array_map(fn($v) => (int)($v ?? 0), $row);
-	}
+
+	// ── Status counts across ALL open sheets (not date-filtered) ─────────
+	// In Progress / Ready / In Review include prior-day unclosed sheets.
+	$rowStatus = $pdo->query(
+		"SELECT SUM(status = 'INTAKE_IN_PROGRESS') AS in_progress,
+		        SUM(status = 'INTAKE_COMPLETE')    AS ready,
+		        SUM(status = 'DOCTOR_REVIEW')      AS in_review
+		   FROM case_sheets
+		  WHERE status IN ('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW')"
+	)->fetch(PDO::FETCH_ASSOC);
+
+	$todayStats = [
+		'total_today'  => (int)($rowToday['total_today']  ?? 0),
+		'closed_today' => (int)($rowToday['closed_today'] ?? 0),
+		'in_progress'  => (int)($rowStatus['in_progress'] ?? 0),
+		'ready'        => (int)($rowStatus['ready']        ?? 0),
+		'in_review'    => (int)($rowStatus['in_review']    ?? 0),
+	];
+
+	// ── Prior-day open case sheets (for stale-chart banner) ──────────────
+	$stmtStale = $pdo->prepare(
+		"SELECT cs.case_sheet_id, cs.status, cs.visit_datetime,
+		        p.first_name, p.last_name, p.patient_code
+		   FROM case_sheets cs
+		   JOIN patients p ON p.patient_id = cs.patient_id
+		  WHERE cs.status NOT IN ('CLOSED')
+		    AND DATE(cs.visit_datetime) < CURDATE()
+		  ORDER BY cs.visit_datetime ASC"
+	);
+	$stmtStale->execute();
+	$staleSheets = $stmtStale->fetchAll(PDO::FETCH_ASSOC);
 
 	// Doctor's claimed cases
 	if ($_userRole === 'DOCTOR') {
@@ -50,12 +76,82 @@ if ($_isClinicalRole) {
 		   FROM events WHERE is_active = 1 ORDER BY start_datetime'
 	)->fetchAll();
 
+	// Appointment events for calendar
+	$calendarAppts = [];
+	if (can($_userRole, 'appointments')) {
+		$_calApptSql = "SELECT a.appointment_id, a.scheduled_date, a.scheduled_time,
+		                       p.first_name, p.last_name,
+		                       d.last_name AS doc_last
+		                  FROM appointments a
+		                  JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
+		                  JOIN patients    p  ON p.patient_id     = cs.patient_id
+		                  JOIN users       d  ON d.user_id        = a.doctor_user_id
+		                 WHERE a.scheduled_date >= CURDATE()
+		                   AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')";
+		$_calApptParams = [];
+		if ($_userRole === 'DOCTOR') {
+			$_calApptSql .= ' AND a.doctor_user_id = ?';
+			$_calApptParams[] = (int)$_SESSION['user_id'];
+		}
+		$_calApptSql .= ' ORDER BY a.scheduled_date, a.scheduled_time';
+		$_calStmt = $pdo->prepare($_calApptSql);
+		$_calStmt->execute($_calApptParams);
+		$calendarAppts = $_calStmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	// Next upcoming event
 	$nextEvent = $pdo->query(
 		"SELECT title, start_datetime, event_type, location_name
 		   FROM events WHERE is_active = 1 AND start_datetime >= NOW()
 		   ORDER BY start_datetime LIMIT 1"
 	)->fetch(PDO::FETCH_ASSOC);
+
+	// ── Stat tile patient lists (click-to-view popup) ─────────────────────
+	$statPatients = [];
+	foreach ([
+		'total_today'  => "DATE(cs.visit_datetime) = CURDATE()",
+		'in_progress'  => "cs.status = 'INTAKE_IN_PROGRESS'",
+		'ready'        => "cs.status = 'INTAKE_COMPLETE'",
+		'in_review'    => "cs.status = 'DOCTOR_REVIEW'",
+		'closed_today' => "cs.status = 'CLOSED' AND DATE(cs.closed_at) = CURDATE()",
+	] as $_sk => $_sw) {
+		$statPatients[$_sk] = $pdo->query(
+			"SELECT p.patient_id, p.first_name, p.last_name, p.patient_code, cs.case_sheet_id, cs.status AS cs_status
+			   FROM case_sheets cs
+			   JOIN patients p ON p.patient_id = cs.patient_id
+			  WHERE {$_sw}
+			  ORDER BY cs.visit_datetime ASC"
+		)->fetchAll(PDO::FETCH_ASSOC);
+	}
+	$statPatients['my_active'] = array_map(
+		fn($r) => ['patient_id' => $r['patient_id'] ?? null, 'first_name' => $r['first_name'], 'last_name' => $r['last_name'], 'patient_code' => $r['patient_code'], 'case_sheet_id' => $r['case_sheet_id'] ?? null, 'cs_status' => 'DOCTOR_REVIEW'],
+		$myActiveReviews
+	);
+
+	// ── Today’s scheduled appointments (for dashboard card) ────────────────────
+	$todayScheduledAppts = [];
+	if (can($_userRole, 'appointments')) {
+		$_apptSql = "SELECT a.appointment_id, a.case_sheet_id, a.scheduled_time,
+		                    a.status AS appt_status,
+		                    p.patient_id, p.patient_code, p.first_name, p.last_name,
+		                    p.age_years, p.sex,
+		                    d.first_name AS doc_first, d.last_name AS doc_last
+		               FROM appointments a
+		               JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
+		               JOIN patients    p  ON p.patient_id     = cs.patient_id
+		               JOIN users       d  ON d.user_id        = a.doctor_user_id
+		              WHERE a.scheduled_date = CURDATE()
+		                AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')";
+		$_apptParams = [];
+		if ($_userRole === 'DOCTOR') {
+			$_apptSql .= ' AND a.doctor_user_id = ?';
+			$_apptParams[] = (int)$_SESSION['user_id'];
+		}
+		$_apptSql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";
+		$_stmt = $pdo->prepare($_apptSql);
+		$_stmt->execute($_apptParams);
+		$todayScheduledAppts = $_stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
 }
 
 // ── Dashboard counts for new features ───────────────────────────────────────
@@ -157,6 +253,9 @@ $roleLabel = [
 		.stat-card .stat-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #6c757d; margin-top: 0.1rem; }
 		.stat-card .stat-icon { font-size: 1.5rem; opacity: 0.15; }
 
+		/* ── Stale charts modal rows ───────────────────────────────── */
+		.stale-chart-row:hover { background: #fffbf0; }
+
 		/* ── Patient queue ─────────────────────────────────────────── */
 		.queue-row { cursor: grab; user-select: none; }
 		.queue-row:active { cursor: grabbing; }
@@ -242,6 +341,103 @@ $roleLabel = [
 
 			<?php if ($_isClinicalRole): ?>
 
+			<?php if (!empty($staleSheets)): ?>
+			<?php $staleCount = count($staleSheets); ?>
+			<!-- ── Stale open-chart notification ────────────────────── -->
+			<div class="alert alert-warning alert-dismissible fade show mb-4 py-2 d-flex align-items-center" role="alert">
+				<i class="fas fa-folder-open mr-2"></i>
+				<strong><?= $staleCount ?> open <?= $staleCount === 1 ? 'chart' : 'charts' ?> from a previous day<?= $staleCount === 1 ? '' : 's' ?></strong>
+				<button type="button" class="btn btn-sm btn-warning ml-3 py-0 px-2"
+				        data-toggle="modal" data-target="#staleChartsModal">
+					<i class="fas fa-eye mr-1"></i>View
+				</button>
+				<button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+
+			<!-- ── Stale charts modal ───────────────────────────────── -->
+			<div class="modal fade" id="staleChartsModal" tabindex="-1" role="dialog"
+			     aria-labelledby="staleChartsModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+					<div class="modal-content">
+						<div class="modal-header" style="background:#fff3cd;">
+							<h5 class="modal-title" id="staleChartsModalLabel">
+								<i class="fas fa-folder-open mr-2 text-warning"></i>
+								Open Charts from Previous Days
+							</h5>
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body p-0">
+							<p class="px-3 pt-3 pb-2 mb-0 small text-muted">
+								<?= $staleCount === 1 ? 'This case sheet has' : 'These case sheets have' ?> not been closed and will remain in the queue until resolved. Click a row to open the chart.
+							</p>
+							<?php
+							$staleStatusLabels = [
+								'INTAKE_IN_PROGRESS' => 'In Progress',
+								'INTAKE_COMPLETE'    => 'Ready for Doctor',
+								'DOCTOR_REVIEW'      => 'In Review',
+								'SCHEDULED'          => 'Scheduled',
+								'QUEUED'             => 'Queued',
+							];
+							$staleStatusColors = [
+								'INTAKE_IN_PROGRESS' => 'warning',
+								'INTAKE_COMPLETE'    => 'info',
+								'DOCTOR_REVIEW'      => 'primary',
+								'SCHEDULED'          => 'success',
+								'QUEUED'             => 'secondary',
+							];
+							?>
+							<ul class="list-unstyled mb-0">
+							<?php foreach ($staleSheets as $_si => $_s):
+								if ($_s['status'] === 'INTAKE_IN_PROGRESS' || $_s['status'] === 'INTAKE_COMPLETE') {
+									$_staleHref = 'intake.php?case_sheet_id=' . (int)$_s['case_sheet_id'];
+								} elseif ($_s['status'] === 'DOCTOR_REVIEW') {
+									$_staleHref = 'review.php?case_sheet_id=' . (int)$_s['case_sheet_id'];
+								} else {
+									$_staleHref = '';
+								}
+								$_staleBadge = $staleStatusColors[$_s['status']] ?? 'secondary';
+								$_staleLabel = $staleStatusLabels[$_s['status']] ?? $_s['status'];
+							?>
+							<li class="<?= $_si < $staleCount - 1 ? 'border-bottom' : '' ?>">
+								<?php if ($_staleHref): ?>
+								<a href="<?= htmlspecialchars($_staleHref) ?>"
+								   class="d-flex align-items-center justify-content-between px-3 py-2 text-dark text-decoration-none stale-chart-row">
+								<?php else: ?>
+								<div class="d-flex align-items-center justify-content-between px-3 py-2">
+								<?php endif; ?>
+									<div>
+										<strong><?= htmlspecialchars($_s['first_name'] . ' ' . ($_s['last_name'] ?? '')) ?></strong>
+										<span class="text-muted small ml-1">(<?= htmlspecialchars($_s['patient_code']) ?>)</span>
+										<br>
+										<small class="text-muted">Visited <?= htmlspecialchars(date('D, M j', strtotime($_s['visit_datetime']))) ?></small>
+									</div>
+									<div class="text-right ml-3">
+										<span class="badge badge-<?= $_staleBadge ?>"><?= htmlspecialchars($_staleLabel) ?></span>
+										<?php if ($_staleHref): ?>
+										<br><small class="text-primary">Open &rsaquo;</small>
+										<?php endif; ?>
+									</div>
+								<?php if ($_staleHref): ?>
+								</a>
+								<?php else: ?>
+								</div>
+								<?php endif; ?>
+							</li>
+							<?php endforeach; ?>
+							</ul>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
+
 			<!-- ── Quick Actions ─────────────────────────────────────── -->
 			<div class="row mb-4" id="quickActions">
 				<?php if ($_userRole === 'DOCTOR'): ?>
@@ -256,6 +452,15 @@ $roleLabel = [
 					<a href="intake.php" class="qa-tile qa-primary">
 						<i class="fas fa-clipboard-list qa-icon"></i>
 						<span class="qa-label">Start Intake</span>
+					</a>
+				</div>
+				<?php endif; ?>
+
+				<?php if (in_array($_userRole, ['NURSE','TRIAGE_NURSE','ADMIN','SUPER_ADMIN'])): ?>
+				<div class="col-6 col-sm-4 col-md-2 mb-2">
+					<a href="appointments.php" class="qa-tile">
+						<i class="fas fa-calendar-plus qa-icon text-primary"></i>
+						<span class="qa-label">New Appointment</span>
 					</a>
 				</div>
 				<?php endif; ?>
@@ -306,7 +511,7 @@ $roleLabel = [
 			<!-- ── Today's Stats ─────────────────────────────────────── -->
 			<div class="row mb-4">
 				<div class="col-6 col-md-<?= $_userRole === 'DOCTOR' ? '2' : '3' ?> mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="total_today" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-dark"><?= $todayStats['total_today'] ?></div>
 							<div class="stat-lbl">Today's Patients</div>
@@ -316,7 +521,7 @@ $roleLabel = [
 				</div>
 				<?php if ($_userRole !== 'DOCTOR'): ?>
 				<div class="col-6 col-md-3 mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="in_progress" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-info"><?= $todayStats['in_progress'] ?></div>
 							<div class="stat-lbl">In Progress</div>
@@ -326,7 +531,7 @@ $roleLabel = [
 				</div>
 				<?php endif; ?>
 				<div class="col-6 col-md-<?= $_userRole === 'DOCTOR' ? '2' : '3' ?> mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="ready" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-warning"><?= $todayStats['ready'] ?></div>
 							<div class="stat-lbl">Ready for Doctor</div>
@@ -335,7 +540,7 @@ $roleLabel = [
 					</div>
 				</div>
 				<div class="col-6 col-md-<?= $_userRole === 'DOCTOR' ? '2' : '3' ?> mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="in_review" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-primary"><?= $todayStats['in_review'] ?></div>
 							<div class="stat-lbl">In Review</div>
@@ -344,7 +549,7 @@ $roleLabel = [
 					</div>
 				</div>
 				<div class="col-6 col-md-<?= $_userRole === 'DOCTOR' ? '2' : '3' ?> mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="closed_today" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-success"><?= $todayStats['closed_today'] ?></div>
 							<div class="stat-lbl">Closed Today</div>
@@ -354,7 +559,7 @@ $roleLabel = [
 				</div>
 				<?php if ($_userRole === 'DOCTOR'): ?>
 				<div class="col-6 col-md-2 mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between" style="border-color:#17a2b8">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="my_active" role="button" style="border-color:#17a2b8;cursor:pointer">
 						<div>
 							<div class="stat-num text-info"><?= count($myActiveReviews) ?></div>
 							<div class="stat-lbl">My Active</div>
@@ -363,7 +568,7 @@ $roleLabel = [
 					</div>
 				</div>
 				<div class="col-6 col-md-2 mb-3">
-					<div class="stat-card d-flex align-items-center justify-content-between">
+					<div class="stat-card d-flex align-items-center justify-content-between" data-stat="in_progress" role="button" style="cursor:pointer">
 						<div>
 							<div class="stat-num text-info"><?= $todayStats['in_progress'] ?></div>
 							<div class="stat-lbl">In Intake</div>
@@ -374,7 +579,141 @@ $roleLabel = [
 				<?php endif; ?>
 			</div>
 
-			<!-- ── Live Patient Queue ────────────────────────────────── -->
+			<!-- ── Stat Detail Modal ────────────────────────────────── -->
+			<div class="modal fade" id="statDetailModal" tabindex="-1" role="dialog" aria-labelledby="statDetailModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered" role="document">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="statDetailModalLabel">Patients</h5>
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+						</div>
+						<div class="modal-body p-0">
+							<ul id="statDetailList" class="list-unstyled mb-0"></ul>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ── Appointment Action Modal ──────────────────────── -->
+			<div class="modal fade" id="apptActionModal" tabindex="-1" role="dialog" aria-labelledby="apptActionModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered" role="document">
+					<div class="modal-content">
+						<div class="modal-header bg-primary text-white py-2">
+							<h5 class="modal-title mb-0" id="apptActionModalLabel">
+								<i class="fas fa-user-circle mr-2"></i><span id="aamPatientName"></span>
+							</h5>
+							<button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p class="text-muted small mb-3" id="aamInfo"></p>
+
+							<!-- Start Intake -->
+							<a id="aamStartIntakeBtn" href="#" class="btn btn-primary btn-block mb-2">
+								<i class="fas fa-clipboard-list mr-2"></i>Start Intake
+							</a>
+
+							<hr class="my-3" />
+
+							<!-- Cancel -->
+							<h6 class="text-danger mb-2"><i class="fas fa-times-circle mr-1"></i>Cancel Appointment</h6>
+							<textarea id="aamCancelNote" class="form-control form-control-sm mb-2" rows="2"
+							          placeholder="Reason for cancellation (optional)…"></textarea>
+							<button type="button" id="aamCancelBtn" class="btn btn-sm btn-outline-danger">
+								<i class="fas fa-ban mr-1"></i>Confirm Cancellation
+							</button>
+
+							<hr class="my-3" />
+
+							<!-- Reschedule -->
+							<h6 class="text-warning mb-2"><i class="fas fa-calendar-alt mr-1"></i>Reschedule Appointment</h6>
+							<div class="form-row mb-2">
+								<div class="col-7">
+									<label class="small text-muted mb-1">New Date <span class="text-danger">*</span></label>
+									<input type="date" id="aamReschedDate" class="form-control form-control-sm" />
+								</div>
+								<div class="col-5">
+									<label class="small text-muted mb-1">New Time (optional)</label>
+									<input type="time" id="aamReschedTime" class="form-control form-control-sm" />
+								</div>
+							</div>
+							<textarea id="aamReschedNote" class="form-control form-control-sm mb-2" rows="2"
+							          placeholder="Note (optional)…"></textarea>
+							<button type="button" id="aamReschedBtn" class="btn btn-sm btn-outline-warning">
+								<i class="fas fa-calendar-check mr-1"></i>Confirm Reschedule
+							</button>
+
+							<div id="aamAlert" class="alert d-none mt-3 mb-0"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ── Today’s Appointments ───────────────────────────────── -->
+			<?php if (!empty($todayScheduledAppts)): ?>
+			<div class="card card-outline card-primary mb-4" id="todayApptsCard">
+				<div class="card-header d-flex align-items-center justify-content-between">
+					<h3 class="card-title mb-0">
+						<i class="fas fa-calendar-day mr-2"></i>Today’s Appointments
+						<span class="badge badge-primary ml-2"><?= count($todayScheduledAppts) ?></span>
+					</h3>
+					<a href="appointments.php" class="btn btn-sm btn-outline-primary">
+						<i class="fas fa-calendar-alt mr-1"></i>All Appointments
+					</a>
+				</div>
+				<div class="card-body p-0">
+					<div class="table-responsive">
+						<table class="table table-hover table-sm mb-0">
+							<thead class="thead-light">
+								<tr>
+									<th style="width:80px">Time</th>
+									<th>Patient</th>
+									<th class="d-none d-md-table-cell">Doctor</th>
+									<th style="width:110px">Status</th>
+								</tr>
+							</thead>
+							<tbody id="todayApptsTbody">
+							<?php
+							$_apptBadges = ['SCHEDULED'=>'badge-info','CONFIRMED'=>'badge-primary','IN_PROGRESS'=>'badge-warning'];
+							$_apptLabels = ['SCHEDULED'=>'Scheduled','CONFIRMED'=>'Confirmed','IN_PROGRESS'=>'In Progress'];
+							foreach ($todayScheduledAppts as $_ta):
+								$_taName = htmlspecialchars($_ta['first_name'] . ' ' . ($_ta['last_name'] ?? ''));
+								$_taCode = htmlspecialchars($_ta['patient_code']);
+								$_taDoc  = htmlspecialchars('Dr. ' . $_ta['doc_first'] . ' ' . $_ta['doc_last']);
+								$_taTime = $_ta['scheduled_time'] ? htmlspecialchars(date('g:i A', strtotime($_ta['scheduled_time']))) : '';
+							?>
+							<tr data-appt-id="<?= (int)$_ta['appointment_id'] ?>">
+								<td class="text-nowrap small text-muted"><?= $_taTime ?: '<span class="text-muted">&mdash;</span>' ?></td>
+								<td>
+									<strong
+										class="appt-patient-link text-primary"
+										style="cursor:pointer;text-decoration:underline dotted;"
+										data-appt-id="<?= (int)$_ta['appointment_id'] ?>"
+										data-case-sheet-id="<?= (int)$_ta['case_sheet_id'] ?>"
+										data-patient-name="<?= $_taName ?>"
+										data-patient-code="<?= $_taCode ?>"
+										data-doc-name="<?= $_taDoc ?>"
+										data-scheduled-time="<?= $_taTime ?>"
+										data-appt-status="<?= htmlspecialchars($_ta['appt_status']) ?>"
+									><?= $_taName ?></strong>
+									<br><small class="text-muted"><?= $_taCode ?><?= $_ta['age_years'] ? ' &middot; ' . (int)$_ta['age_years'] . 'y' : '' ?></small>
+								</td>
+								<td class="small d-none d-md-table-cell"><?= $_taDoc ?></td>
+								<td><span class="badge <?= $_apptBadges[$_ta['appt_status']] ?? 'badge-secondary' ?>"><?= $_apptLabels[$_ta['appt_status']] ?? htmlspecialchars($_ta['appt_status']) ?></span></td>
+							</tr>
+							<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
+
+						<!-- ── Live Patient Queue ────────────────────────────────── -->
 			<div class="card card-outline card-warning mb-4" id="queueCard">
 				<div class="card-header d-flex align-items-center justify-content-between">
 					<h3 class="card-title mb-0">
@@ -627,6 +966,25 @@ var calEvents = <?= json_encode(array_map(function ($e) {
 }, $calendarEvents), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 calEvents.forEach(function (e) { e.color = typeColors[e.type] || '#6c757d'; });
 
+var apptCalEvents = <?= json_encode(array_map(function ($a) {
+	$start = $a['scheduled_date'];
+	if (!empty($a['scheduled_time'])) {
+		$start .= 'T' . $a['scheduled_time'];
+	}
+	$title = trim($a['first_name'] . ' ' . ($a['last_name'] ?? ''));
+	if (!empty($a['doc_last'])) {
+		$title .= ' · Dr. ' . $a['doc_last'];
+	}
+	return [
+		'title' => $title,
+		'start' => $start,
+		'color' => '#6f42c1',
+		'type'  => 'APPOINTMENT',
+		'url'   => 'appointments.php',
+	];
+}, $calendarAppts), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+calEvents = calEvents.concat(apptCalEvents);
+
 document.addEventListener('DOMContentLoaded', function () {
 	var calEl = document.getElementById('clinicalCalendarWidget');
 	if (!calEl) return;
@@ -639,8 +997,138 @@ document.addEventListener('DOMContentLoaded', function () {
 	}).render();
 });
 
-/* ── Live patient queue ─────────────────────────────────────────── */
+/* ── Stat tile popup ────────────────────────────────────────────── */
+var STAT_PATIENTS = <?= json_encode($statPatients ?? [], JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+var STAT_LABELS = {
+	total_today:  "Today's Patients",
+	in_progress:  'In Progress / In Intake',
+	ready:        'Ready for Doctor',
+	in_review:    'In Review',
+	closed_today: 'Closed Today',
+	my_active:    'My Active Reviews'
+};
+document.addEventListener('DOMContentLoaded', function () {
+	document.querySelectorAll('.stat-card[data-stat]').forEach(function (card) {
+		card.addEventListener('click', function () {
+			var key      = card.dataset.stat;
+			var patients = STAT_PATIENTS[key] || [];
+			var label    = STAT_LABELS[key] || key;
+			document.getElementById('statDetailModalLabel').textContent = label + ' (' + patients.length + ')';
+			var list = document.getElementById('statDetailList');
+			if (patients.length === 0) {
+				list.innerHTML = '<li class="px-3 py-2 text-muted">No patients.</li>';
+			} else {
+				list.innerHTML = patients.map(function (p, i) {
+					var href = '#';
+					if (p.case_sheet_id) {
+						if (p.cs_status === 'DOCTOR_REVIEW') {
+							href = 'review.php?case_sheet_id=' + p.case_sheet_id;
+						} else if (p.cs_status === 'INTAKE_IN_PROGRESS' || p.cs_status === 'INTAKE_COMPLETE') {
+							href = 'intake.php?case_sheet_id=' + p.case_sheet_id;
+						} else if (p.patient_id) {
+							href = 'patients.php?action=view&patient_id=' + p.patient_id;
+						}
+					} else if (p.patient_id) {
+						href = 'patients.php?action=view&patient_id=' + p.patient_id;
+					}
+					return '<li class="px-3 py-2' + (i < patients.length - 1 ? ' border-bottom' : '') + '">' +
+						'<a href="' + href + '" class="d-flex justify-content-between align-items-center text-decoration-none text-dark">' +
+						'<span><strong>' + p.first_name + ' ' + p.last_name + '</strong></span>' +
+						'<small class="text-muted ml-2">' + p.patient_code + '</small>' +
+						'</a></li>';
+				}).join('');
+			}
+			$('#statDetailModal').modal('show');
+		});
+	});
+});
+
+/* ── Appointment action modal ─────────────────────────────────────── */
 var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
+var currentApptId = null;
+
+$(document).on('click', '.appt-patient-link', function () {
+	currentApptId = parseInt($(this).data('appt-id'));
+	var caseSheetId = parseInt($(this).data('case-sheet-id'));
+	var patientName = $(this).data('patient-name');
+	var patientCode = $(this).data('patient-code');
+	var docName     = $(this).data('doc-name');
+	var time        = $(this).data('scheduled-time') || '—';
+	$('#aamPatientName').text(patientName);
+	$('#aamInfo').html(patientCode + ' &middot; ' + time + ' &middot; ' + docName);
+	$('#aamStartIntakeBtn').attr('href', 'intake.php?case_sheet_id=' + caseSheetId);
+	$('#aamCancelNote, #aamReschedNote').val('');
+	$('#aamReschedDate, #aamReschedTime').val('');
+	$('#aamAlert').addClass('d-none').empty();
+	$('#apptActionModal').modal('show');
+});
+
+$('#aamCancelBtn').on('click', function () {
+	if (!currentApptId) return;
+	var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Cancelling…');
+	$.ajax({
+		url: 'appointments.php?action=cancel',
+		method: 'POST',
+		contentType: 'application/json',
+		data: JSON.stringify({
+			csrf_token:     CSRF_TOKEN,
+			appointment_id: currentApptId,
+			note:           $('#aamCancelNote').val().trim() || null
+		}),
+		dataType: 'json',
+		success: function (data) {
+			if (data.success) {
+				$('#aamAlert').attr('class', 'alert alert-success').text('Appointment cancelled.').removeClass('d-none');
+				$('[data-appt-id="' + currentApptId + '"]').closest('tr').fadeOut(400, function () { $(this).remove(); });
+				setTimeout(function () { $('#apptActionModal').modal('hide'); }, 1400);
+			} else {
+				$('#aamAlert').attr('class', 'alert alert-danger').text(data.message || 'Could not cancel.').removeClass('d-none');
+			}
+		},
+		error: function () {
+			$('#aamAlert').attr('class', 'alert alert-danger').text('A network error occurred.').removeClass('d-none');
+		},
+		complete: function () { $btn.prop('disabled', false).html('<i class="fas fa-ban mr-1"></i>Confirm Cancellation'); }
+	});
+});
+
+$('#aamReschedBtn').on('click', function () {
+	if (!currentApptId) return;
+	var newDate = $('#aamReschedDate').val();
+	if (!newDate) {
+		$('#aamAlert').attr('class', 'alert alert-warning').text('Please select a new date.').removeClass('d-none');
+		return;
+	}
+	var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Rescheduling…');
+	$.ajax({
+		url: 'appointments.php?action=reschedule',
+		method: 'POST',
+		contentType: 'application/json',
+		data: JSON.stringify({
+			csrf_token:     CSRF_TOKEN,
+			appointment_id: currentApptId,
+			scheduled_date: newDate,
+			scheduled_time: $('#aamReschedTime').val() || null,
+			note:           $('#aamReschedNote').val().trim() || null
+		}),
+		dataType: 'json',
+		success: function (data) {
+			if (data.success) {
+				$('#aamAlert').attr('class', 'alert alert-success').text('Appointment rescheduled to ' + data.new_date_fmt + '.').removeClass('d-none');
+				$('[data-appt-id="' + currentApptId + '"]').closest('tr').fadeOut(400, function () { $(this).remove(); });
+				setTimeout(function () { $('#apptActionModal').modal('hide'); }, 1400);
+			} else {
+				$('#aamAlert').attr('class', 'alert alert-danger').text(data.message || 'Could not reschedule.').removeClass('d-none');
+			}
+		},
+		error: function () {
+			$('#aamAlert').attr('class', 'alert alert-danger').text('A network error occurred.').removeClass('d-none');
+		},
+		complete: function () { $btn.prop('disabled', false).html('<i class="fas fa-calendar-check mr-1"></i>Confirm Reschedule'); }
+	});
+});
+
+/* ── Live patient queue ─────────────────────────────────────────── */
 var USER_ROLE  = <?= json_encode($_userRole) ?>;
 var POLL_MS    = 15000;
 var pollTimer  = null;

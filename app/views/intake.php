@@ -238,115 +238,278 @@
 					<div class="card-body">
 						<div class="tab-content" id="intakeTabContent">
 
-							<!-- ── Verification Tab ────────────────────────── -->
+							<!-- ── Verification Tab ────────────────── -->
 							<div class="tab-pane fade show active" id="tab-verification" role="tabpanel">
-								<h4 class="mb-3">Patient Verification</h4>
-								<div class="row">
-									<div class="col-md-6 mb-3"><label>First Name</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['first_name'] ?? '') ?>" readonly /></div>
-									<div class="col-md-6 mb-3"><label>Last Name</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['last_name'] ?? '') ?>" readonly /></div>
+								<div class="d-flex align-items-center justify-content-between mb-4">
+									<h4 class="mb-0">Patient Verification</h4>
+									<div>
+										<button type="button" id="btnEditPatient" class="btn btn-sm btn-outline-primary">
+											<i class="fas fa-edit mr-1"></i> Edit Patient Info
+										</button>
+										<button type="button" id="btnCancelEdit" class="btn btn-sm btn-outline-secondary ml-2" style="display:none;">
+											<i class="fas fa-times mr-1"></i> Cancel
+										</button>
+									</div>
 								</div>
-								<div class="row">
-									<div class="col-md-4 mb-3"><label>Patient Code</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['patient_code'] ?? '') ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>Age</label><input type="text" class="form-control" value="<?= $p['age_years'] ? (int)$p['age_years'] . ' years' : '' ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>Sex</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['sex'] ?? '') ?>" readonly /></div>
+								<div id="verif-alert" class="alert" style="display:none;" role="alert"></div>
+								<div id="verif-read">
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Identity</h6></div>
+										<div class="card-body py-3">
+											<div class="row align-items-start">
+												<div class="col-12 mb-3">
+													<div class="text-muted small text-uppercase font-weight-bold mb-1" style="letter-spacing:.05em;">Full Name</div>
+													<div class="h5 mb-0 font-weight-bold">
+														<span id="vr-first_name"><?= htmlspecialchars($p['first_name'] ?? '') ?></span>
+														<span id="vr-last_name" class="ml-1"><?= htmlspecialchars($p['last_name'] ?? '') ?></span>
+													</div>
+												</div>
+												<div class="col-6 col-md-3 mb-3">
+													<div class="text-muted small text-uppercase font-weight-bold mb-1" style="letter-spacing:.05em;">Patient Code</div>
+													<code class="text-dark" style="font-size:1rem;"><?= htmlspecialchars($p['patient_code'] ?? '') ?></code>
+												</div>
+												<div class="col-6 col-md-3 mb-3">
+													<div class="text-muted small text-uppercase font-weight-bold mb-1" style="letter-spacing:.05em;">Sex</div>
+													<?php
+													$_sx = $p['sex'] ?? '';
+													$_sxBadge = ['MALE'=>'badge-primary','FEMALE'=>'badge-danger','OTHER'=>'badge-secondary','UNKNOWN'=>'badge-light'];
+													$_sxLabel = ['MALE'=>'Male','FEMALE'=>'Female','OTHER'=>'Other','UNKNOWN'=>'Unknown'];
+													?>
+													<span id="vr-sex" class="badge <?= $_sxBadge[$_sx] ?? 'badge-secondary' ?>" style="font-size:.85rem;">
+														<?= isset($_sxLabel[$_sx]) ? $_sxLabel[$_sx] : '<span class="text-muted">&mdash;</span>' ?>
+													</span>
+												</div>
+												<div class="col-6 col-md-3 mb-3">
+													<div class="text-muted small text-uppercase font-weight-bold mb-1" style="letter-spacing:.05em;">Date of Birth</div>
+													<span id="vr-date_of_birth"><?= $p['date_of_birth'] ? date('d M Y', strtotime($p['date_of_birth'])) : '<span class="text-muted">&mdash;</span>' ?></span>
+												</div>
+												<div class="col-6 col-md-3 mb-3">
+													<div class="text-muted small text-uppercase font-weight-bold mb-1" style="letter-spacing:.05em;">Age</div>
+													<span id="vr-age_years"><?= ($p['age_years'] !== null && $p['age_years'] !== '') ? (int)$p['age_years'] . ' yrs' : '<span class="text-muted">&mdash;</span>' ?></span>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-6 mb-3">
+											<div class="card card-outline card-info h-100">
+												<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Contact</h6></div>
+												<div class="card-body py-3">
+													<dl class="row mb-0">
+														<dt class="col-4 text-muted font-weight-normal small">Phone</dt>
+														<dd class="col-8 mb-2" id="vr-phone_e164"><?= $p['phone_e164'] ? htmlspecialchars($p['phone_e164']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+														<dt class="col-4 text-muted font-weight-normal small">Email</dt>
+														<dd class="col-8 mb-0" id="vr-email"><?= $p['email'] ? htmlspecialchars($p['email']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+													</dl>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-6 mb-3">
+											<div class="card card-outline card-warning h-100">
+												<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Clinical</h6></div>
+												<div class="card-body py-3">
+													<dl class="row mb-0">
+														<dt class="col-5 text-muted font-weight-normal small">Blood Group</dt>
+														<dd class="col-7 mb-0">
+															<?php if (!empty($p['blood_group'])): ?>
+															<span id="vr-blood_group" class="badge badge-danger" style="font-size:.85rem;"><?= htmlspecialchars($p['blood_group']) ?></span>
+															<?php else: ?>
+															<span id="vr-blood_group" class="text-muted">&mdash;</span>
+															<?php endif; ?>
+														</dd>
+													</dl>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-secondary mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Address</h6></div>
+										<div class="card-body py-3">
+											<dl class="row mb-0">
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Street</dt>
+												<dd class="col-md-10 col-9 mb-2" id="vr-address_line1"><?= !empty($p['address_line1']) ? htmlspecialchars($p['address_line1']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">City</dt>
+												<dd class="col-md-4 col-9 mb-2" id="vr-city"><?= !empty($p['city']) ? htmlspecialchars($p['city']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">State</dt>
+												<dd class="col-md-4 col-9 mb-2" id="vr-state_province"><?= !empty($p['state_province']) ? htmlspecialchars($p['state_province']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">PIN Code</dt>
+												<dd class="col-md-4 col-9 mb-0" id="vr-postal_code"><?= !empty($p['postal_code']) ? htmlspecialchars($p['postal_code']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+											</dl>
+										</div>
+									</div>
+									<div class="card card-outline card-danger mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><i class="fas fa-phone-alt mr-1 text-danger"></i>Emergency Contact</h6></div>
+										<div class="card-body py-3">
+											<dl class="row mb-0">
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Name</dt>
+												<dd class="col-md-4 col-9 mb-2" id="vr-emergency_contact_name"><?= !empty($p['emergency_contact_name']) ? htmlspecialchars($p['emergency_contact_name']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Phone</dt>
+												<dd class="col-md-4 col-9 mb-0" id="vr-emergency_contact_phone"><?= !empty($p['emergency_contact_phone']) ? htmlspecialchars($p['emergency_contact_phone']) : '<span class="text-muted">&mdash;</span>' ?></dd>
+											</dl>
+										</div>
+									</div>
 								</div>
-								<div class="row">
-									<div class="col-md-4 mb-3"><label>Date of Birth</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['date_of_birth'] ?? '') ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>Phone</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['phone_e164'] ?? '') ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>Blood Group</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['blood_group'] ?? '') ?>" readonly /></div>
+								<div id="verif-edit" style="display:none;">
+									<input type="hidden" id="ve-patient_id" value="<?= (int)($p['patient_id'] ?? 0) ?>">
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Identity</h6></div>
+										<div class="card-body py-3">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label class="small font-weight-bold">First Name <span class="text-danger">*</span></label><input type="text" class="form-control" id="ve-first_name" value="<?= htmlspecialchars($p['first_name'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label class="small font-weight-bold">Last Name</label><input type="text" class="form-control" id="ve-last_name" value="<?= htmlspecialchars($p['last_name'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3">
+													<label class="small font-weight-bold">Sex</label>
+													<select class="form-control" id="ve-sex">
+														<option value="">Select Sex</option>
+														<option value="MALE"    <?= ($p['sex'] ?? '') === 'MALE'    ? 'selected' : '' ?>>Male</option>
+														<option value="FEMALE"  <?= ($p['sex'] ?? '') === 'FEMALE'  ? 'selected' : '' ?>>Female</option>
+														<option value="OTHER"   <?= ($p['sex'] ?? '') === 'OTHER'   ? 'selected' : '' ?>>Other</option>
+														<option value="UNKNOWN" <?= ($p['sex'] ?? '') === 'UNKNOWN' ? 'selected' : '' ?>>Unknown</option>
+													</select>
+												</div>
+												<div class="col-md-3 mb-3"><label class="small font-weight-bold">Date of Birth</label><input type="date" class="form-control" id="ve-date_of_birth" value="<?= htmlspecialchars($p['date_of_birth'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label class="small font-weight-bold">Age (years)</label><input type="number" class="form-control" id="ve-age_years" min="0" max="150" value="<?= htmlspecialchars($p['age_years'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-0">
+													<label class="small font-weight-bold">Blood Group</label>
+													<select class="form-control" id="ve-blood_group">
+														<option value="">Select Blood Group</option>
+														<?php foreach (['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
+														<option value="<?= $bg ?>" <?= ($p['blood_group'] ?? '') === $bg ? 'selected' : '' ?>><?= $bg ?></option>
+														<?php endforeach; ?>
+													</select>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-info mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Contact</h6></div>
+										<div class="card-body py-3">
+											<div class="row">
+												<div class="col-md-4 mb-3 mb-md-0"><label class="small font-weight-bold">Phone</label><input type="text" class="form-control" id="ve-phone_e164" value="<?= htmlspecialchars($p['phone_e164'] ?? '') ?>" placeholder="+91 98765 43210" /></div>
+												<div class="col-md-5 mb-0"><label class="small font-weight-bold">Email</label><input type="email" class="form-control" id="ve-email" value="<?= htmlspecialchars($p['email'] ?? '') ?>" /></div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-secondary mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Address</h6></div>
+										<div class="card-body py-3">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label class="small font-weight-bold">Street Address</label><input type="text" class="form-control" id="ve-address_line1" value="<?= htmlspecialchars($p['address_line1'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label class="small font-weight-bold">City</label><input type="text" class="form-control" id="ve-city" value="<?= htmlspecialchars($p['city'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label class="small font-weight-bold">State</label><input type="text" class="form-control" id="ve-state_province" value="<?= htmlspecialchars($p['state_province'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-0"><label class="small font-weight-bold">PIN Code</label><input type="text" class="form-control" id="ve-postal_code" value="<?= htmlspecialchars($p['postal_code'] ?? '') ?>" /></div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-danger mb-3">
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><i class="fas fa-phone-alt mr-1 text-danger"></i>Emergency Contact</h6></div>
+										<div class="card-body py-3">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label class="small font-weight-bold">Contact Name</label><input type="text" class="form-control" id="ve-emergency_contact_name" value="<?= htmlspecialchars($p['emergency_contact_name'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label class="small font-weight-bold">Contact Phone</label><input type="text" class="form-control" id="ve-emergency_contact_phone" value="<?= htmlspecialchars($p['emergency_contact_phone'] ?? '') ?>" placeholder="+91 98765 43210" /></div>
+											</div>
+										</div>
+									</div>
+									<div class="mb-4">
+										<button type="button" id="btnSavePatient" class="btn btn-success px-4">
+											<i class="fas fa-save mr-1"></i> Save Changes
+										</button>
+									</div>
 								</div>
-								<h5 class="mt-3 mb-3">Address</h5>
-								<div class="row">
-									<div class="col-md-4 mb-3"><label>Address</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['address_line1'] ?? '') ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>City</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['city'] ?? '') ?>" readonly /></div>
-									<div class="col-md-4 mb-3"><label>State</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['state_province'] ?? '') ?>" readonly /></div>
-								</div>
-								<h5 class="mt-3 mb-3">Emergency Contact</h5>
-								<div class="row">
-									<div class="col-md-6 mb-3"><label>Name</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['emergency_contact_name'] ?? '') ?>" readonly /></div>
-									<div class="col-md-6 mb-3"><label>Phone</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['emergency_contact_phone'] ?? '') ?>" readonly /></div>
-								</div>
-								<div class="row">
-									<div class="col-md-12 mb-3"><label>Allergies</label><input type="text" class="form-control" value="<?= htmlspecialchars($p['allergies'] ?? '') ?>" readonly /></div>
-								</div>
-								<div class="tab-navigation">
+								<div class="tab-navigation mt-2">
 									<button type="button" class="btn btn-secondary" disabled><i class="fas fa-chevron-left"></i> Previous</button>
-									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-personal">Next <i class="fas fa-chevron-right"></i></button>
+									<button type="button" class="btn btn-success btn-next-tab px-4" data-target="#tab-personal">
+										<i class="fas fa-check-circle mr-1"></i> Patient Verified — Continue <i class="fas fa-chevron-right ml-1"></i>
+									</button>
 								</div>
 							</div>
 
 							<!-- ── Personal Tab ───────────────────────────── -->
 							<div class="tab-pane fade" id="tab-personal" role="tabpanel">
-								<h4 class="mb-3">Personal Information</h4>
 								<form class="intake-auto-save">
-									<div class="row">
-										<div class="col-md-6 mb-3">
-											<label>Symptoms/Complaints</label>
-											<textarea class="form-control" name="symptoms_complaints" rows="3" data-field="symptoms_complaints"><?= htmlspecialchars($vitals['symptoms_complaints'] ?? '') ?></textarea>
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-comment-medical mr-2"></i>Presenting Complaint</h5>
 										</div>
-										<div class="col-md-6 mb-3">
-											<label>Duration of Symptoms</label>
-											<input type="text" class="form-control" name="duration_of_symptoms" data-field="duration_of_symptoms" value="<?= htmlspecialchars($vitals['duration_of_symptoms'] ?? '') ?>" placeholder="e.g., 3 days, 2 weeks" />
-										</div>
-									</div>
-
-									<h5 class="mt-4 mb-3">Reproductive History</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3">
-											<label>Number of Children</label>
-											<input type="number" class="form-control" name="number_of_children" id="number_of_children" data-field="number_of_children" min="0" max="20" value="<?= htmlspecialchars($vitals['number_of_children'] ?? '0') ?>" />
-										</div>
-										<div class="col-md-3 mb-3">
-											<label>Uterus</label>
-											<select class="form-control" name="has_uterus" id="has_uterus" data-field="has_uterus">
-												<option value="1" <?= ($vitals['has_uterus'] ?? '1') === '1' || ($vitals['has_uterus'] ?? 1) === 1 ? 'selected' : '' ?>>Yes</option>
-												<option value="0" <?= ($vitals['has_uterus'] ?? '1') === '0' || ($vitals['has_uterus'] ?? 1) === 0 ? 'selected' : '' ?>>No</option>
-											</select>
-										</div>
-									</div>
-
-									<div id="deliveryDetailsSection" style="display:none;">
-										<h6 class="mb-3">Delivery Details</h6>
-										<div class="row">
-											<div class="col-md-4 mb-3">
-												<label>Type of Delivery</label>
-												<select class="form-control" name="type_of_delivery" data-field="type_of_delivery">
-													<option value="">Select...</option>
-													<option value="LSCS" <?= ($vitals['type_of_delivery'] ?? '') === 'LSCS' ? 'selected' : '' ?>>LSCS</option>
-													<option value="ND" <?= ($vitals['type_of_delivery'] ?? '') === 'ND' ? 'selected' : '' ?>>ND</option>
-												</select>
-											</div>
-											<div class="col-md-4 mb-3">
-												<label>Delivery Location</label>
-												<input type="text" class="form-control" name="delivery_location" data-field="delivery_location" value="<?= htmlspecialchars($vitals['delivery_location'] ?? '') ?>" />
-											</div>
-											<div class="col-md-4 mb-3">
-												<label>Delivery Source</label>
-												<select class="form-control" name="delivery_source" data-field="delivery_source">
-													<option value="">Select...</option>
-													<option value="PRIVATE" <?= ($vitals['delivery_source'] ?? '') === 'PRIVATE' ? 'selected' : '' ?>>Private</option>
-													<option value="GH" <?= ($vitals['delivery_source'] ?? '') === 'GH' ? 'selected' : '' ?>>GH</option>
-												</select>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label>Symptoms / Complaints</label>
+													<textarea class="form-control" name="symptoms_complaints" rows="3" data-field="symptoms_complaints"><?= htmlspecialchars($vitals['symptoms_complaints'] ?? '') ?></textarea>
+												</div>
+												<div class="col-md-6 mb-3">
+													<label>Duration of Symptoms</label>
+													<input type="text" class="form-control" name="duration_of_symptoms" data-field="duration_of_symptoms" value="<?= htmlspecialchars($vitals['duration_of_symptoms'] ?? '') ?>" placeholder="e.g., 3 days, 2 weeks" />
+												</div>
 											</div>
 										</div>
 									</div>
-
-									<div id="menstrualDetailsSection" style="display:none;">
-										<h5 class="mt-4 mb-3">Menstrual Details</h5>
-										<div class="row">
-											<div class="col-md-3 mb-3"><label>Age of Onset</label><input type="number" class="form-control" name="menstrual_age_of_onset" data-field="menstrual_age_of_onset" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_age_of_onset'] ?? '') ?>" /><small class="text-muted">Years</small></div>
-											<div class="col-md-3 mb-3"><label>Cycle Frequency</label><input type="number" class="form-control" name="menstrual_cycle_frequency" data-field="menstrual_cycle_frequency" min="0" max="90" value="<?= htmlspecialchars($vitals['menstrual_cycle_frequency'] ?? '') ?>" /><small class="text-muted">Days</small></div>
-											<div class="col-md-3 mb-3"><label>Duration of Flow</label><input type="number" class="form-control" name="menstrual_duration_of_flow" data-field="menstrual_duration_of_flow" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_duration_of_flow'] ?? '') ?>" /><small class="text-muted">Days</small></div>
-											<div class="col-md-3 mb-3"><label>LMP</label><input type="date" class="form-control" name="menstrual_lmp" data-field="menstrual_lmp" value="<?= htmlspecialchars($vitals['menstrual_lmp'] ?? '') ?>" /></div>
+									<div class="card card-outline card-secondary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-baby mr-2"></i>Reproductive History</h5>
 										</div>
-										<div class="row">
-											<div class="col-md-3 mb-3">
-												<label>MH</label>
-												<select class="form-control" name="menstrual_mh" data-field="menstrual_mh">
-													<option value="">Select...</option>
-													<option value="REGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'REGULAR' ? 'selected' : '' ?>>Regular</option>
-													<option value="IRREGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'IRREGULAR' ? 'selected' : '' ?>>Irregular</option>
-												</select>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3">
+													<label>Number of Children</label>
+													<input type="number" class="form-control" name="number_of_children" id="number_of_children" data-field="number_of_children" min="0" max="20" value="<?= htmlspecialchars($vitals['number_of_children'] ?? '0') ?>" />
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Uterus</label>
+													<select class="form-control" name="has_uterus" id="has_uterus" data-field="has_uterus">
+														<option value="1" <?= ($vitals['has_uterus'] ?? '1') === '1' || ($vitals['has_uterus'] ?? 1) === 1 ? 'selected' : '' ?>>Yes</option>
+														<option value="0" <?= ($vitals['has_uterus'] ?? '1') === '0' || ($vitals['has_uterus'] ?? 1) === 0 ? 'selected' : '' ?>>No</option>
+													</select>
+												</div>
+											</div>
+											<div id="deliveryDetailsSection" style="display:none;">
+												<hr class="my-2">
+												<h6 class="mb-3 text-secondary"><i class="fas fa-hospital mr-1"></i>Delivery Details</h6>
+												<div class="row">
+													<div class="col-md-4 mb-3">
+														<label>Type of Delivery</label>
+														<select class="form-control" name="type_of_delivery" data-field="type_of_delivery">
+															<option value="">Select...</option>
+															<option value="LSCS" <?= ($vitals['type_of_delivery'] ?? '') === 'LSCS' ? 'selected' : '' ?>>LSCS</option>
+															<option value="ND" <?= ($vitals['type_of_delivery'] ?? '') === 'ND' ? 'selected' : '' ?>>ND</option>
+														</select>
+													</div>
+													<div class="col-md-4 mb-3">
+														<label>Delivery Location</label>
+														<input type="text" class="form-control" name="delivery_location" data-field="delivery_location" value="<?= htmlspecialchars($vitals['delivery_location'] ?? '') ?>" />
+													</div>
+													<div class="col-md-4 mb-3">
+														<label>Delivery Source</label>
+														<select class="form-control" name="delivery_source" data-field="delivery_source">
+															<option value="">Select...</option>
+															<option value="PRIVATE" <?= ($vitals['delivery_source'] ?? '') === 'PRIVATE' ? 'selected' : '' ?>>Private</option>
+															<option value="GH" <?= ($vitals['delivery_source'] ?? '') === 'GH' ? 'selected' : '' ?>>GH</option>
+														</select>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-info mb-3" id="menstrualDetailsSection" style="display:none;">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-calendar-alt mr-2"></i>Menstrual Details</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3"><label>Age of Onset</label><input type="number" class="form-control" name="menstrual_age_of_onset" data-field="menstrual_age_of_onset" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_age_of_onset'] ?? '') ?>" /><small class="text-muted">Years</small></div>
+												<div class="col-md-3 mb-3"><label>Cycle Frequency</label><input type="number" class="form-control" name="menstrual_cycle_frequency" data-field="menstrual_cycle_frequency" min="0" max="90" value="<?= htmlspecialchars($vitals['menstrual_cycle_frequency'] ?? '') ?>" /><small class="text-muted">Days</small></div>
+												<div class="col-md-3 mb-3"><label>Duration of Flow</label><input type="number" class="form-control" name="menstrual_duration_of_flow" data-field="menstrual_duration_of_flow" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_duration_of_flow'] ?? '') ?>" /><small class="text-muted">Days</small></div>
+												<div class="col-md-3 mb-3"><label>LMP</label><input type="date" class="form-control" name="menstrual_lmp" data-field="menstrual_lmp" value="<?= htmlspecialchars($vitals['menstrual_lmp'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-3 mb-0">
+													<label>MH</label>
+													<select class="form-control" name="menstrual_mh" data-field="menstrual_mh">
+														<option value="">Select...</option>
+														<option value="REGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'REGULAR' ? 'selected' : '' ?>>Regular</option>
+														<option value="IRREGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'IRREGULAR' ? 'selected' : '' ?>>Irregular</option>
+													</select>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -359,60 +522,98 @@
 
 							<!-- ── History Tab ────────────────────────────── -->
 							<div class="tab-pane fade" id="tab-history" role="tabpanel">
-								<h4 class="mb-3">Medical History</h4>
 								<form class="intake-auto-save">
-									<h5 class="mb-3">Conditions</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3">
-											<label>DM (Diabetes)</label>
-											<select class="form-control" name="condition_dm" data-field="condition_dm">
-												<option value="NO" <?= ($historyData['condition_dm'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-												<option value="CURRENT" <?= ($historyData['condition_dm'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-												<option value="PAST" <?= ($historyData['condition_dm'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
-											</select>
+									<div class="card card-outline card-warning mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-file-medical-alt mr-2"></i>Medical Conditions</h5>
 										</div>
-										<div class="col-md-3 mb-3">
-											<label>HTN (Hypertension)</label>
-											<select class="form-control" name="condition_htn" data-field="condition_htn">
-												<option value="NO" <?= ($historyData['condition_htn'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-												<option value="CURRENT" <?= ($historyData['condition_htn'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-												<option value="PAST" <?= ($historyData['condition_htn'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
-											</select>
-										</div>
-										<div class="col-md-3 mb-3">
-											<label>TSH (Thyroid)</label>
-											<select class="form-control" name="condition_tsh" data-field="condition_tsh">
-												<option value="NO" <?= ($historyData['condition_tsh'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-												<option value="CURRENT" <?= ($historyData['condition_tsh'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-												<option value="PAST" <?= ($historyData['condition_tsh'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
-											</select>
-										</div>
-										<div class="col-md-3 mb-3">
-											<label>Heart Disease</label>
-											<select class="form-control" name="condition_heart_disease" data-field="condition_heart_disease">
-												<option value="NO" <?= ($historyData['condition_heart_disease'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-												<option value="CURRENT" <?= ($historyData['condition_heart_disease'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-												<option value="PAST" <?= ($historyData['condition_heart_disease'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
-											</select>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3">
+													<label>DM (Diabetes)</label>
+													<select class="form-control" name="condition_dm" data-field="condition_dm">
+														<option value="NO" <?= ($historyData['condition_dm'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
+														<option value="CURRENT" <?= ($historyData['condition_dm'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
+														<option value="PAST" <?= ($historyData['condition_dm'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+													</select>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>HTN (Hypertension)</label>
+													<select class="form-control" name="condition_htn" data-field="condition_htn">
+														<option value="NO" <?= ($historyData['condition_htn'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
+														<option value="CURRENT" <?= ($historyData['condition_htn'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
+														<option value="PAST" <?= ($historyData['condition_htn'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+													</select>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>TSH (Thyroid)</label>
+													<select class="form-control" name="condition_tsh" data-field="condition_tsh">
+														<option value="NO" <?= ($historyData['condition_tsh'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
+														<option value="CURRENT" <?= ($historyData['condition_tsh'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
+														<option value="PAST" <?= ($historyData['condition_tsh'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+													</select>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Heart Disease</label>
+													<select class="form-control" name="condition_heart_disease" data-field="condition_heart_disease">
+														<option value="NO" <?= ($historyData['condition_heart_disease'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
+														<option value="CURRENT" <?= ($historyData['condition_heart_disease'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
+														<option value="PAST" <?= ($historyData['condition_heart_disease'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+													</select>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>Other Conditions</label><textarea class="form-control" name="condition_others" data-field="condition_others" rows="2"><?= htmlspecialchars($historyData['condition_others'] ?? '') ?></textarea></div>
+												<div class="col-md-6 mb-0"><label>Surgical History</label><textarea class="form-control" name="surgical_history" data-field="surgical_history" rows="2"><?= htmlspecialchars($historyData['surgical_history'] ?? '') ?></textarea></div>
+											</div>
 										</div>
 									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Other Conditions</label><textarea class="form-control" name="condition_others" data-field="condition_others" rows="2"><?= htmlspecialchars($historyData['condition_others'] ?? '') ?></textarea></div>
-										<div class="col-md-6 mb-3"><label>Surgical History</label><textarea class="form-control" name="surgical_history" data-field="surgical_history" rows="2"><?= htmlspecialchars($historyData['surgical_history'] ?? '') ?></textarea></div>
+									<div class="card card-outline card-danger mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-allergies mr-2"></i>Allergies</h5>
+										</div>
+										<div class="card-body">
+											<div class="mb-3">
+												<div class="custom-control custom-checkbox">
+													<input type="checkbox" class="custom-control-input" id="noKnownAllergies"
+														name="no_known_allergies" data-field="no_known_allergies" value="1"
+														<?= !empty($historyData['no_known_allergies']) ? 'checked' : '' ?> />
+													<label class="custom-control-label font-weight-bold text-danger" for="noKnownAllergies">No known allergies</label>
+													<small class="text-muted ml-2">(Check this if the patient has no allergies &mdash; do not leave blank)</small>
+												</div>
+											</div>
+											<div id="allergySection"<?= !empty($historyData['no_known_allergies']) ? ' style="display:none;"' : '' ?>>
+												<div class="d-flex font-weight-bold small text-muted mb-1 px-1">
+													<span class="flex-fill mr-2">Allergy / Drug / Substance</span>
+													<span class="flex-fill mr-2">Reaction / Symptom</span>
+													<span style="width:42px;"></span>
+												</div>
+												<div id="allergyRows"></div>
+												<button type="button" id="btnAddAllergy" class="btn btn-sm btn-outline-secondary mt-2">
+													<i class="fas fa-plus mr-1"></i> Add Another Allergy
+												</button>
+											</div>
+										</div>
 									</div>
 
-									<h5 class="mt-4 mb-3">Family History</h5>
-									<div class="row">
-										<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_cancer" name="family_history_cancer" data-field="family_history_cancer" value="1" <?= !empty($historyData['family_history_cancer']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_cancer">Cancer</label></div></div>
-										<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_tb" name="family_history_tuberculosis" data-field="family_history_tuberculosis" value="1" <?= !empty($historyData['family_history_tuberculosis']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_tb">Tuberculosis</label></div></div>
-										<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_diabetes" name="family_history_diabetes" data-field="family_history_diabetes" value="1" <?= !empty($historyData['family_history_diabetes']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_diabetes">Diabetes</label></div></div>
-									</div>
-									<div class="row">
-										<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_bp" name="family_history_bp" data-field="family_history_bp" value="1" <?= !empty($historyData['family_history_bp']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_bp">BP (Hypertension)</label></div></div>
-										<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_thyroid" name="family_history_thyroid" data-field="family_history_thyroid" value="1" <?= !empty($historyData['family_history_thyroid']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_thyroid">Thyroid</label></div></div>
-									</div>
-									<div class="row">
-										<div class="col-md-12 mb-3"><label>Other Family History</label><input type="text" class="form-control" name="family_history_other" data-field="family_history_other" value="<?= htmlspecialchars($historyData['family_history_other'] ?? '') ?>" /></div>
+									<div class="card card-outline card-success mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-users mr-2"></i>Family History</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_cancer" name="family_history_cancer" data-field="family_history_cancer" value="1" <?= !empty($historyData['family_history_cancer']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_cancer">Cancer</label></div></div>
+												<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_tb" name="family_history_tuberculosis" data-field="family_history_tuberculosis" value="1" <?= !empty($historyData['family_history_tuberculosis']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_tb">Tuberculosis</label></div></div>
+												<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_diabetes" name="family_history_diabetes" data-field="family_history_diabetes" value="1" <?= !empty($historyData['family_history_diabetes']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_diabetes">Diabetes</label></div></div>
+											</div>
+											<div class="row">
+												<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_bp" name="family_history_bp" data-field="family_history_bp" value="1" <?= !empty($historyData['family_history_bp']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_bp">BP (Hypertension)</label></div></div>
+												<div class="col-md-4 mb-3"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="fh_thyroid" name="family_history_thyroid" data-field="family_history_thyroid" value="1" <?= !empty($historyData['family_history_thyroid']) ? 'checked' : '' ?> /><label class="custom-control-label" for="fh_thyroid">Thyroid</label></div></div>
+											</div>
+											<div class="row">
+												<div class="col-md-12 mb-0"><label>Other Family History</label><input type="text" class="form-control" name="family_history_other" data-field="family_history_other" value="<?= htmlspecialchars($historyData['family_history_other'] ?? '') ?>" /></div>
+											</div>
+										</div>
 									</div>
 								</form>
 								<div class="tab-navigation">
@@ -423,43 +624,97 @@
 
 							<!-- ── General Tab ────────────────────────────── -->
 							<div class="tab-pane fade" id="tab-general" role="tabpanel">
-								<h4 class="mb-3">General Examination</h4>
 								<form class="intake-auto-save">
-									<h5 class="mb-3">Vital Signs</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3"><label>Pulse</label><div class="input-group"><input type="number" class="form-control" name="general_pulse" data-field="general_pulse" min="0" max="300" value="<?= htmlspecialchars($vitals['general_pulse'] ?? $vitals['pulse'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">/mt</span></div></div></div>
-										<div class="col-md-3 mb-3">
-											<label>B.P.</label>
-											<div class="input-group">
-												<input type="number" class="form-control" name="general_bp_systolic" data-field="general_bp_systolic" min="0" max="300" placeholder="Sys" value="<?= htmlspecialchars($vitals['general_bp_systolic'] ?? $vitals['bp_systolic'] ?? '') ?>" />
-												<div class="input-group-append input-group-prepend"><span class="input-group-text">/</span></div>
-												<input type="number" class="form-control" name="general_bp_diastolic" data-field="general_bp_diastolic" min="0" max="200" placeholder="Dia" value="<?= htmlspecialchars($vitals['general_bp_diastolic'] ?? $vitals['bp_diastolic'] ?? '') ?>" />
-												<div class="input-group-append"><span class="input-group-text">mmHg</span></div>
+									<div class="card card-outline card-danger mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-heartbeat mr-2"></i>Vital Signs</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3">
+													<label>Pulse</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="general_pulse" data-field="general_pulse" min="0" max="300" value="<?= htmlspecialchars($vitals['general_pulse'] ?? $vitals['pulse'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">/mt</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>B.P.</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="general_bp_systolic" data-field="general_bp_systolic" min="0" max="300" placeholder="Sys" value="<?= htmlspecialchars($vitals['general_bp_systolic'] ?? $vitals['bp_systolic'] ?? '') ?>" />
+														<div class="input-group-append input-group-prepend"><span class="input-group-text">/</span></div>
+														<input type="number" class="form-control" name="general_bp_diastolic" data-field="general_bp_diastolic" min="0" max="200" placeholder="Dia" value="<?= htmlspecialchars($vitals['general_bp_diastolic'] ?? $vitals['bp_diastolic'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">mmHg</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>SpO2</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="spo2" data-field="spo2" min="50" max="100" value="<?= htmlspecialchars($vitals['spo2'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">%</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Temperature</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="temperature" data-field="temperature" min="90" max="110" step="0.1" value="<?= htmlspecialchars($vitals['temperature'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">&deg;F</span></div>
+													</div>
+												</div>
 											</div>
 										</div>
-										<div class="col-md-3 mb-3"><label>SpO2</label><div class="input-group"><input type="number" class="form-control" name="spo2" data-field="spo2" min="50" max="100" value="<?= htmlspecialchars($vitals['spo2'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">%</span></div></div></div>
-										<div class="col-md-3 mb-3"><label>Temperature</label><div class="input-group"><input type="number" class="form-control" name="temperature" data-field="temperature" min="90" max="110" step="0.1" value="<?= htmlspecialchars($vitals['temperature'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">&deg;F</span></div></div></div>
 									</div>
-
-									<h5 class="mt-4 mb-3">Physical Examination</h5>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Heart</label><input type="text" class="form-control" name="general_heart" data-field="general_heart" value="<?= htmlspecialchars($vitals['general_heart'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>Lungs</label><input type="text" class="form-control" name="general_lungs" data-field="general_lungs" value="<?= htmlspecialchars($vitals['general_lungs'] ?? '') ?>" /></div>
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-user-md mr-2"></i>Physical Examination</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>Heart</label><input type="text" class="form-control" name="general_heart" data-field="general_heart" value="<?= htmlspecialchars($vitals['general_heart'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label>Lungs</label><input type="text" class="form-control" name="general_lungs" data-field="general_lungs" value="<?= htmlspecialchars($vitals['general_lungs'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>Liver</label><input type="text" class="form-control" name="general_liver" data-field="general_liver" value="<?= htmlspecialchars($vitals['general_liver'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label>Spleen</label><input type="text" class="form-control" name="general_spleen" data-field="general_spleen" value="<?= htmlspecialchars($vitals['general_spleen'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-0"><label>Lymph Glands</label><input type="text" class="form-control" name="general_lymph_glands" data-field="general_lymph_glands" value="<?= htmlspecialchars($vitals['general_lymph_glands'] ?? '') ?>" /></div>
+											</div>
+										</div>
 									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Liver</label><input type="text" class="form-control" name="general_liver" data-field="general_liver" value="<?= htmlspecialchars($vitals['general_liver'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>Spleen</label><input type="text" class="form-control" name="general_spleen" data-field="general_spleen" value="<?= htmlspecialchars($vitals['general_spleen'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Lymph Glands</label><input type="text" class="form-control" name="general_lymph_glands" data-field="general_lymph_glands" value="<?= htmlspecialchars($vitals['general_lymph_glands'] ?? '') ?>" /></div>
-									</div>
-
-									<h5 class="mt-4 mb-3">Anthropometric Measurements</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3"><label>Height</label><div class="input-group"><input type="number" class="form-control" name="general_height" data-field="general_height" min="0" max="300" value="<?= htmlspecialchars($vitals['general_height'] ?? $vitals['height_cm'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">cm</span></div></div></div>
-										<div class="col-md-3 mb-3"><label>Weight</label><div class="input-group"><input type="number" class="form-control" name="general_weight" data-field="general_weight" min="0" max="500" step="0.1" value="<?= htmlspecialchars($vitals['general_weight'] ?? $vitals['weight_kg'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">kgs</span></div></div></div>
-										<div class="col-md-3 mb-3"><label>BMI</label><input type="number" class="form-control" name="general_bmi" data-field="general_bmi" min="0" max="100" step="0.1" value="<?= htmlspecialchars($vitals['general_bmi'] ?? '') ?>" /></div>
-										<div class="col-md-3 mb-3"><label>Obesity/Overweight</label><select class="form-control" name="general_obesity_overweight" data-field="general_obesity_overweight"><option value="0" <?= ($vitals['general_obesity_overweight'] ?? '0') == '0' ? 'selected' : '' ?>>No</option><option value="1" <?= ($vitals['general_obesity_overweight'] ?? '0') == '1' ? 'selected' : '' ?>>Yes</option></select></div>
+									<div class="card card-outline card-success mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-weight mr-2"></i>Anthropometric Measurements</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3">
+													<label>Height</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="general_height" data-field="general_height" min="0" max="300" value="<?= htmlspecialchars($vitals['general_height'] ?? $vitals['height_cm'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">cm</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Weight</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="general_weight" data-field="general_weight" min="0" max="500" step="0.1" value="<?= htmlspecialchars($vitals['general_weight'] ?? $vitals['weight_kg'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">kgs</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>BMI</label>
+													<input type="number" class="form-control" name="general_bmi" data-field="general_bmi" min="0" max="100" step="0.1" value="<?= htmlspecialchars($vitals['general_bmi'] ?? '') ?>" />
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Obesity / Overweight</label>
+													<select class="form-control" name="general_obesity_overweight" data-field="general_obesity_overweight">
+														<option value="0" <?= ($vitals['general_obesity_overweight'] ?? '0') == '0' ? 'selected' : '' ?>>No</option>
+														<option value="1" <?= ($vitals['general_obesity_overweight'] ?? '0') == '1' ? 'selected' : '' ?>>Yes</option>
+													</select>
+												</div>
+											</div>
+										</div>
 									</div>
 								</form>
 								<div class="tab-navigation">
@@ -470,110 +725,131 @@
 
 							<!-- ── Examinations Tab ────────────────────────── -->
 							<div class="tab-pane fade" id="tab-examinations" role="tabpanel">
-								<h4 class="mb-3">Physical Examinations</h4>
 								<form class="intake-auto-save">
-									<h5 class="mb-3">Head and Neck</h5>
-									<div class="row">
-										<div class="col-md-4 mb-3"><label>Mouth</label><input type="text" class="form-control" name="exam_mouth" data-field="exam_mouth" value="<?= htmlspecialchars($examData['exam_mouth'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Lips</label><input type="text" class="form-control" name="exam_lips" data-field="exam_lips" value="<?= htmlspecialchars($examData['exam_lips'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Buccal Mucosa</label><input type="text" class="form-control" name="exam_buccal_mucosa" data-field="exam_buccal_mucosa" value="<?= htmlspecialchars($examData['exam_buccal_mucosa'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-4 mb-3"><label>Teeth</label><input type="text" class="form-control" name="exam_teeth" data-field="exam_teeth" value="<?= htmlspecialchars($examData['exam_teeth'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Tongue</label><input type="text" class="form-control" name="exam_tongue" data-field="exam_tongue" value="<?= htmlspecialchars($examData['exam_tongue'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Oropharynx</label><input type="text" class="form-control" name="exam_oropharynx" data-field="exam_oropharynx" value="<?= htmlspecialchars($examData['exam_oropharynx'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-4 mb-3"><label>Hypo</label><input type="text" class="form-control" name="exam_hypo" data-field="exam_hypo" value="<?= htmlspecialchars($examData['exam_hypo'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Naso-Pharynx</label><input type="text" class="form-control" name="exam_naso_pharynx" data-field="exam_naso_pharynx" value="<?= htmlspecialchars($examData['exam_naso_pharynx'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Larynx</label><input type="text" class="form-control" name="exam_larynx" data-field="exam_larynx" value="<?= htmlspecialchars($examData['exam_larynx'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-4 mb-3"><label>Nose</label><input type="text" class="form-control" name="exam_nose" data-field="exam_nose" value="<?= htmlspecialchars($examData['exam_nose'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Ears</label><input type="text" class="form-control" name="exam_ears" data-field="exam_ears" value="<?= htmlspecialchars($examData['exam_ears'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Neck</label><input type="text" class="form-control" name="exam_neck" data-field="exam_neck" value="<?= htmlspecialchars($examData['exam_neck'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Bones and Joints</label><input type="text" class="form-control" name="exam_bones_joints" data-field="exam_bones_joints" value="<?= htmlspecialchars($examData['exam_bones_joints'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>Abdomen and Genital Organs</label><input type="text" class="form-control" name="exam_abdomen_genital" data-field="exam_abdomen_genital" value="<?= htmlspecialchars($examData['exam_abdomen_genital'] ?? '') ?>" /></div>
-									</div>
-
-									<h5 class="mt-4 mb-3">Breasts</h5>
-									<div class="row">
-										<div class="col-md-4 mb-3"><label>Left</label><input type="text" class="form-control" name="exam_breast_left" data-field="exam_breast_left" value="<?= htmlspecialchars($examData['exam_breast_left'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Right</label><input type="text" class="form-control" name="exam_breast_right" data-field="exam_breast_right" value="<?= htmlspecialchars($examData['exam_breast_right'] ?? '') ?>" /></div>
-										<div class="col-md-4 mb-3"><label>Axillary Nodes</label><input type="text" class="form-control" name="exam_breast_axillary_nodes" data-field="exam_breast_axillary_nodes" value="<?= htmlspecialchars($examData['exam_breast_axillary_nodes'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-12 mb-3">
-											<label class="d-block">Breast Examination Diagram</label>
-											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('breast','diag_breast','breastDiagramPreview')">
-												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_breast']) ? 'Edit' : 'Draw' ?> Breast Diagram
-											</button>
-											<div id="breastDiagramPreview" class="mt-2<?= empty($cs['diag_breast']) ? ' d-none' : '' ?>">
-												<img src="" data-diag-field="diag_breast" data-diag-type="breast"
-												     alt="Breast Examination Diagram" class="img-thumbnail diagram-preview-img">
+									<div class="card card-outline card-secondary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-head-side-cough mr-2"></i>Head and Neck</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-4 mb-3"><label>Mouth</label><input type="text" class="form-control" name="exam_mouth" data-field="exam_mouth" value="<?= htmlspecialchars($examData['exam_mouth'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Lips</label><input type="text" class="form-control" name="exam_lips" data-field="exam_lips" value="<?= htmlspecialchars($examData['exam_lips'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Buccal Mucosa</label><input type="text" class="form-control" name="exam_buccal_mucosa" data-field="exam_buccal_mucosa" value="<?= htmlspecialchars($examData['exam_buccal_mucosa'] ?? '') ?>" /></div>
 											</div>
-											<input type="hidden" id="diag_breast" value="<?= htmlspecialchars($cs['diag_breast'] ?? '') ?>">
+											<div class="row">
+												<div class="col-md-4 mb-3"><label>Teeth</label><input type="text" class="form-control" name="exam_teeth" data-field="exam_teeth" value="<?= htmlspecialchars($examData['exam_teeth'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Tongue</label><input type="text" class="form-control" name="exam_tongue" data-field="exam_tongue" value="<?= htmlspecialchars($examData['exam_tongue'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Oropharynx</label><input type="text" class="form-control" name="exam_oropharynx" data-field="exam_oropharynx" value="<?= htmlspecialchars($examData['exam_oropharynx'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-4 mb-3"><label>Hypo</label><input type="text" class="form-control" name="exam_hypo" data-field="exam_hypo" value="<?= htmlspecialchars($examData['exam_hypo'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Naso-Pharynx</label><input type="text" class="form-control" name="exam_naso_pharynx" data-field="exam_naso_pharynx" value="<?= htmlspecialchars($examData['exam_naso_pharynx'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Larynx</label><input type="text" class="form-control" name="exam_larynx" data-field="exam_larynx" value="<?= htmlspecialchars($examData['exam_larynx'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-4 mb-3"><label>Nose</label><input type="text" class="form-control" name="exam_nose" data-field="exam_nose" value="<?= htmlspecialchars($examData['exam_nose'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Ears</label><input type="text" class="form-control" name="exam_ears" data-field="exam_ears" value="<?= htmlspecialchars($examData['exam_ears'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Neck</label><input type="text" class="form-control" name="exam_neck" data-field="exam_neck" value="<?= htmlspecialchars($examData['exam_neck'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>Bones and Joints</label><input type="text" class="form-control" name="exam_bones_joints" data-field="exam_bones_joints" value="<?= htmlspecialchars($examData['exam_bones_joints'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-0"><label>Abdomen and Genital Organs</label><input type="text" class="form-control" name="exam_abdomen_genital" data-field="exam_abdomen_genital" value="<?= htmlspecialchars($examData['exam_abdomen_genital'] ?? '') ?>" /></div>
+											</div>
 										</div>
 									</div>
-
-									<h5 class="mt-4 mb-3">Pelvic Examination Introitus</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3"><label>Cervix</label><input type="text" class="form-control" name="exam_pelvic_cervix" data-field="exam_pelvic_cervix" value="<?= htmlspecialchars($examData['exam_pelvic_cervix'] ?? '') ?>" /></div>
-										<div class="col-md-3 mb-3"><label>Uterus</label><input type="text" class="form-control" name="exam_pelvic_uterus" data-field="exam_pelvic_uterus" value="<?= htmlspecialchars($examData['exam_pelvic_uterus'] ?? '') ?>" /></div>
-										<div class="col-md-3 mb-3"><label>Ovaries</label><input type="text" class="form-control" name="exam_pelvic_ovaries" data-field="exam_pelvic_ovaries" value="<?= htmlspecialchars($examData['exam_pelvic_ovaries'] ?? '') ?>" /></div>
-										<div class="col-md-3 mb-3"><label>Adnexa</label><input type="text" class="form-control" name="exam_pelvic_adnexa" data-field="exam_pelvic_adnexa" value="<?= htmlspecialchars($examData['exam_pelvic_adnexa'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-12 mb-3">
-											<label class="d-block">Pelvic Examination Diagram</label>
-											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('pelvic','diag_pelvic','pelvicDiagramPreview')">
-												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_pelvic']) ? 'Edit' : 'Draw' ?> Pelvic Diagram
-											</button>
-											<div id="pelvicDiagramPreview" class="mt-2<?= empty($cs['diag_pelvic']) ? ' d-none' : '' ?>">
-												<img src="" data-diag-field="diag_pelvic" data-diag-type="pelvic"
-												     alt="Pelvic Examination Diagram" class="img-thumbnail diagram-preview-img">
+									<div class="card card-outline card-warning mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-search mr-2"></i>Breasts</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-4 mb-3"><label>Left</label><input type="text" class="form-control" name="exam_breast_left" data-field="exam_breast_left" value="<?= htmlspecialchars($examData['exam_breast_left'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Right</label><input type="text" class="form-control" name="exam_breast_right" data-field="exam_breast_right" value="<?= htmlspecialchars($examData['exam_breast_right'] ?? '') ?>" /></div>
+												<div class="col-md-4 mb-3"><label>Axillary Nodes</label><input type="text" class="form-control" name="exam_breast_axillary_nodes" data-field="exam_breast_axillary_nodes" value="<?= htmlspecialchars($examData['exam_breast_axillary_nodes'] ?? '') ?>" /></div>
 											</div>
-											<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
+											<div class="row">
+												<div class="col-12">
+													<label class="d-block">Breast Examination Diagram</label>
+													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('breast','diag_breast','breastDiagramPreview')">
+														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_breast']) ? 'Edit' : 'Draw' ?> Breast Diagram
+													</button>
+													<div id="breastDiagramPreview" class="mt-2<?= empty($cs['diag_breast']) ? ' d-none' : '' ?>">
+														<img src="" data-diag-field="diag_breast" data-diag-type="breast" alt="Breast Examination Diagram" class="img-thumbnail diagram-preview-img">
+													</div>
+													<input type="hidden" id="diag_breast" value="<?= htmlspecialchars($cs['diag_breast'] ?? '') ?>">
+												</div>
+											</div>
 										</div>
 									</div>
-
-									<h5 class="mt-4 mb-3">Rectal Examination</h5>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Skin</label><input type="text" class="form-control" name="exam_rectal_skin" data-field="exam_rectal_skin" value="<?= htmlspecialchars($examData['exam_rectal_skin'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>Remarks</label><input type="text" class="form-control" name="exam_rectal_remarks" data-field="exam_rectal_remarks" value="<?= htmlspecialchars($examData['exam_rectal_remarks'] ?? '') ?>" /></div>
-									</div>
-
-									<h5 class="mt-4 mb-3">Gynaecological Examination</h5>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>P/S</label><input type="text" class="form-control" name="exam_gynae_ps" data-field="exam_gynae_ps" value="<?= htmlspecialchars($examData['exam_gynae_ps'] ?? '') ?>" /></div>
-										<div class="col-md-6 mb-3"><label>P/V</label><input type="text" class="form-control" name="exam_gynae_pv" data-field="exam_gynae_pv" value="<?= htmlspecialchars($examData['exam_gynae_pv'] ?? '') ?>" /></div>
-									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3">
-											<label>VIA</label>
-											<input type="text" class="form-control mb-2" name="exam_gynae_via" data-field="exam_gynae_via" value="<?= htmlspecialchars($examData['exam_gynae_via'] ?? '') ?>" />
-											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('via','diag_via','viaDiagramPreview')">
-												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_via']) ? 'Edit' : 'Draw' ?> VIA Diagram
-											</button>
-											<div id="viaDiagramPreview" class="mt-2<?= empty($cs['diag_via']) ? ' d-none' : '' ?>">
-												<img src="" data-diag-field="diag_via" data-diag-type="via"
-												     alt="VIA Diagram" class="img-thumbnail diagram-preview-img">
-											</div>
-											<input type="hidden" id="diag_via" value="<?= htmlspecialchars($cs['diag_via'] ?? '') ?>">
+									<div class="card card-outline card-info mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-female mr-2"></i>Pelvic Examination Introitus</h5>
 										</div>
-										<div class="col-md-6 mb-3">
-											<label>VILI</label>
-											<input type="text" class="form-control mb-2" name="exam_gynae_vili" data-field="exam_gynae_vili" value="<?= htmlspecialchars($examData['exam_gynae_vili'] ?? '') ?>" />
-											<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('vili','diag_vili','viliDiagramPreview')">
-												<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_vili']) ? 'Edit' : 'Draw' ?> VILI Diagram
-											</button>
-											<div id="viliDiagramPreview" class="mt-2<?= empty($cs['diag_vili']) ? ' d-none' : '' ?>">
-												<img src="" data-diag-field="diag_vili" data-diag-type="vili"
-												     alt="VILI Diagram" class="img-thumbnail diagram-preview-img">
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3"><label>Cervix</label><input type="text" class="form-control" name="exam_pelvic_cervix" data-field="exam_pelvic_cervix" value="<?= htmlspecialchars($examData['exam_pelvic_cervix'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label>Uterus</label><input type="text" class="form-control" name="exam_pelvic_uterus" data-field="exam_pelvic_uterus" value="<?= htmlspecialchars($examData['exam_pelvic_uterus'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label>Ovaries</label><input type="text" class="form-control" name="exam_pelvic_ovaries" data-field="exam_pelvic_ovaries" value="<?= htmlspecialchars($examData['exam_pelvic_ovaries'] ?? '') ?>" /></div>
+												<div class="col-md-3 mb-3"><label>Adnexa</label><input type="text" class="form-control" name="exam_pelvic_adnexa" data-field="exam_pelvic_adnexa" value="<?= htmlspecialchars($examData['exam_pelvic_adnexa'] ?? '') ?>" /></div>
 											</div>
-											<input type="hidden" id="diag_vili" value="<?= htmlspecialchars($cs['diag_vili'] ?? '') ?>">
+											<div class="row">
+												<div class="col-12">
+													<label class="d-block">Pelvic Examination Diagram</label>
+													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('pelvic','diag_pelvic','pelvicDiagramPreview')">
+														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_pelvic']) ? 'Edit' : 'Draw' ?> Pelvic Diagram
+													</button>
+													<div id="pelvicDiagramPreview" class="mt-2<?= empty($cs['diag_pelvic']) ? ' d-none' : '' ?>">
+														<img src="" data-diag-field="diag_pelvic" data-diag-type="pelvic" alt="Pelvic Examination Diagram" class="img-thumbnail diagram-preview-img">
+													</div>
+													<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-secondary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-notes-medical mr-2"></i>Rectal Examination</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>Skin</label><input type="text" class="form-control" name="exam_rectal_skin" data-field="exam_rectal_skin" value="<?= htmlspecialchars($examData['exam_rectal_skin'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-0"><label>Remarks</label><input type="text" class="form-control" name="exam_rectal_remarks" data-field="exam_rectal_remarks" value="<?= htmlspecialchars($examData['exam_rectal_remarks'] ?? '') ?>" /></div>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-diagnoses mr-2"></i>Gynaecological Examination</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6 mb-3"><label>P/S</label><input type="text" class="form-control" name="exam_gynae_ps" data-field="exam_gynae_ps" value="<?= htmlspecialchars($examData['exam_gynae_ps'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label>P/V</label><input type="text" class="form-control" name="exam_gynae_pv" data-field="exam_gynae_pv" value="<?= htmlspecialchars($examData['exam_gynae_pv'] ?? '') ?>" /></div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label>VIA</label>
+													<input type="text" class="form-control mb-2" name="exam_gynae_via" data-field="exam_gynae_via" value="<?= htmlspecialchars($examData['exam_gynae_via'] ?? '') ?>" />
+													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('via','diag_via','viaDiagramPreview')">
+														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_via']) ? 'Edit' : 'Draw' ?> VIA Diagram
+													</button>
+													<div id="viaDiagramPreview" class="mt-2<?= empty($cs['diag_via']) ? ' d-none' : '' ?>">
+														<img src="" data-diag-field="diag_via" data-diag-type="via" alt="VIA Diagram" class="img-thumbnail diagram-preview-img">
+													</div>
+													<input type="hidden" id="diag_via" value="<?= htmlspecialchars($cs['diag_via'] ?? '') ?>">
+												</div>
+												<div class="col-md-6 mb-3">
+													<label>VILI</label>
+													<input type="text" class="form-control mb-2" name="exam_gynae_vili" data-field="exam_gynae_vili" value="<?= htmlspecialchars($examData['exam_gynae_vili'] ?? '') ?>" />
+													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('vili','diag_vili','viliDiagramPreview')">
+														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_vili']) ? 'Edit' : 'Draw' ?> VILI Diagram
+													</button>
+													<div id="viliDiagramPreview" class="mt-2<?= empty($cs['diag_vili']) ? ' d-none' : '' ?>">
+														<img src="" data-diag-field="diag_vili" data-diag-type="vili" alt="VILI Diagram" class="img-thumbnail diagram-preview-img">
+													</div>
+													<input type="hidden" id="diag_vili" value="<?= htmlspecialchars($cs['diag_vili'] ?? '') ?>">
+												</div>
+											</div>
 										</div>
 									</div>
 								</form>
@@ -585,33 +861,143 @@
 
 							<!-- ── Labs Tab ───────────────────────────────── -->
 							<div class="tab-pane fade" id="tab-labs" role="tabpanel">
-								<h4 class="mb-3">Laboratory Tests</h4>
 								<form class="intake-auto-save">
-									<h5 class="mb-3">Investigations</h5>
-									<div class="row">
-										<div class="col-md-3 mb-3"><label>Hb</label><div class="input-group"><input type="number" class="form-control" name="lab_hb_percentage" data-field="lab_hb_percentage" min="0" max="100" value="<?= htmlspecialchars($labData['lab_hb_percentage'] ?? '') ?>" placeholder="%" /><div class="input-group-append"><span class="input-group-text">%</span></div><input type="number" class="form-control" name="lab_hb_gms" data-field="lab_hb_gms" min="0" max="30" step="0.1" value="<?= htmlspecialchars($labData['lab_hb_gms'] ?? '') ?>" placeholder="gms" /><div class="input-group-append"><span class="input-group-text">gms</span></div></div></div>
-										<div class="col-md-3 mb-3"><label>FBS</label><div class="input-group"><input type="number" class="form-control" name="lab_fbs" data-field="lab_fbs" min="0" max="1000" step="0.1" value="<?= htmlspecialchars($labData['lab_fbs'] ?? '') ?>" /><div class="input-group-append"><span class="input-group-text">mg/dl</span></div></div></div>
-										<div class="col-md-3 mb-3"><label>TSH</label><input type="number" class="form-control" name="lab_tsh" data-field="lab_tsh" min="0" max="100" step="0.01" value="<?= htmlspecialchars($labData['lab_tsh'] ?? '') ?>" /></div>
-										<div class="col-md-3 mb-3"><label>Sr. Creatinine</label><input type="number" class="form-control" name="lab_sr_creatinine" data-field="lab_sr_creatinine" min="0" max="20" step="0.01" value="<?= htmlspecialchars($labData['lab_sr_creatinine'] ?? '') ?>" /></div>
+									<div class="card card-outline card-success mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-vial mr-2"></i>Investigations</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-3 mb-3">
+													<label>Hb</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="lab_hb_percentage" data-field="lab_hb_percentage" min="0" max="100" value="<?= htmlspecialchars($labData['lab_hb_percentage'] ?? '') ?>" placeholder="%" />
+														<div class="input-group-append"><span class="input-group-text">%</span></div>
+														<input type="number" class="form-control" name="lab_hb_gms" data-field="lab_hb_gms" min="0" max="30" step="0.1" value="<?= htmlspecialchars($labData['lab_hb_gms'] ?? '') ?>" placeholder="gms" />
+														<div class="input-group-append"><span class="input-group-text">gms</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>FBS</label>
+													<div class="input-group">
+														<input type="number" class="form-control" name="lab_fbs" data-field="lab_fbs" min="0" max="1000" step="0.1" value="<?= htmlspecialchars($labData['lab_fbs'] ?? '') ?>" />
+														<div class="input-group-append"><span class="input-group-text">mg/dl</span></div>
+													</div>
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>TSH</label>
+													<input type="number" class="form-control" name="lab_tsh" data-field="lab_tsh" min="0" max="100" step="0.01" value="<?= htmlspecialchars($labData['lab_tsh'] ?? '') ?>" />
+												</div>
+												<div class="col-md-3 mb-3">
+													<label>Sr. Creatinine</label>
+													<input type="number" class="form-control" name="lab_sr_creatinine" data-field="lab_sr_creatinine" min="0" max="20" step="0.01" value="<?= htmlspecialchars($labData['lab_sr_creatinine'] ?? '') ?>" />
+												</div>
+											</div>
+											<div class="form-group mb-0">
+												<label>Others</label>
+												<textarea class="form-control" name="lab_others" data-field="lab_others" rows="2"><?= htmlspecialchars($labData['lab_others'] ?? '') ?></textarea>
+											</div>
+										</div>
 									</div>
-									<div class="row">
-										<div class="col-md-12 mb-3"><label>Others</label><textarea class="form-control" name="lab_others" data-field="lab_others" rows="2"><?= htmlspecialchars($labData['lab_others'] ?? '') ?></textarea></div>
-									</div>
-
-									<h5 class="mt-4 mb-3">Cytology Report</h5>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Papsmear</label><select class="form-control" name="cytology_papsmear" data-field="cytology_papsmear"><option value="NONE" <?= ($labData['cytology_papsmear'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option><option value="DONE" <?= ($labData['cytology_papsmear'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option><option value="ADVISED" <?= ($labData['cytology_papsmear'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option></select></div>
-										<div class="col-md-6 mb-3"><label>Papsmear Notes</label><textarea class="form-control" name="cytology_papsmear_notes" data-field="cytology_papsmear_notes" rows="2"><?= htmlspecialchars($labData['cytology_papsmear_notes'] ?? '') ?></textarea></div>
-									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Colposcopy</label><select class="form-control" name="cytology_colposcopy" data-field="cytology_colposcopy"><option value="NONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option><option value="DONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option><option value="ADVISED" <?= ($labData['cytology_colposcopy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option></select></div>
-										<div class="col-md-6 mb-3"><label>Colposcopy Notes</label><textarea class="form-control" name="cytology_colposcopy_notes" data-field="cytology_colposcopy_notes" rows="2"><?= htmlspecialchars($labData['cytology_colposcopy_notes'] ?? '') ?></textarea></div>
-									</div>
-									<div class="row">
-										<div class="col-md-6 mb-3"><label>Biopsy</label><select class="form-control" name="cytology_biopsy" data-field="cytology_biopsy"><option value="NONE" <?= ($labData['cytology_biopsy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option><option value="DONE" <?= ($labData['cytology_biopsy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option><option value="ADVISED" <?= ($labData['cytology_biopsy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option></select></div>
-										<div class="col-md-6 mb-3"><label>Biopsy Notes</label><textarea class="form-control" name="cytology_biopsy_notes" data-field="cytology_biopsy_notes" rows="2"><?= htmlspecialchars($labData['cytology_biopsy_notes'] ?? '') ?></textarea></div>
+									<div class="card card-outline card-info mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-microscope mr-2"></i>Cytology Report</h5>
+										</div>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label>Papsmear</label>
+													<select class="form-control" name="cytology_papsmear" data-field="cytology_papsmear">
+														<option value="NONE" <?= ($labData['cytology_papsmear'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option>
+														<option value="DONE" <?= ($labData['cytology_papsmear'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option>
+														<option value="ADVISED" <?= ($labData['cytology_papsmear'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option>
+													</select>
+												</div>
+												<div class="col-md-6 mb-3">
+													<label>Papsmear Notes</label>
+													<textarea class="form-control" name="cytology_papsmear_notes" data-field="cytology_papsmear_notes" rows="2"><?= htmlspecialchars($labData['cytology_papsmear_notes'] ?? '') ?></textarea>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label>Colposcopy</label>
+													<select class="form-control" name="cytology_colposcopy" data-field="cytology_colposcopy">
+														<option value="NONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option>
+														<option value="DONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option>
+														<option value="ADVISED" <?= ($labData['cytology_colposcopy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option>
+													</select>
+												</div>
+												<div class="col-md-6 mb-3">
+													<label>Colposcopy Notes</label>
+													<textarea class="form-control" name="cytology_colposcopy_notes" data-field="cytology_colposcopy_notes" rows="2"><?= htmlspecialchars($labData['cytology_colposcopy_notes'] ?? '') ?></textarea>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-6 mb-3">
+													<label>Biopsy</label>
+													<select class="form-control" name="cytology_biopsy" data-field="cytology_biopsy">
+														<option value="NONE" <?= ($labData['cytology_biopsy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option>
+														<option value="DONE" <?= ($labData['cytology_biopsy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option>
+														<option value="ADVISED" <?= ($labData['cytology_biopsy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option>
+													</select>
+												</div>
+												<div class="col-md-6 mb-3">
+													<label>Biopsy Notes</label>
+													<textarea class="form-control" name="cytology_biopsy_notes" data-field="cytology_biopsy_notes" rows="2"><?= htmlspecialchars($labData['cytology_biopsy_notes'] ?? '') ?></textarea>
+												</div>
+											</div>
+										</div>
 									</div>
 								</form>
+
+								<!-- ── Lab Orders Card ───────────────────────────────────── -->
+								<div class="card card-outline card-primary mt-3 mb-3">
+									<div class="card-header d-flex justify-content-between align-items-center">
+										<h5 class="card-title mb-0"><i class="fas fa-flask mr-2"></i>Lab Orders</h5>
+										<?php if (can($_SESSION['user_role'] ?? '', 'labwork', 'W')): ?>
+										<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#labOrderModal">
+											<i class="fas fa-plus mr-1"></i>Order Lab Test
+										</button>
+										<?php endif; ?>
+									</div>
+									<div class="card-body p-0">
+										<?php if (empty($labOrders)): ?>
+										<div class="text-center text-muted py-4" id="noLabOrders">
+											<i class="fas fa-flask fa-2x mb-2 d-block" style="opacity:.4"></i>No lab tests ordered yet.
+										</div>
+										<?php else: ?>
+										<?php endif; ?>
+										<table class="table table-sm mb-0<?= empty($labOrders) ? ' d-none' : '' ?>" id="labOrdersTable">
+											<thead class="thead-light">
+												<tr>
+													<th>Test</th>
+													<th>Notes</th>
+													<th>Ordered By</th>
+													<th>Status</th>
+													<th>Ordered</th>
+												</tr>
+											</thead>
+											<tbody id="labOrdersBody">
+												<?php foreach ($labOrders ?? [] as $lo): ?>
+												<tr>
+													<td><?= htmlspecialchars($lo['test_name']) ?></td>
+													<td class="text-muted"><?= $lo['order_notes'] ? htmlspecialchars($lo['order_notes']) : '&mdash;' ?></td>
+													<td><?= htmlspecialchars(trim($lo['ordered_by_first'] . ' ' . $lo['ordered_by_last'])) ?></td>
+													<td>
+														<?php if ($lo['status'] === 'COMPLETED'): ?>
+														<span class="badge badge-success">Completed</span>
+														<?php else: ?>
+														<span class="badge badge-warning">Pending</span>
+														<?php endif; ?>
+													</td>
+													<td><?= htmlspecialchars(date('M j, Y g:i A', strtotime($lo['ordered_at']))) ?></td>
+												</tr>
+												<?php endforeach; ?>
+											</tbody>
+										</table>
+									</div>
+								</div>
+
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-examinations"><i class="fas fa-chevron-left"></i> Previous</button>
 									<button type="button" class="btn btn-primary btn-next-tab" data-target="#tab-summary">Next <i class="fas fa-chevron-right"></i></button>
@@ -620,14 +1006,37 @@
 
 							<!-- ── Summary Tab ────────────────────────────── -->
 							<div class="tab-pane fade" id="tab-summary" role="tabpanel">
-								<h4 class="mb-3">Case Summary</h4>
 								<form class="intake-auto-save">
-									<h5 class="mb-3">Assessment and Disposition</h5>
-									<div class="row"><div class="col-md-12 mb-3"><label>Risk Level</label><textarea class="form-control" name="summary_risk_level" data-field="summary_risk_level" rows="4"><?= htmlspecialchars($summaryData['summary_risk_level'] ?? '') ?></textarea></div></div>
-									<div class="row"><div class="col-md-12 mb-3"><label>Referral</label><textarea class="form-control" name="summary_referral" data-field="summary_referral" rows="4"><?= htmlspecialchars($summaryData['summary_referral'] ?? '') ?></textarea></div></div>
-									<div class="row"><div class="col-md-12 mb-3"><label>Patient Acceptance</label><textarea class="form-control" name="summary_patient_acceptance" data-field="summary_patient_acceptance" rows="4"><?= htmlspecialchars($summaryData['summary_patient_acceptance'] ?? '') ?></textarea></div></div>
-									<h5 class="mt-4 mb-3">Doctor&rsquo;s Summary</h5>
-									<div class="row"><div class="col-md-12 mb-3"><label>Summary and Recommendations</label><textarea class="form-control" name="summary_doctor_summary" data-field="summary_doctor_summary" rows="4"><?= htmlspecialchars($summaryData['summary_doctor_summary'] ?? '') ?></textarea></div></div>
+									<div class="card card-outline card-warning mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-clipboard-check mr-2"></i>Assessment &amp; Disposition</h5>
+										</div>
+										<div class="card-body">
+											<div class="form-group">
+												<label>Risk Level</label>
+												<textarea class="form-control" name="summary_risk_level" data-field="summary_risk_level" rows="3"><?= htmlspecialchars($summaryData['summary_risk_level'] ?? '') ?></textarea>
+											</div>
+											<div class="form-group">
+												<label>Referral</label>
+												<textarea class="form-control" name="summary_referral" data-field="summary_referral" rows="3"><?= htmlspecialchars($summaryData['summary_referral'] ?? '') ?></textarea>
+											</div>
+											<div class="form-group mb-0">
+												<label>Patient Acceptance</label>
+												<textarea class="form-control" name="summary_patient_acceptance" data-field="summary_patient_acceptance" rows="3"><?= htmlspecialchars($summaryData['summary_patient_acceptance'] ?? '') ?></textarea>
+											</div>
+										</div>
+									</div>
+									<div class="card card-outline card-primary mb-3">
+										<div class="card-header">
+											<h5 class="card-title mb-0"><i class="fas fa-stethoscope mr-2"></i>Doctor&rsquo;s Summary</h5>
+										</div>
+										<div class="card-body">
+											<div class="form-group mb-0">
+												<label>Summary and Recommendations</label>
+												<textarea class="form-control" name="summary_doctor_summary" data-field="summary_doctor_summary" rows="5"><?= htmlspecialchars($summaryData['summary_doctor_summary'] ?? '') ?></textarea>
+											</div>
+										</div>
+									</div>
 								</form>
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-labs"><i class="fas fa-chevron-left"></i> Previous</button>
@@ -638,6 +1047,7 @@
 									</form>
 								</div>
 							</div>
+
 
 						</div>
 					</div>
@@ -749,6 +1159,155 @@
 		toggleDelivery(); toggleMenstrual();
 		$('#number_of_children').on('change', toggleDelivery);
 		$('#has_uterus').on('change', toggleMenstrual);
+
+		// ── Allergy row management (History tab) ─────────
+		function escHtml(s) {
+			return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+		}
+
+		function saveAllergiesJSON() {
+			var rows = [];
+			document.querySelectorAll('#allergyRows .allergy-row').forEach(function(row) {
+				var al = row.querySelector('.allergy-name').value.trim();
+				var rx = row.querySelector('.allergy-reaction').value.trim();
+				if (al || rx) rows.push({ allergy: al, reaction: rx });
+			});
+			autoSave('allergies_json', JSON.stringify(rows));
+		}
+
+		function wireAllergyRow(row) {
+			row.querySelectorAll('input').forEach(function(inp) {
+				inp.addEventListener('change', saveAllergiesJSON);
+				inp.addEventListener('input', function() {
+					clearTimeout(inp._st);
+					inp._st = setTimeout(saveAllergiesJSON, 700);
+				});
+			});
+		}
+
+		function addAllergyRow(allergy, reaction) {
+			var row = document.createElement('div');
+			row.className = 'allergy-row d-flex align-items-center mb-2';
+			row.innerHTML =
+				'<input type="text" class="form-control allergy-name mr-2" placeholder="Allergy / Drug / Substance" value="' + escHtml(allergy || '') + '">' +
+				'<input type="text" class="form-control allergy-reaction mr-2" placeholder="Reaction / Symptom" value="' + escHtml(reaction || '') + '">' +
+				'<button type="button" class="btn btn-sm btn-outline-danger remove-allergy-btn" title="Remove"><i class="fas fa-times"></i></button>';
+			document.getElementById('allergyRows').appendChild(row);
+			row.querySelector('.remove-allergy-btn').addEventListener('click', function() {
+				row.remove();
+				saveAllergiesJSON();
+			});
+			wireAllergyRow(row);
+		}
+
+		// Initialise allergy rows from saved JSON
+		(function() {
+			var raw = <?= json_encode(!empty($historyData['allergies_json']) ? $historyData['allergies_json'] : '') ?>;
+			var rows = [];
+			if (raw) { try { rows = JSON.parse(raw); } catch(e) {} }
+			if (rows.length > 0) {
+				rows.forEach(function(r) { addAllergyRow(r.allergy || '', r.reaction || ''); });
+			} else {
+				addAllergyRow('', ''); // start with one empty row
+			}
+		})();
+
+		document.getElementById('btnAddAllergy').addEventListener('click', function() {
+			addAllergyRow('', '');
+		});
+
+		// No known allergies toggle
+		document.getElementById('noKnownAllergies').addEventListener('change', function() {
+			var checked = this.checked;
+			document.getElementById('allergySection').style.display = checked ? 'none' : '';
+			autoSave('no_known_allergies', checked ? '1' : '');
+		});
+
+		// ── Lab order modal ─────────────────────────────
+		(function () {
+			var $modal      = $('#labOrderModal');
+			var $filter     = $('#labTestFilter');
+			var $error      = $('#labOrderError');
+			var $submitBtn  = $('#btnSubmitLabOrder');
+			var $notes      = $('#labOrderNotes');
+			var $noOrders   = $('#noLabOrders');
+			var $table      = $('#labOrdersTable');
+			var $tbody      = $('#labOrdersBody');
+
+			// Filter test checkboxes by text
+			$filter.on('input', function () {
+				var q = this.value.toLowerCase();
+				$modal.find('.lab-test-item').each(function () {
+					var match = $(this).find('label').text().toLowerCase().indexOf(q) !== -1;
+					$(this).toggle(q === '' || match);
+				});
+				$modal.find('.lab-category-group').each(function () {
+					$(this).toggle($(this).find('.lab-test-item:visible').length > 0);
+				});
+			});
+
+			// Reset modal state on close
+			$modal.on('hidden.bs.modal', function () {
+				$modal.find('.lab-test-cb').prop('checked', false);
+				$notes.val('');
+				$filter.val('').trigger('input');
+				$error.addClass('d-none').text('');
+				$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Submit Order');
+			});
+
+			// Submit order
+			$submitBtn.on('click', function () {
+				var tests = $modal.find('.lab-test-cb:checked').map(function () { return this.value; }).get();
+				if (!tests.length) {
+					$error.text('Please select at least one test.').removeClass('d-none');
+					return;
+				}
+				$error.addClass('d-none');
+				$submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Submitting…');
+
+				$.ajax({
+					url: 'intake.php?action=order-lab-test',
+					method: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({
+						csrf_token: csrfToken,
+						case_sheet_id: caseSheetId,
+						tests: tests,
+						notes: $notes.val().trim()
+					}),
+					dataType: 'json',
+					success: function (r) {
+						if (!r.success) {
+							$error.text(r.message || 'Failed to submit.').removeClass('d-none');
+							$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Submit Order');
+							return;
+						}
+						$modal.modal('hide');
+						$noOrders.hide();
+						$table.removeClass('d-none');
+						var noteTd = r.notes ? escHtml(r.notes) : '<em class="text-muted">—</em>';
+						var by     = escHtml(r.ordered_by || 'You');
+						var now    = new Date().toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+						r.orders.forEach(function (o) {
+							$tbody.prepend(
+								'<tr>' +
+								'<td>' + escHtml(o.test_name) + '</td>' +
+								'<td>' + noteTd + '</td>' +
+								'<td>' + by + '</td>' +
+								'<td><span class="badge badge-warning">Pending</span></td>' +
+								'<td>' + now + '</td>' +
+								'</tr>'
+							);
+						});
+					},
+					error: function () {
+						$error.text('Server error. Please try again.').removeClass('d-none');
+						$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Submit Order');
+					}
+				});
+			});
+		})();
+
 	}
 
 	// ── Step 1: Patient search & registration ───────────
@@ -804,6 +1363,132 @@
 	}
 })();
 </script>
+
+<!-- ── Order Lab Test Modal ───────────────────────────────────── -->
+<div class="modal fade" id="labOrderModal" tabindex="-1" role="dialog" aria-labelledby="labOrderModalTitle" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="labOrderModalTitle"><i class="fas fa-flask mr-2"></i>Order Lab Test</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<div class="form-group mb-3">
+					<label class="font-weight-bold">Filter tests</label>
+					<input type="text" class="form-control" id="labTestFilter" placeholder="Type to filter…" autocomplete="off" />
+				</div>
+				<div id="labTestList" style="max-height:380px;overflow-y:auto;border:1px solid #dee2e6;border-radius:4px;padding:12px;">
+<?php
+$_labCategories = [
+	'Hematology' => [
+		'Complete Blood Count (CBC)',
+		'Peripheral Blood Smear',
+		'Hemoglobin (Hb)',
+		'Erythrocyte Sedimentation Rate (ESR)',
+		'Reticulocyte Count',
+	],
+	'Chemistry' => [
+		'Basic Metabolic Panel (BMP)',
+		'Comprehensive Metabolic Panel (CMP)',
+		'Liver Function Tests (LFT)',
+		'Kidney Function Tests (KFT)',
+		'Lipid Panel',
+		'Serum Electrolytes (Na/K/Cl/HCO₃)',
+		'Serum Calcium',
+		'Serum Magnesium',
+		'Serum Phosphorus',
+		'Serum Uric Acid',
+		'Blood Urea Nitrogen (BUN)',
+		'Serum Creatinine',
+		'Serum Amylase',
+		'Serum Lipase',
+	],
+	'Endocrinology' => [
+		'Thyroid Panel (TSH, Free T3, Free T4)',
+		'Hemoglobin A1C (HbA1c)',
+		'Fasting Blood Glucose (FBG)',
+		'FSH / LH / Estradiol',
+		'Testosterone',
+		'Prolactin',
+		'Cortisol (Morning)',
+		'ACTH Stimulation Test',
+	],
+	'Vitamins &amp; Micronutrients' => [
+		'Serum Iron / TIBC / Ferritin',
+		'Vitamin B12',
+		'Vitamin D (25-OH)',
+		'Serum Folate',
+	],
+	'Coagulation' => [
+		'Prothrombin Time / INR (PT/INR)',
+		'Partial Thromboplastin Time (PTT)',
+		'D-Dimer',
+	],
+	'Cardiac Markers' => [
+		'Troponin I',
+		'BNP / NT-proBNP',
+	],
+	'Inflammation &amp; Immunology' => [
+		'C-Reactive Protein (CRP)',
+		'Antistreptolysin O Titer (ASO)',
+		'Rheumatoid Factor (RF)',
+		'ANA (Antinuclear Antibody)',
+		'Anti-dsDNA',
+	],
+	'Infectious Disease' => [
+		'Blood Culture &amp; Sensitivity',
+		'Urine Culture &amp; Sensitivity',
+		'Sputum Culture',
+		'HIV Rapid Test',
+		'Hepatitis B Surface Antigen (HBsAg)',
+		'Hepatitis C Antibody (Anti-HCV)',
+		'Malaria Rapid Diagnostic Test (RDT)',
+		'Dengue NS1 / IgM / IgG',
+		'COVID-19 Rapid Antigen Test',
+		'Sputum AFB Smear (TB)',
+	],
+	'Urinalysis &amp; Stool' => [
+		'Urinalysis (UA)',
+		'Stool Analysis',
+	],
+	'Gynecology &amp; Cytology' => [
+		'Papanicolaou (Pap) Smear',
+		'Colposcopy',
+		'Cervical Biopsy',
+		'Beta-hCG (Pregnancy Test)',
+	],
+	'Other' => [
+		'Arterial Blood Gas (ABG)',
+	],
+];
+$_labIdx = 0;
+foreach ($_labCategories as $_labCat => $_labTests): ?>
+					<div class="lab-category-group mb-3">
+						<div class="font-weight-bold text-uppercase small text-muted mb-1" style="letter-spacing:.05em;"><?= $_labCat ?></div>
+						<?php foreach ($_labTests as $_labTest): $_labIdx++; ?>
+						<div class="lab-test-item custom-control custom-checkbox">
+							<input type="checkbox" class="custom-control-input lab-test-cb" id="lt<?= $_labIdx ?>" value="<?= htmlspecialchars($_labTest) ?>">
+							<label class="custom-control-label" for="lt<?= $_labIdx ?>"><?= htmlspecialchars($_labTest) ?></label>
+						</div>
+						<?php endforeach; ?>
+					</div>
+<?php endforeach; ?>
+				</div>
+				<div class="form-group mt-3 mb-1">
+					<label class="font-weight-bold" for="labOrderNotes">Order Notes <small class="font-weight-normal text-muted">(optional &mdash; e.g. fasting required, special instructions)</small></label>
+					<textarea class="form-control" id="labOrderNotes" rows="2" placeholder="Any notes for the lab…"></textarea>
+				</div>
+				<div class="alert alert-danger d-none mt-2 mb-0" id="labOrderError"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="btnSubmitLabOrder">
+					<i class="fas fa-paper-plane mr-1"></i>Submit Order
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
 
 <!-- ── Diagram Editor Modal ─────────────────────────────────────────── -->
 <div class="modal fade" id="diagramEditorModal" tabindex="-1" role="dialog" aria-labelledby="diagramEditorTitle" aria-hidden="true">
@@ -1174,6 +1859,23 @@
 
 		$('#diagramEditorModal').modal('hide');
 	});
+
+	// ── DOB → Age auto-calculation ─────────────────
+	var dobInput = document.getElementById('ve-date_of_birth');
+	if (dobInput) {
+		dobInput.addEventListener('change', function() {
+			var dob = this.value;
+			if (!dob) return;
+			var today = new Date();
+			var birth = new Date(dob);
+			var age = today.getFullYear() - birth.getFullYear();
+			var m = today.getMonth() - birth.getMonth();
+			if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+			var ageInput = document.getElementById('ve-age_years');
+			if (age >= 0 && age <= 150 && ageInput) ageInput.value = age;
+		});
+	}
+
 }());
 </script>
 
@@ -1237,6 +1939,110 @@
 					renderThumbnail(imgEl, imgEl.dataset.diagType, strokes);
 				}
 			} catch (e) { /* not JSON — old PNG data, ignore */ }
+		});
+	});
+}());
+</script>
+
+<script>
+/* Patient Verification: Edit / Save / Cancel */
+(function () {
+	var CSRF = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>';
+
+	function showAlert(msg, type) {
+		var el = document.getElementById('verif-alert');
+		el.className = 'alert alert-' + type;
+		el.textContent = msg;
+		el.style.display = '';
+		setTimeout(function () { el.style.display = 'none'; }, 5000);
+	}
+
+	function switchToRead() {
+		document.getElementById('verif-read').style.display = '';
+		document.getElementById('verif-edit').style.display = 'none';
+		document.getElementById('btnEditPatient').style.display = '';
+		document.getElementById('btnCancelEdit').style.display = 'none';
+	}
+
+	function switchToEdit() {
+		document.getElementById('verif-read').style.display = 'none';
+		document.getElementById('verif-edit').style.display = '';
+		document.getElementById('btnEditPatient').style.display = 'none';
+		document.getElementById('btnCancelEdit').style.display = '';
+	}
+
+	document.getElementById('btnEditPatient').addEventListener('click', switchToEdit);
+	document.getElementById('btnCancelEdit').addEventListener('click', switchToRead);
+
+	document.getElementById('btnSavePatient').addEventListener('click', function () {
+		var btn = this;
+		var patientId = parseInt(document.getElementById('ve-patient_id').value, 10);
+		if (!patientId) { showAlert('Patient ID missing.', 'danger'); return; }
+
+		var firstName = document.getElementById('ve-first_name').value.trim();
+		if (!firstName) { showAlert('First Name is required.', 'warning'); return; }
+
+		var payload = {
+			csrf_token:              CSRF,
+			patient_id:              patientId,
+			first_name:              firstName,
+			last_name:               document.getElementById('ve-last_name').value.trim(),
+			sex:                     document.getElementById('ve-sex').value,
+			date_of_birth:           document.getElementById('ve-date_of_birth').value,
+			age_years:               document.getElementById('ve-age_years').value,
+			blood_group:             document.getElementById('ve-blood_group').value,
+			phone_e164:              document.getElementById('ve-phone_e164').value.trim(),
+			email:                   document.getElementById('ve-email').value.trim(),
+			address_line1:           document.getElementById('ve-address_line1').value.trim(),
+			city:                    document.getElementById('ve-city').value.trim(),
+			state_province:          document.getElementById('ve-state_province').value.trim(),
+			postal_code:             document.getElementById('ve-postal_code').value.trim(),
+			emergency_contact_name:  document.getElementById('ve-emergency_contact_name').value.trim(),
+			emergency_contact_phone: document.getElementById('ve-emergency_contact_phone').value.trim()
+		};
+
+		btn.disabled = true;
+		btn.textContent = 'Saving...';
+
+		fetch('intake.php?action=update-patient', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload)
+		})
+		.then(function (r) { return r.json(); })
+		.then(function (data) {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Changes';
+
+			if (!data.success) {
+				showAlert(data.message || 'Save failed.', 'danger');
+				return;
+			}
+
+			var p = data.patient;
+			document.getElementById('vr-first_name').textContent              = p.first_name || '';
+			document.getElementById('vr-last_name').textContent               = p.last_name || '';
+			document.getElementById('vr-sex').textContent                     = p.sex || '';
+			document.getElementById('vr-date_of_birth').textContent           = p.date_of_birth || '';
+			document.getElementById('vr-age_years').textContent               = p.age_years || '';
+			document.getElementById('vr-blood_group').textContent             = p.blood_group || '';
+			document.getElementById('vr-phone_e164').textContent              = p.phone_e164 || '';
+			document.getElementById('vr-email').textContent                   = p.email || '';
+			document.getElementById('vr-address_line1').textContent           = p.address_line1 || '';
+			document.getElementById('vr-city').textContent                    = p.city || '';
+			document.getElementById('vr-state_province').textContent          = p.state_province || '';
+			document.getElementById('vr-postal_code').textContent             = p.postal_code || '';
+			document.getElementById('vr-emergency_contact_name').textContent  = p.emergency_contact_name || '';
+			document.getElementById('vr-emergency_contact_phone').textContent = p.emergency_contact_phone || '';
+
+
+			switchToRead();
+			showAlert('Patient information updated successfully.', 'success');
+		})
+		.catch(function () {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Changes';
+			showAlert('Network error. Please try again.', 'danger');
 		});
 	});
 }());

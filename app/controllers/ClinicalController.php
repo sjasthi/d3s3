@@ -49,12 +49,28 @@ class ClinicalController
 			if ($caseSheet) {
 				$stmt = $pdo->prepare(
 					'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
-					        age_years, phone_e164, address_line1, city, state_province, postal_code,
+					        age_years, phone_e164, email, address_line1, city, state_province, postal_code,
 					        blood_group, allergies, emergency_contact_name, emergency_contact_phone
 					   FROM patients WHERE patient_id = ?'
 				);
 				$stmt->execute([$caseSheet['patient_id']]);
 				$patient = $stmt->fetch();
+
+				// Load existing lab orders for this case sheet
+				try {
+					$stmt = $pdo->prepare(
+						'SELECT lo.order_id, lo.test_name, lo.order_notes, lo.status, lo.ordered_at,
+						        u.first_name AS ordered_by_first, u.last_name AS ordered_by_last
+						   FROM lab_orders lo
+						   JOIN users u ON u.user_id = lo.ordered_by_user_id
+						  WHERE lo.case_sheet_id = ?
+						  ORDER BY lo.ordered_at DESC'
+					);
+					$stmt->execute([$caseSheetId]);
+					$labOrders = $stmt->fetchAll();
+				} catch (Exception $e) {
+					$labOrders = []; // table not yet created
+				}
 			}
 		}
 
@@ -105,12 +121,20 @@ class ClinicalController
 			exit;
 		}
 
-		$pdo->prepare('UPDATE case_sheets SET status = ?, updated_at = NOW() WHERE case_sheet_id = ? AND status = ?')
-		    ->execute(['INTAKE_COMPLETE', $caseSheetId, 'INTAKE_IN_PROGRESS']);
+		// Capture current status for audit log (also handles SCHEDULED → INTAKE_COMPLETE
+		// when a nurse starts intake directly from a scheduled appointment)
+		$oldStatus = $pdo->prepare('SELECT status FROM case_sheets WHERE case_sheet_id = ?');
+		$oldStatus->execute([$caseSheetId]);
+		$oldStatus = $oldStatus->fetchColumn() ?: 'INTAKE_IN_PROGRESS';
+
+		$pdo->prepare(
+			"UPDATE case_sheets SET status = 'INTAKE_COMPLETE', updated_at = NOW()
+			  WHERE case_sheet_id = ? AND status IN ('INTAKE_IN_PROGRESS', 'SCHEDULED')"
+		)->execute([$caseSheetId]);
 
 		$this->writeAuditLog(
 			$pdo, $caseSheetId, $_SESSION['user_id'],
-			'status', 'INTAKE_IN_PROGRESS', 'INTAKE_COMPLETE'
+			'status', $oldStatus, 'INTAKE_COMPLETE'
 		);
 
 		$_SESSION['intake_success'] = 'Intake completed for '
@@ -474,6 +498,97 @@ class ClinicalController
 		exit;
 	}
 
+	// ── Update patient record (AJAX) ────────────────────────
+
+	public function updatePatient(): void
+	{
+		$this->requireClinicalRole();
+
+		header('Content-Type: application/json');
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+			exit;
+		}
+
+		$input = json_decode(file_get_contents('php://input'), true);
+
+		if (!isset($input['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $input['csrf_token'])) {
+			echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
+			exit;
+		}
+
+		$patientId = (int)($input['patient_id'] ?? 0);
+		if ($patientId <= 0) {
+			echo json_encode(['success' => false, 'message' => 'Missing patient ID.']);
+			exit;
+		}
+
+		// Whitelist of editable fields (patient_code is NOT included)
+		$allowed = [
+			'first_name', 'last_name', 'sex', 'date_of_birth', 'age_years',
+			'phone_e164', 'email', 'address_line1', 'city', 'state_province',
+			'postal_code', 'blood_group', 'allergies',
+			'emergency_contact_name', 'emergency_contact_phone',
+		];
+
+		// Normalise / validate individual fields before building the query
+		$validSex = ['MALE', 'FEMALE', 'OTHER', 'UNKNOWN'];
+		if (isset($input['sex'])) {
+			// sex is NOT NULL in the DB -- default to UNKNOWN if blank or invalid
+			if (!in_array($input['sex'], $validSex, true)) {
+				$input['sex'] = 'UNKNOWN';
+			}
+		}
+
+		// age_years is a smallint -- cast to int or null
+		if (isset($input['age_years'])) {
+			$input['age_years'] = ($input['age_years'] === '' || $input['age_years'] === null)
+				? null
+				: (int)$input['age_years'];
+		}
+
+		$setClauses = [];
+		$params     = [];
+		foreach ($allowed as $field) {
+			if (array_key_exists($field, $input)) {
+				$setClauses[] = "`$field` = ?";
+				// Convert empty strings to NULL for nullable columns
+				$params[]     = ($input[$field] === '' || $input[$field] === null) ? null : $input[$field];
+			}
+		}
+
+		if (empty($setClauses)) {
+			echo json_encode(['success' => false, 'message' => 'No fields to update.']);
+			exit;
+		}
+
+		$params[] = $patientId;
+
+		try {
+			$pdo = getDBConnection();
+			$pdo->prepare(
+				'UPDATE patients SET ' . implode(', ', $setClauses) . ' WHERE patient_id = ?'
+			)->execute($params);
+
+			// Return the refreshed patient row so JS can update the read-only display
+			$stmt = $pdo->prepare(
+				'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
+				        age_years, phone_e164, email, address_line1, city, state_province,
+				        postal_code, blood_group, allergies,
+				        emergency_contact_name, emergency_contact_phone
+				   FROM patients WHERE patient_id = ?'
+			);
+			$stmt->execute([$patientId]);
+			$patient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+			echo json_encode(['success' => true, 'message' => 'Patient information updated.', 'patient' => $patient]);
+		} catch (Exception $e) {
+			echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+		}
+		exit;
+	}
+
 	// ── Shared audit log writer ──────────────────────────────
 
 	public static function writeAuditLog(
@@ -493,6 +608,101 @@ class ClinicalController
 			    (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
 			 VALUES (?, ?, ?, ?, ?, NOW())'
 		)->execute([$caseSheetId, $userId, $field, $oldValue, $newValue]);
+	}
+
+	// ── Order lab tests (AJAX POST) ────────────────────────
+
+	public function orderLabTest(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['success' => false, 'message' => 'POST required']);
+			exit;
+		}
+
+		$input = json_decode(file_get_contents('php://input'), true);
+
+		if (!hash_equals($_SESSION['csrf_token'] ?? '', $input['csrf_token'] ?? '')) {
+			echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
+			exit;
+		}
+
+		$caseSheetId = (int)($input['case_sheet_id'] ?? 0);
+		$tests       = $input['tests'] ?? [];
+		$notes       = trim($input['notes'] ?? '');
+
+		if ($caseSheetId <= 0 || empty($tests)) {
+			echo json_encode(['success' => false, 'message' => 'Please select at least one test.']);
+			exit;
+		}
+
+		$pdo  = getDBConnection();
+		$stmt = $pdo->prepare('SELECT patient_id FROM case_sheets WHERE case_sheet_id = ?');
+		$stmt->execute([$caseSheetId]);
+		$row = $stmt->fetch();
+
+		if (!$row) {
+			echo json_encode(['success' => false, 'message' => 'Case sheet not found.']);
+			exit;
+		}
+
+		$patientId = (int)$row['patient_id'];
+		$userId    = (int)$_SESSION['user_id'];
+
+		$insert = $pdo->prepare(
+			'INSERT INTO lab_orders (case_sheet_id, patient_id, test_name, order_notes, ordered_by_user_id)
+			 VALUES (?, ?, ?, ?, ?)'
+		);
+
+		$inserted = [];
+		foreach ($tests as $testName) {
+			$testName = trim((string)$testName);
+			if ($testName === '') {
+				continue;
+			}
+			$insert->execute([$caseSheetId, $patientId, $testName, $notes !== '' ? $notes : null, $userId]);
+			$inserted[] = ['order_id' => (int)$pdo->lastInsertId(), 'test_name' => $testName];
+		}
+
+		$orderedBy = trim(($_SESSION['user_name'] ?? ''));
+
+		echo json_encode([
+			'success'    => true,
+			'orders'     => $inserted,
+			'notes'      => $notes,
+			'ordered_by' => $orderedBy,
+		]);
+		exit;
+	}
+
+	// ── Get lab orders for a case sheet (AJAX GET) ──────────
+
+	public function getLabOrders(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		$caseSheetId = (int)($_GET['case_sheet_id'] ?? 0);
+		if ($caseSheetId <= 0) {
+			echo json_encode(['success' => false, 'message' => 'Missing case sheet ID.']);
+			exit;
+		}
+
+		$pdo  = getDBConnection();
+		$stmt = $pdo->prepare(
+			'SELECT lo.order_id, lo.test_name, lo.order_notes, lo.status, lo.ordered_at,
+			        u.first_name AS ordered_by_first, u.last_name AS ordered_by_last
+			   FROM lab_orders lo
+			   JOIN users u ON u.user_id = lo.ordered_by_user_id
+			  WHERE lo.case_sheet_id = ?
+			  ORDER BY lo.ordered_at DESC'
+		);
+		$stmt->execute([$caseSheetId]);
+
+		echo json_encode(['success' => true, 'orders' => $stmt->fetchAll()]);
+		exit;
 	}
 
 	// ── Role guards ─────────────────────────────────────────
