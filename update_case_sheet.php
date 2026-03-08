@@ -85,6 +85,8 @@ $vitals_fields = [
 	'bmi', 'obesity_overweight',
 	// Personal / symptoms
 	'symptoms_complaints', 'duration_of_symptoms',
+	// Background information
+	'medicine_sources', 'occupation', 'education', 'diet',
 	// Reproductive
 	'number_of_children', 'has_uterus',
 	'type_of_delivery', 'delivery_location', 'delivery_source',
