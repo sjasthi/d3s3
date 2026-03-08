@@ -15,6 +15,10 @@ if (!can($_SESSION['user_role'] ?? '', 'case_sheets')) {
     exit;
 }
 
+// Load language
+require_once __DIR__ . '/app/config/lang.php';
+load_language($_SESSION['language'] ?? 'en');
+
 // Get case_sheet_id and patient_id from URL
 $case_sheet_id = $_GET['case_sheet_id'] ?? null;
 $patient_id = $_GET['patient_id'] ?? null;
