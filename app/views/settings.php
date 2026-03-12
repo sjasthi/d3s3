@@ -159,9 +159,8 @@
 										<label for="language" class="small font-weight-bold text-muted">Language</label>
 										<select class="form-control" name="language" id="language">
 											<option value="en" <?= ($prefs['language'] ?? 'en') === 'en' ? 'selected' : '' ?>>English</option>
-											<option value="te" <?= ($prefs['language'] ?? 'en') === 'te' ? 'selected' : '' ?>>Telugu (Coming Soon)</option>
+											<option value="te" <?= ($prefs['language'] ?? 'en') === 'te' ? 'selected' : '' ?>>Telugu</option>
 										</select>
-										<small class="text-muted">Telugu translation is under development. Your preference will be saved and applied when available.</small>
 									</div>
 								</div>
 								<div class="col-sm-6">

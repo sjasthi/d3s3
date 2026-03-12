@@ -300,9 +300,9 @@ load_language($_SESSION['language'] ?? 'en');
 												<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('contact') ?></h6></div>
 												<div class="card-body py-3">
 													<dl class="row mb-0">
-														<dt class="col-4 text-muted font-weight-normal small">Phone</dt>
+														<dt class="col-4 text-muted font-weight-normal small"><?= __('phone') ?></dt>
 														<dd class="col-8 mb-2" id="vr-phone_e164"><?= $p['phone_e164'] ? htmlspecialchars($p['phone_e164']) : '<span class="text-muted">&mdash;</span>' ?></dd>
-														<dt class="col-4 text-muted font-weight-normal small">Email</dt>
+														<dt class="col-4 text-muted font-weight-normal small"><?= __('email') ?></dt>
 														<dd class="col-8 mb-0" id="vr-email"><?= $p['email'] ? htmlspecialchars($p['email']) : '<span class="text-muted">&mdash;</span>' ?></dd>
 													</dl>
 												</div>
@@ -310,10 +310,10 @@ load_language($_SESSION['language'] ?? 'en');
 										</div>
 										<div class="col-md-6 mb-3">
 											<div class="card card-outline card-warning h-100">
-												<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Clinical</h6></div>
+												<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('clinical') ?></h6></div>
 												<div class="card-body py-3">
 													<dl class="row mb-0">
-														<dt class="col-5 text-muted font-weight-normal small">Blood Group</dt>
+														<dt class="col-5 text-muted font-weight-normal small"><?= __('blood_group') ?></dt>
 														<dd class="col-7 mb-0">
 															<?php if (!empty($p['blood_group'])): ?>
 															<span id="vr-blood_group" class="badge badge-danger" style="font-size:.85rem;"><?= htmlspecialchars($p['blood_group']) ?></span>
@@ -330,13 +330,13 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('address') ?></h6></div>
 										<div class="card-body py-3">
 											<dl class="row mb-0">
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Street</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('street') ?></dt>
 												<dd class="col-md-10 col-9 mb-2" id="vr-address_line1"><?= !empty($p['address_line1']) ? htmlspecialchars($p['address_line1']) : '<span class="text-muted">&mdash;</span>' ?></dd>
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">City</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('city') ?></dt>
 												<dd class="col-md-4 col-9 mb-2" id="vr-city"><?= !empty($p['city']) ? htmlspecialchars($p['city']) : '<span class="text-muted">&mdash;</span>' ?></dd>
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">State</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('state') ?></dt>
 												<dd class="col-md-4 col-9 mb-2" id="vr-state_province"><?= !empty($p['state_province']) ? htmlspecialchars($p['state_province']) : '<span class="text-muted">&mdash;</span>' ?></dd>
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">PIN Code</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('pin_code') ?></dt>
 												<dd class="col-md-4 col-9 mb-0" id="vr-postal_code"><?= !empty($p['postal_code']) ? htmlspecialchars($p['postal_code']) : '<span class="text-muted">&mdash;</span>' ?></dd>
 											</dl>
 										</div>
@@ -345,9 +345,9 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><i class="fas fa-phone-alt mr-1 text-danger"></i><?= __('emergency_contact') ?></h6></div>
 										<div class="card-body py-3">
 											<dl class="row mb-0">
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Name</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('name') ?></dt>
 												<dd class="col-md-4 col-9 mb-2" id="vr-emergency_contact_name"><?= !empty($p['emergency_contact_name']) ? htmlspecialchars($p['emergency_contact_name']) : '<span class="text-muted">&mdash;</span>' ?></dd>
-												<dt class="col-md-2 col-3 text-muted font-weight-normal small">Phone</dt>
+												<dt class="col-md-2 col-3 text-muted font-weight-normal small"><?= __('phone') ?></dt>
 												<dd class="col-md-4 col-9 mb-0" id="vr-emergency_contact_phone"><?= !empty($p['emergency_contact_phone']) ? htmlspecialchars($p['emergency_contact_phone']) : '<span class="text-muted">&mdash;</span>' ?></dd>
 											</dl>
 										</div>
@@ -356,7 +356,7 @@ load_language($_SESSION['language'] ?? 'en');
 								<div id="verif-edit" style="display:none;">
 									<input type="hidden" id="ve-patient_id" value="<?= (int)($p['patient_id'] ?? 0) ?>">
 									<div class="card card-outline card-primary mb-3">
-										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Identity</h6></div>
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('identity') ?></h6></div>
 										<div class="card-body py-3">
 											<div class="row">
 												<div class="col-md-6 mb-3"><label class="small font-weight-bold"><?= __('first_name') ?> <span class="text-danger">*</span></label><input type="text" class="form-control" id="ve-first_name" value="<?= htmlspecialchars($p['first_name'] ?? '') ?>" /></div>
@@ -376,7 +376,7 @@ load_language($_SESSION['language'] ?? 'en');
 												<div class="col-md-3 mb-0">
 													<label class="small font-weight-bold"><?= __('blood_group') ?></label>
 													<select class="form-control" id="ve-blood_group">
-														<option value="">Select Blood Group</option>
+														<option value=""><?= __('select_blood_group') ?></option>
 														<?php foreach (['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
 														<option value="<?= $bg ?>" <?= ($p['blood_group'] ?? '') === $bg ? 'selected' : '' ?>><?= $bg ?></option>
 														<?php endforeach; ?>
@@ -386,7 +386,7 @@ load_language($_SESSION['language'] ?? 'en');
 										</div>
 									</div>
 									<div class="card card-outline card-info mb-3">
-										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Contact</h6></div>
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('contact') ?></h6></div>
 										<div class="card-body py-3">
 											<div class="row">
 												<div class="col-md-4 mb-3 mb-md-0"><label class="small font-weight-bold"><?= __('phone') ?></label><input type="text" class="form-control" id="ve-phone_e164" value="<?= htmlspecialchars($p['phone_e164'] ?? '') ?>" placeholder="+91 98765 43210" /></div>
@@ -395,7 +395,7 @@ load_language($_SESSION['language'] ?? 'en');
 										</div>
 									</div>
 									<div class="card card-outline card-secondary mb-3">
-										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Address</h6></div>
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><?= __('address') ?></h6></div>
 										<div class="card-body py-3">
 											<div class="row">
 												<div class="col-md-6 mb-3"><label class="small font-weight-bold"><?= __('street_address') ?></label><input type="text" class="form-control" id="ve-address_line1" value="<?= htmlspecialchars($p['address_line1'] ?? '') ?>" /></div>
@@ -406,7 +406,7 @@ load_language($_SESSION['language'] ?? 'en');
 										</div>
 									</div>
 									<div class="card card-outline card-danger mb-3">
-										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><i class="fas fa-phone-alt mr-1 text-danger"></i>Emergency Contact</h6></div>
+										<div class="card-header py-2"><h6 class="mb-0 text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.08em;"><i class="fas fa-phone-alt mr-1 text-danger"></i><?= __('emergency_contact') ?></h6></div>
 										<div class="card-body py-3">
 											<div class="row">
 												<div class="col-md-6 mb-3"><label class="small font-weight-bold"><?= __('contact_name') ?></label><input type="text" class="form-control" id="ve-emergency_contact_name" value="<?= htmlspecialchars($p['emergency_contact_name'] ?? '') ?>" /></div>
@@ -464,15 +464,15 @@ load_language($_SESSION['language'] ?? 'en');
 												</div>
 												<div class="col-md-3 mb-3">
 													<label><?= __('occupation') ?></label>
-													<input type="text" class="form-control" name="occupation" data-field="occupation" maxlength="100" value="<?= htmlspecialchars($vitals['occupation'] ?? '') ?>" />
+													<input type="text" class="form-control" name="occupation" data-field="occupation" maxlength="100" placeholder="<?= __('occupation_placeholder') ?>" value="<?= htmlspecialchars($vitals['occupation'] ?? '') ?>" />
 												</div>
 												<div class="col-md-3 mb-3">
 													<label><?= __('education') ?></label>
-													<input type="text" class="form-control" name="education" data-field="education" maxlength="100" value="<?= htmlspecialchars($vitals['education'] ?? '') ?>" />
+													<input type="text" class="form-control" name="education" data-field="education" maxlength="100" placeholder="<?= __('education_placeholder') ?>" value="<?= htmlspecialchars($vitals['education'] ?? '') ?>" />
 												</div>
 												<div class="col-md-3 mb-3">
 													<label><?= __('diet') ?></label>
-													<input type="text" class="form-control" name="diet" data-field="diet" maxlength="100" value="<?= htmlspecialchars($vitals['diet'] ?? '') ?>" />
+													<input type="text" class="form-control" name="diet" data-field="diet" maxlength="100" placeholder="<?= __('diet_placeholder') ?>" value="<?= htmlspecialchars($vitals['diet'] ?? '') ?>" />
 												</div>
 											</div>
 										</div>
@@ -503,8 +503,8 @@ load_language($_SESSION['language'] ?? 'en');
 														<label><?= __('type_of_delivery') ?></label>
 														<select class="form-control" name="type_of_delivery" data-field="type_of_delivery">
 															<option value=""><?= __('select_option') ?></option>
-															<option value="LSCS" <?= ($vitals['type_of_delivery'] ?? '') === 'LSCS' ? 'selected' : '' ?>>LSCS</option>
-															<option value="ND" <?= ($vitals['type_of_delivery'] ?? '') === 'ND' ? 'selected' : '' ?>>ND</option>
+															<option value="LSCS" <?= ($vitals['type_of_delivery'] ?? '') === 'LSCS' ? 'selected' : '' ?>><?= __('delivery_lscs') ?></option>
+															<option value="ND" <?= ($vitals['type_of_delivery'] ?? '') === 'ND' ? 'selected' : '' ?>><?= __('delivery_nd') ?></option>
 														</select>
 													</div>
 													<div class="col-md-4 mb-3">
@@ -514,9 +514,9 @@ load_language($_SESSION['language'] ?? 'en');
 													<div class="col-md-4 mb-3">
 														<label><?= __('delivery_source') ?></label>
 														<select class="form-control" name="delivery_source" data-field="delivery_source">
-															<option value="">Select...</option>
+															<option value=""><?= __('select_option') ?></option>
 															<option value="PRIVATE" <?= ($vitals['delivery_source'] ?? '') === 'PRIVATE' ? 'selected' : '' ?>><?= __('private') ?></option>
-															<option value="GH" <?= ($vitals['delivery_source'] ?? '') === 'GH' ? 'selected' : '' ?>>GH</option>
+															<option value="GH" <?= ($vitals['delivery_source'] ?? '') === 'GH' ? 'selected' : '' ?>><?= __('delivery_gh') ?></option>
 														</select>
 													</div>
 												</div>
@@ -531,14 +531,14 @@ load_language($_SESSION['language'] ?? 'en');
 											<div class="row">
 												<div class="col-md-3 mb-3"><label><?= __('age_of_onset') ?></label><input type="number" class="form-control" name="menstrual_age_of_onset" data-field="menstrual_age_of_onset" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_age_of_onset'] ?? '') ?>" /><small class="text-muted"><?= __('years') ?></small></div>
 												<div class="col-md-3 mb-3"><label><?= __('cycle_frequency') ?></label><input type="number" class="form-control" name="menstrual_cycle_frequency" data-field="menstrual_cycle_frequency" min="0" max="90" value="<?= htmlspecialchars($vitals['menstrual_cycle_frequency'] ?? '') ?>" /><small class="text-muted"><?= __('days') ?></small></div>
-												<div class="col-md-3 mb-3"><label><?= __('duration_of_flow') ?></label><input type="number" class="form-control" name="menstrual_duration_of_flow" data-field="menstrual_duration_of_flow" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_duration_of_flow'] ?? '') ?>" /><small class="text-muted">Days</small></div>
+												<div class="col-md-3 mb-3"><label><?= __('duration_of_flow') ?></label><input type="number" class="form-control" name="menstrual_duration_of_flow" data-field="menstrual_duration_of_flow" min="0" max="30" value="<?= htmlspecialchars($vitals['menstrual_duration_of_flow'] ?? '') ?>" /><small class="text-muted"><?= __('days') ?></small></div>
 												<div class="col-md-3 mb-3"><label><?= __('lmp') ?></label><input type="date" class="form-control" name="menstrual_lmp" data-field="menstrual_lmp" value="<?= htmlspecialchars($vitals['menstrual_lmp'] ?? '') ?>" /></div>
 											</div>
 											<div class="row">
 												<div class="col-md-3 mb-0">
 													<label><?= __('mh') ?></label>
 													<select class="form-control" name="menstrual_mh" data-field="menstrual_mh">
-														<option value="">Select...</option>
+														<option value=""><?= __('select_option') ?></option>
 														<option value="REGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'REGULAR' ? 'selected' : '' ?>><?= __('regular') ?></option>
 														<option value="IRREGULAR" <?= ($vitals['menstrual_mh'] ?? '') === 'IRREGULAR' ? 'selected' : '' ?>><?= __('irregular') ?></option>
 													</select>
@@ -573,25 +573,25 @@ load_language($_SESSION['language'] ?? 'en');
 												<div class="col-md-3 mb-3">
 													<label><?= __('condition_htn') ?></label>
 													<select class="form-control" name="condition_htn" data-field="condition_htn">
-														<option value="NO" <?= ($historyData['condition_htn'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-														<option value="CURRENT" <?= ($historyData['condition_htn'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-														<option value="PAST" <?= ($historyData['condition_htn'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+														<option value="NO" <?= ($historyData['condition_htn'] ?? '') === 'NO' ? 'selected' : '' ?>><?= __('cond_no') ?></option>
+														<option value="CURRENT" <?= ($historyData['condition_htn'] ?? '') === 'CURRENT' ? 'selected' : '' ?>><?= __('cond_current') ?></option>
+														<option value="PAST" <?= ($historyData['condition_htn'] ?? '') === 'PAST' ? 'selected' : '' ?>><?= __('cond_past') ?></option>
 													</select>
 												</div>
 												<div class="col-md-3 mb-3">
 													<label><?= __('condition_tsh') ?></label>
 													<select class="form-control" name="condition_tsh" data-field="condition_tsh">
-														<option value="NO" <?= ($historyData['condition_tsh'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-														<option value="CURRENT" <?= ($historyData['condition_tsh'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-														<option value="PAST" <?= ($historyData['condition_tsh'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+														<option value="NO" <?= ($historyData['condition_tsh'] ?? '') === 'NO' ? 'selected' : '' ?>><?= __('cond_no') ?></option>
+														<option value="CURRENT" <?= ($historyData['condition_tsh'] ?? '') === 'CURRENT' ? 'selected' : '' ?>><?= __('cond_current') ?></option>
+														<option value="PAST" <?= ($historyData['condition_tsh'] ?? '') === 'PAST' ? 'selected' : '' ?>><?= __('cond_past') ?></option>
 													</select>
 												</div>
 												<div class="col-md-3 mb-3">
 													<label><?= __('condition_heart_disease') ?></label>
 													<select class="form-control" name="condition_heart_disease" data-field="condition_heart_disease">
-														<option value="NO" <?= ($historyData['condition_heart_disease'] ?? '') === 'NO' ? 'selected' : '' ?>>No</option>
-														<option value="CURRENT" <?= ($historyData['condition_heart_disease'] ?? '') === 'CURRENT' ? 'selected' : '' ?>>Current</option>
-														<option value="PAST" <?= ($historyData['condition_heart_disease'] ?? '') === 'PAST' ? 'selected' : '' ?>>Past</option>
+														<option value="NO" <?= ($historyData['condition_heart_disease'] ?? '') === 'NO' ? 'selected' : '' ?>><?= __('cond_no') ?></option>
+														<option value="CURRENT" <?= ($historyData['condition_heart_disease'] ?? '') === 'CURRENT' ? 'selected' : '' ?>><?= __('cond_current') ?></option>
+														<option value="PAST" <?= ($historyData['condition_heart_disease'] ?? '') === 'PAST' ? 'selected' : '' ?>><?= __('cond_past') ?></option>
 													</select>
 												</div>
 											</div>
@@ -681,7 +681,7 @@ load_language($_SESSION['language'] ?? 'en');
 													</div>
 												</div>
 												<div class="col-md-3 mb-3">
-													<label>SpO2</label>
+													<label><?= __('spo2') ?></label>
 													<div class="input-group">
 														<input type="number" class="form-control" name="spo2" data-field="spo2" min="50" max="100" value="<?= htmlspecialchars($vitals['spo2'] ?? '') ?>" />
 														<div class="input-group-append"><span class="input-group-text">%</span></div>
@@ -736,7 +736,7 @@ load_language($_SESSION['language'] ?? 'en');
 													</div>
 												</div>
 												<div class="col-md-3 mb-3">
-													<label>BMI</label>
+													<label><?= __('bmi') ?></label>
 													<input type="number" class="form-control" name="general_bmi" data-field="general_bmi" min="0" max="100" step="0.1" value="<?= htmlspecialchars($vitals['general_bmi'] ?? '') ?>" />
 												</div>
 												<div class="col-md-3 mb-3">
@@ -856,12 +856,12 @@ load_language($_SESSION['language'] ?? 'en');
 										</div>
 										<div class="card-body">
 											<div class="row">
-												<div class="col-md-6 mb-3"><label>P/S</label><input type="text" class="form-control" name="exam_gynae_ps" data-field="exam_gynae_ps" value="<?= htmlspecialchars($examData['exam_gynae_ps'] ?? '') ?>" /></div>
-												<div class="col-md-6 mb-3"><label>P/V</label><input type="text" class="form-control" name="exam_gynae_pv" data-field="exam_gynae_pv" value="<?= htmlspecialchars($examData['exam_gynae_pv'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label><?= __('gynae_ps') ?></label><input type="text" class="form-control" name="exam_gynae_ps" data-field="exam_gynae_ps" value="<?= htmlspecialchars($examData['exam_gynae_ps'] ?? '') ?>" /></div>
+												<div class="col-md-6 mb-3"><label><?= __('gynae_pv') ?></label><input type="text" class="form-control" name="exam_gynae_pv" data-field="exam_gynae_pv" value="<?= htmlspecialchars($examData['exam_gynae_pv'] ?? '') ?>" /></div>
 											</div>
 											<div class="row">
 												<div class="col-md-6 mb-3">
-													<label>VIA</label>
+													<label><?= __('gynae_via') ?></label>
 													<input type="text" class="form-control mb-2" name="exam_gynae_via" data-field="exam_gynae_via" value="<?= htmlspecialchars($examData['exam_gynae_via'] ?? '') ?>" />
 													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('via','diag_via','viaDiagramPreview')">
 														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_via']) ? __('edit') : __('draw') ?> <?= __('via_diagram') ?>
@@ -872,7 +872,7 @@ load_language($_SESSION['language'] ?? 'en');
 													<input type="hidden" id="diag_via" value="<?= htmlspecialchars($cs['diag_via'] ?? '') ?>">
 												</div>
 												<div class="col-md-6 mb-3">
-													<label>VILI</label>
+													<label><?= __('gynae_vili') ?></label>
 													<input type="text" class="form-control mb-2" name="exam_gynae_vili" data-field="exam_gynae_vili" value="<?= htmlspecialchars($examData['exam_gynae_vili'] ?? '') ?>" />
 													<button type="button" class="btn btn-outline-primary btn-sm" onclick="openDiagram('vili','diag_vili','viliDiagramPreview')">
 														<i class="fas fa-draw-polygon mr-1"></i><?= !empty($cs['diag_vili']) ? __('edit') : __('draw') ?> <?= __('vili_diagram') ?>
@@ -902,7 +902,7 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="card-body">
 											<div class="row">
 												<div class="col-md-3 mb-3">
-													<label>Hb</label>
+													<label><?= __('lab_hb') ?></label>
 													<div class="input-group">
 														<input type="number" class="form-control" name="lab_hb_percentage" data-field="lab_hb_percentage" min="0" max="100" value="<?= htmlspecialchars($labData['lab_hb_percentage'] ?? '') ?>" placeholder="%" />
 														<div class="input-group-append"><span class="input-group-text">%</span></div>
@@ -911,14 +911,14 @@ load_language($_SESSION['language'] ?? 'en');
 													</div>
 												</div>
 												<div class="col-md-3 mb-3">
-													<label>FBS</label>
+													<label><?= __('lab_fbs') ?></label>
 													<div class="input-group">
 														<input type="number" class="form-control" name="lab_fbs" data-field="lab_fbs" min="0" max="1000" step="0.1" value="<?= htmlspecialchars($labData['lab_fbs'] ?? '') ?>" />
 														<div class="input-group-append"><span class="input-group-text">mg/dl</span></div>
 													</div>
 												</div>
 												<div class="col-md-3 mb-3">
-													<label>TSH</label>
+													<label><?= __('lab_tsh') ?></label>
 													<input type="number" class="form-control" name="lab_tsh" data-field="lab_tsh" min="0" max="100" step="0.01" value="<?= htmlspecialchars($labData['lab_tsh'] ?? '') ?>" />
 												</div>
 												<div class="col-md-3 mb-3">
@@ -955,9 +955,9 @@ load_language($_SESSION['language'] ?? 'en');
 												<div class="col-md-6 mb-3">
 													<label><?= __('colposcopy') ?></label>
 													<select class="form-control" name="cytology_colposcopy" data-field="cytology_colposcopy">
-														<option value="NONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option>
-														<option value="DONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option>
-														<option value="ADVISED" <?= ($labData['cytology_colposcopy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option>
+														<option value="NONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'NONE' ? 'selected' : '' ?>><?= __('none') ?></option>
+														<option value="DONE" <?= ($labData['cytology_colposcopy'] ?? '') === 'DONE' ? 'selected' : '' ?>><?= __('done') ?></option>
+														<option value="ADVISED" <?= ($labData['cytology_colposcopy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>><?= __('advised') ?></option>
 													</select>
 												</div>
 												<div class="col-md-6 mb-3">
@@ -969,9 +969,9 @@ load_language($_SESSION['language'] ?? 'en');
 												<div class="col-md-6 mb-3">
 													<label><?= __('biopsy') ?></label>
 													<select class="form-control" name="cytology_biopsy" data-field="cytology_biopsy">
-														<option value="NONE" <?= ($labData['cytology_biopsy'] ?? '') === 'NONE' ? 'selected' : '' ?>>None</option>
-														<option value="DONE" <?= ($labData['cytology_biopsy'] ?? '') === 'DONE' ? 'selected' : '' ?>>Done</option>
-														<option value="ADVISED" <?= ($labData['cytology_biopsy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>>Advised</option>
+														<option value="NONE" <?= ($labData['cytology_biopsy'] ?? '') === 'NONE' ? 'selected' : '' ?>><?= __('none') ?></option>
+														<option value="DONE" <?= ($labData['cytology_biopsy'] ?? '') === 'DONE' ? 'selected' : '' ?>><?= __('done') ?></option>
+														<option value="ADVISED" <?= ($labData['cytology_biopsy'] ?? '') === 'ADVISED' ? 'selected' : '' ?>><?= __('advised') ?></option>
 													</select>
 												</div>
 												<div class="col-md-6 mb-3">
@@ -1101,6 +1101,8 @@ load_language($_SESSION['language'] ?? 'en');
 <script>
 (function () {
 	var csrfToken = <?= json_encode($_SESSION['csrf_token']) ?>;
+	var allergySubstancePlaceholder = <?= json_encode(__('allergy_substance')) ?>;
+	var allergyReactionPlaceholder  = <?= json_encode(__('allergy_reaction')) ?>;
 	var caseSheetId = <?= json_encode(!empty($caseSheet) ? (int)$caseSheet['case_sheet_id'] : null) ?>;
 
 	// ── Tab navigation ──────────────────────────────────
@@ -1222,8 +1224,8 @@ load_language($_SESSION['language'] ?? 'en');
 			var row = document.createElement('div');
 			row.className = 'allergy-row d-flex align-items-center mb-2';
 			row.innerHTML =
-				'<input type="text" class="form-control allergy-name mr-2" placeholder="Allergy / Drug / Substance" value="' + escHtml(allergy || '') + '">' +
-				'<input type="text" class="form-control allergy-reaction mr-2" placeholder="Reaction / Symptom" value="' + escHtml(reaction || '') + '">' +
+				'<input type="text" class="form-control allergy-name mr-2" placeholder="' + allergySubstancePlaceholder + '" value="' + escHtml(allergy || '') + '">' +
+				'<input type="text" class="form-control allergy-reaction mr-2" placeholder="' + allergyReactionPlaceholder + '" value="' + escHtml(reaction || '') + '">' +
 				'<button type="button" class="btn btn-sm btn-outline-danger remove-allergy-btn" title="Remove"><i class="fas fa-times"></i></button>';
 			document.getElementById('allergyRows').appendChild(row);
 			row.querySelector('.remove-allergy-btn').addEventListener('click', function() {
