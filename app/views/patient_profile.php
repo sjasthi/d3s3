@@ -215,11 +215,10 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 			</li>
 		</ul>
 		<ul class="navbar-nav ml-auto">
-			<li class="nav-item d-flex align-items-center mr-3">
-				<div class="custom-control custom-switch theme-switch">
-					<input type="checkbox" class="custom-control-input" id="themeToggleProfile" data-theme-toggle />
-					<label class="custom-control-label" for="themeToggleProfile">Dark mode</label>
-				</div>
+			<li class="nav-item d-flex align-items-center">
+				<button id="gearBtn" aria-label="Display settings" title="Display settings">
+					<i class="fas fa-cog fa-lg"></i>
+				</button>
 			</li>
 			<li class="nav-item mr-2">
 				<a class="btn btn-sm btn-outline-secondary" href="<?= htmlspecialchars($_backUrl) ?>" role="button">
@@ -228,6 +227,23 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 			</li>
 		</ul>
 	</nav>
+
+	<!-- Slide-down display settings panel -->
+	<div id="settingsPanel" role="dialog" aria-label="Display settings">
+		<span class="panel-label">Display settings</span>
+		<div class="custom-control custom-switch mb-3">
+			<input type="checkbox" class="custom-control-input" id="themeTogglePanel" data-theme-toggle />
+			<label class="custom-control-label" for="themeTogglePanel">Dark mode</label>
+		</div>
+		<div>
+			<span class="panel-label">Language</span>
+			<div class="btn-group lang-btn-group" role="group" aria-label="Language">
+				<button type="button" class="btn btn-sm <?= ($_SESSION['language'] ?? 'en') === 'en' ? 'btn-primary' : 'btn-outline-secondary' ?>" data-lang="en">English</button>
+				<button type="button" class="btn btn-sm <?= ($_SESSION['language'] ?? 'en') === 'te' ? 'btn-primary' : 'btn-outline-secondary' ?>" data-lang="te">తెలుగు</button>
+			</div>
+		</div>
+		<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+	</div>
 
 	<?php require __DIR__ . '/_sidebar.php'; ?>
 
@@ -1017,7 +1033,7 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 <script src="assets/js/jquery.min.js"></script>
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
-<script src="assets/js/theme.js"></script>
+<script src="assets/js/theme-toggle.js"></script>
 <script>
 $(function () {
 

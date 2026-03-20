@@ -313,3 +313,40 @@ body.font-size-large .table {
 body.font-size-large .card-title {
 	font-size: 1.2rem;
 }
+
+/* ── Gear settings panel ──────────────────────────────────────────────── */
+#settingsPanel {
+	position: fixed;
+	top: 57px;
+	right: 0;
+	width: 240px;
+	background: #fff;
+	border: 1px solid #dee2e6;
+	border-top: none;
+	border-radius: 0 0 0 0.375rem;
+	box-shadow: 0 6px 16px rgba(0,0,0,.12);
+	z-index: 1040;
+	overflow: hidden;
+	max-height: 0;
+	transition: max-height 0.22s ease, padding 0.22s ease;
+	padding: 0 1rem;
+}
+#settingsPanel.open { max-height: 220px; padding: 1rem; }
+#settingsPanel .panel-label {
+	font-size: .68rem;
+	letter-spacing: .07em;
+	text-transform: uppercase;
+	color: #6c757d;
+	font-weight: 600;
+	margin-bottom: .6rem;
+	display: block;
+}
+#settingsPanel .lang-btn-group { width: 100%; }
+#gearBtn { color: #6c757d; padding: .25rem .5rem; background: none; border: none; }
+#gearBtn:hover { color: #343a40; }
+body.dark-mode #settingsPanel {
+	background: #343a40;
+	border-color: #495057;
+	color: #f8f9fa;
+}
+body.dark-mode #settingsPanel .panel-label { color: #adb5bd; }

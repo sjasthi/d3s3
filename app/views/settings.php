@@ -24,11 +24,10 @@
 			</li>
 		</ul>
 		<ul class="navbar-nav ml-auto">
-			<li class="nav-item d-flex align-items-center mr-3">
-				<div class="custom-control custom-switch theme-switch">
-					<input type="checkbox" class="custom-control-input" id="themeToggleSettings" data-theme-toggle />
-					<label class="custom-control-label" for="themeToggleSettings">Dark mode</label>
-				</div>
+			<li class="nav-item d-flex align-items-center">
+				<button id="gearBtn" aria-label="Display settings" title="Display settings">
+					<i class="fas fa-cog fa-lg"></i>
+				</button>
 			</li>
 			<?php if (in_array($_SESSION['user_role'] ?? '', ['SUPER_ADMIN', 'ADMIN'], true)): ?>
 			<li class="nav-item">
@@ -45,6 +44,23 @@
 			<?php endif; ?>
 		</ul>
 	</nav>
+
+	<!-- Slide-down display settings panel -->
+	<div id="settingsPanel" role="dialog" aria-label="Display settings">
+		<span class="panel-label">Display settings</span>
+		<div class="custom-control custom-switch mb-3">
+			<input type="checkbox" class="custom-control-input" id="themeTogglePanel" data-theme-toggle />
+			<label class="custom-control-label" for="themeTogglePanel">Dark mode</label>
+		</div>
+		<div>
+			<span class="panel-label">Language</span>
+			<div class="btn-group lang-btn-group" role="group" aria-label="Language">
+				<button type="button" class="btn btn-sm <?= ($_SESSION['language'] ?? 'en') === 'en' ? 'btn-primary' : 'btn-outline-secondary' ?>" data-lang="en">English</button>
+				<button type="button" class="btn btn-sm <?= ($_SESSION['language'] ?? 'en') === 'te' ? 'btn-primary' : 'btn-outline-secondary' ?>" data-lang="te">తెలుగు</button>
+			</div>
+		</div>
+		<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+	</div>
 
 	<?php require __DIR__ . '/_sidebar.php'; ?>
 

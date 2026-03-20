@@ -73,3 +73,49 @@
 		init();
 	}
 })();
+
+// ── Gear settings panel ───────────────────────────────────────────────────────
+(function () {
+	function gearInit() {
+		var gearBtn = document.getElementById('gearBtn');
+		var panel   = document.getElementById('settingsPanel');
+		if (!gearBtn || !panel) return;
+
+		function closePanel() { panel.classList.remove('open'); }
+		function togglePanel(e) { e.stopPropagation(); panel.classList.toggle('open'); }
+
+		gearBtn.addEventListener('click', togglePanel);
+
+		document.addEventListener('click', function (e) {
+			if (!panel.contains(e.target) && e.target !== gearBtn && !gearBtn.contains(e.target)) {
+				closePanel();
+			}
+		});
+
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') closePanel();
+		});
+
+		panel.querySelectorAll('[data-lang]').forEach(function (btn) {
+			btn.addEventListener('click', function () {
+				var lang = this.dataset.lang;
+				var csrfInput = document.querySelector('input[name="csrf_token"]');
+				if (!csrfInput) return;
+				fetch('settings.php?ajax=language', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: 'csrf_token=' + encodeURIComponent(csrfInput.value) +
+					      '&language=' + encodeURIComponent(lang),
+				}).then(function (r) { return r.json(); }).then(function (data) {
+					if (data.ok) location.reload();
+				}).catch(function () {});
+			});
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', gearInit);
+	} else {
+		gearInit();
+	}
+}());

@@ -47,42 +47,6 @@ load_language($_SESSION['language'] ?? 'en');
 		/* Extra top padding when the navbar is taller due to intake tabs */
 		body.has-intake-tabs .content-wrapper { padding-top: 30px; }
 
-		/* Gear settings panel */
-		#settingsPanel {
-			position: fixed;
-			top: 57px;
-			right: 0;
-			width: 240px;
-			background: #fff;
-			border: 1px solid #dee2e6;
-			border-top: none;
-			border-radius: 0 0 0 0.375rem;
-			box-shadow: 0 6px 16px rgba(0,0,0,.12);
-			z-index: 1040;
-			overflow: hidden;
-			max-height: 0;
-			transition: max-height 0.22s ease, padding 0.22s ease;
-			padding: 0 1rem;
-		}
-		#settingsPanel.open { max-height: 220px; padding: 1rem; }
-		#settingsPanel .panel-label {
-			font-size: .68rem;
-			letter-spacing: .07em;
-			text-transform: uppercase;
-			color: #6c757d;
-			font-weight: 600;
-			margin-bottom: .6rem;
-			display: block;
-		}
-		#settingsPanel .lang-btn-group { width: 100%; }
-		#gearBtn { color: #6c757d; padding: .25rem .5rem; background: none; border: none; }
-		#gearBtn:hover { color: #343a40; }
-		body.dark-mode #settingsPanel {
-			background: #343a40;
-			border-color: #495057;
-			color: #f8f9fa;
-		}
-		body.dark-mode #settingsPanel .panel-label { color: #adb5bd; }
 	</style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?><?= !empty($caseSheet) ? ' has-intake-tabs' : '' ?>"
@@ -139,6 +103,7 @@ load_language($_SESSION['language'] ?? 'en');
 				<button type="button" class="btn btn-sm <?= ($_SESSION['language'] ?? 'en') === 'te' ? 'btn-primary' : 'btn-outline-secondary' ?>" data-lang="te">తెలుగు</button>
 			</div>
 		</div>
+		<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 	</div>
 
 	<?php require __DIR__ . '/_sidebar.php'; ?>
@@ -2130,48 +2095,6 @@ foreach ($_labCategories as $_labCat => $_labTests): ?>
 			btn.disabled = false;
 			btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Changes';
 			showAlert('Network error. Please try again.', 'danger');
-		});
-	});
-}());
-</script>
-<script>
-// ── Gear settings panel ──────────────────────────────────────────────────────
-(function () {
-	var gearBtn = document.getElementById('gearBtn');
-	var panel   = document.getElementById('settingsPanel');
-	if (!gearBtn || !panel) return;
-
-	function closePanel() { panel.classList.remove('open'); }
-	function togglePanel(e) { e.stopPropagation(); panel.classList.toggle('open'); }
-
-	gearBtn.addEventListener('click', togglePanel);
-
-	// Close when clicking anywhere outside the panel or gear button
-	document.addEventListener('click', function (e) {
-		if (!panel.contains(e.target) && e.target !== gearBtn && !gearBtn.contains(e.target)) {
-			closePanel();
-		}
-	});
-
-	// Close on Escape key
-	document.addEventListener('keydown', function (e) {
-		if (e.key === 'Escape') closePanel();
-	});
-
-	// Language switch buttons
-	panel.querySelectorAll('[data-lang]').forEach(function (btn) {
-		btn.addEventListener('click', function () {
-			var lang = this.dataset.lang;
-			var csrfInput = document.querySelector('input[name="csrf_token"]');
-			if (!csrfInput) return;
-			fetch('settings.php?ajax=language', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: 'csrf_token=' + encodeURIComponent(csrfInput.value) +
-				      '&language=' + encodeURIComponent(lang),
-			}).then(function (r) { return r.json(); }).then(function (data) {
-				if (data.ok) location.reload();
-			}).catch(function () {});
 		});
 	});
 }());
