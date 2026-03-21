@@ -1212,6 +1212,24 @@ load_language($_SESSION['language'] ?? 'en');
 		$('#number_of_children').on('change', toggleDelivery);
 		$('#has_uterus').on('change', toggleMenstrual);
 
+		// ── BMI auto-calculation ──────────────────────────
+		// Recalculates BMI whenever height or weight changes,
+		// updates the field, and saves it automatically.
+		function recalcIntakeBmi() {
+			var h = parseFloat($('input[data-field="general_height"]').val());
+			var w = parseFloat($('input[data-field="general_weight"]').val());
+			if (h > 0 && w > 0) {
+				var bmi = (w / ((h / 100) * (h / 100))).toFixed(1);
+				var $bmiField = $('input[data-field="general_bmi"]');
+				$bmiField.val(bmi);
+				clearTimeout(saveTimeout['general_bmi']);
+				saveTimeout['general_bmi'] = setTimeout(function () {
+					autoSave('general_bmi', bmi);
+				}, 500);
+			}
+		}
+		$('input[data-field="general_height"], input[data-field="general_weight"]').on('input change', recalcIntakeBmi);
+
 		// ── Allergy row management (History tab) ─────────
 		function escHtml(s) {
 			return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
