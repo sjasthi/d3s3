@@ -56,7 +56,8 @@ class AppointmentController
 		               JOIN users       d  ON d.user_id        = a.doctor_user_id
 		               LEFT JOIN events e  ON e.event_id       = a.event_id
 		              WHERE a.scheduled_date = CURDATE()
-		                AND a.status NOT IN ('CANCELLED','NO_SHOW')";
+		                AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')
+		                AND cs.status != 'CLOSED'";
 
 		$todayParams = [];
 		if ($isDoctorRole) {
@@ -96,7 +97,8 @@ class AppointmentController
 		                  LEFT JOIN events e  ON e.event_id       = a.event_id
 		                 WHERE a.scheduled_date > CURDATE()
 		                   AND a.scheduled_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-		                   AND a.status NOT IN ('CANCELLED','NO_SHOW')";
+		                   AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')
+		                   AND cs.status != 'CLOSED'";
 
 		$upcomingParams = [];
 		if ($isDoctorRole) {
@@ -369,29 +371,42 @@ class AppointmentController
 		}
 
 		$oldDoctorId = $cs['assigned_doctor_user_id'];
-
-		$pdo->prepare(
-			"UPDATE case_sheets SET assigned_doctor_user_id = ?, updated_at = NOW()
-			  WHERE case_sheet_id = ?"
-		)->execute([$doctorUserId, $caseSheetId]);
-
-		// Audit log
-		$pdo->prepare(
-			"INSERT INTO case_sheet_audit_log (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
-			 VALUES (?, ?, 'assigned_doctor_user_id', ?, ?, NOW())"
-		)->execute([
-			$caseSheetId,
-			$_SESSION['user_id'],
-			$oldDoctorId ?? 'null',
-			(string)$doctorUserId,
-		]);
-
 		$doctorName  = trim($doctor['first_name'] . ' ' . $doctor['last_name']);
 		$patientName = trim($cs['first_name'] . ' ' . $cs['last_name']);
 
+		// Walk-in assignment: set doctor and move directly to DOCTOR_REVIEW.
+		// No appointment record is created — walk-ins only live in the queue,
+		// never in Today's Appointments (which is for pre-scheduled patients only).
+		$pdo->prepare(
+			"UPDATE case_sheets
+			    SET assigned_doctor_user_id = ?,
+			        assigned_doctor_name    = ?,
+			        status                  = 'DOCTOR_REVIEW',
+			        updated_at              = NOW()
+			  WHERE case_sheet_id = ?"
+		)->execute([$doctorUserId, $doctorName, $caseSheetId]);
+
+		// Audit log — wrapped in try/catch so a missing column (pre-migration)
+		// does not prevent the assignment from completing successfully
+		try {
+			$changedByName = trim($_SESSION['user_name'] ?? '');
+			$pdo->prepare(
+				"INSERT INTO case_sheet_audit_log (case_sheet_id, user_id, changed_by_name, field_name, old_value, new_value, changed_at)
+				 VALUES (?, ?, ?, 'assigned_doctor_user_id', ?, ?, NOW())"
+			)->execute([
+				$caseSheetId,
+				$_SESSION['user_id'],
+				$changedByName ?: null,
+				$oldDoctorId ?? 'null',
+				(string)$doctorUserId,
+			]);
+		} catch (PDOException $e) {
+			error_log('assignToDoctor audit log error: ' . $e->getMessage());
+		}
+
 		echo json_encode([
 			'success'     => true,
-			'message'     => $patientName . ' (' . $cs['patient_code'] . ') assigned to Dr. ' . $doctorName . '.',
+			'message'     => $patientName . ' (' . $cs['patient_code'] . ') assigned to Dr. ' . $doctorName . ' for today.',
 			'doctor_name' => 'Dr. ' . $doctorName,
 		]);
 		exit;
@@ -504,10 +519,11 @@ class AppointmentController
 		$pdo->prepare(
 			"UPDATE case_sheets
 			    SET assigned_doctor_user_id = ?,
+			        assigned_doctor_name    = ?,
 			        status                  = 'SCHEDULED',
 			        updated_at              = NOW()
 			  WHERE case_sheet_id = ? AND status != 'CLOSED'"
-		)->execute([$doctorUserId, $caseSheetId]);
+		)->execute([$doctorUserId, $doctorName, $caseSheetId]);
 
 		$patientName   = trim($cs['first_name'] . ' ' . $cs['last_name']);
 		$doctorName    = trim($doctor['first_name'] . ' ' . $doctor['last_name']);
@@ -716,9 +732,9 @@ class AppointmentController
 			// The nurse will complete the full intake when the patient arrives.
 			$pdo->prepare(
 				'INSERT INTO case_sheets
-				    (patient_id, visit_type, status, created_by_user_id, chief_complaint)
-				 VALUES (?, ?, ?, ?, ?)'
-			)->execute([$patientId, 'OTHER', 'INTAKE_IN_PROGRESS', $_SESSION['user_id'], '']);
+				    (patient_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
+				 VALUES (?, ?, ?, ?, ?, ?)'
+			)->execute([$patientId, 'OTHER', 'INTAKE_IN_PROGRESS', $_SESSION['user_id'], trim($_SESSION['user_name'] ?? ''), '']);
 
 			$caseSheetId = (int)$pdo->lastInsertId();
 
@@ -825,12 +841,24 @@ class AppointmentController
 		}
 
 		try {
+			$now    = date('Y-m-d H:i:s');
+			$userId = (int)$_SESSION['user_id'];
+
 			$pdo->prepare("UPDATE appointments SET status = 'CANCELLED', notes = ?, updated_at = NOW() WHERE appointment_id = ?")
 			    ->execute([$note, $appointmentId]);
 
-			// Revert case sheet so it can be rescheduled
-			$pdo->prepare("UPDATE case_sheets SET status = 'INTAKE_IN_PROGRESS', updated_at = NOW() WHERE case_sheet_id = ? AND status = 'SCHEDULED'")
-			    ->execute([$appt['case_sheet_id']]);
+			// Close the case sheet permanently — cancelled appointments are preserved
+			// in patient history as closed records with closure_type CANCELLED.
+			$pdo->prepare(
+				"UPDATE case_sheets
+				    SET status             = 'CLOSED',
+				        is_closed          = 1,
+				        closed_at          = ?,
+				        closed_by_user_id  = ?,
+				        closure_type       = 'CANCELLED',
+				        updated_at         = ?
+				  WHERE case_sheet_id = ?"
+			)->execute([$now, $userId, $now, $appt['case_sheet_id']]);
 
 			echo json_encode(['success' => true]);
 		} catch (\PDOException $e) {
@@ -868,6 +896,7 @@ class AppointmentController
 			echo json_encode(['success' => false, 'message' => 'A valid appointment and new date are required.']);
 			exit;
 		}
+
 
 		if ($newTime && !preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $newTime)) {
 			$newTime = null;
@@ -923,6 +952,7 @@ class AppointmentController
 		}
 		exit;
 	}
+
 
 	// ── Role guard ──────────────────────────────────────────────────────────
 

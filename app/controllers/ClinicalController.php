@@ -57,6 +57,28 @@ class ClinicalController
 				$stmt->execute([$caseSheet['patient_id']]);
 				$patient = $stmt->fetch();
 
+				// Load previous closed case sheet vitals for comparison panels in intake
+				$prevVitals = [];
+				try {
+					$_prevStmt = $pdo->prepare(
+						'SELECT vitals_json FROM case_sheets
+						  WHERE patient_id = ?
+						    AND case_sheet_id != ?
+						    AND status = ?
+						    AND vitals_json IS NOT NULL
+						    AND vitals_json != ?
+						  ORDER BY visit_datetime DESC
+						  LIMIT 1'
+					);
+					$_prevStmt->execute([$caseSheet['patient_id'], $caseSheetId, 'CLOSED', '{}']);
+					$_prevRow = $_prevStmt->fetch();
+					if ($_prevRow) {
+						$prevVitals = json_decode($_prevRow['vitals_json'], true) ?: [];
+					}
+				} catch (Exception $e) {
+					$prevVitals = [];
+				}
+
 				// Load existing lab orders for this case sheet
 				try {
 					$stmt = $pdo->prepare(
@@ -171,13 +193,13 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
-		// Only claim if still INTAKE_COMPLETE (prevents double-claim)
+		// Claim if INTAKE_COMPLETE or SCHEDULED (nurse may have pre-assigned a doctor)
 		$stmt = $pdo->prepare(
 			'UPDATE case_sheets
-			    SET status = ?, assigned_doctor_user_id = ?, updated_at = NOW()
-			  WHERE case_sheet_id = ? AND status = ?'
+			    SET status = ?, assigned_doctor_user_id = ?, assigned_doctor_name = ?, updated_at = NOW()
+			  WHERE case_sheet_id = ? AND status IN (?, ?)'
 		);
-		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], $caseSheetId, 'INTAKE_COMPLETE']);
+		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], trim($_SESSION['user_name'] ?? ''), $caseSheetId, 'INTAKE_COMPLETE', 'SCHEDULED']);
 
 		if ($stmt->rowCount() === 0) {
 			$_SESSION['intake_error'] = 'This case sheet is no longer available for review.';
@@ -189,6 +211,12 @@ class ClinicalController
 			$pdo, $caseSheetId, $_SESSION['user_id'],
 			'status', 'INTAKE_COMPLETE', 'DOCTOR_REVIEW'
 		);
+
+		// Advance linked appointment to IN_PROGRESS so it reflects active review
+		$pdo->prepare(
+			"UPDATE appointments SET status = 'IN_PROGRESS', updated_at = NOW()
+			  WHERE case_sheet_id = ? AND status IN ('SCHEDULED','CONFIRMED')"
+		)->execute([$caseSheetId]);
 
 		header('Location: review.php?case_sheet_id=' . $caseSheetId);
 		exit;
@@ -240,12 +268,95 @@ class ClinicalController
 		$stmt->execute([$caseSheet['patient_id']]);
 		$patient = $stmt->fetch();
 
-		// Load nurse who created the intake
+		// Load most recent closed case sheet with vitals data for comparison panel.
+		// Uses separate queries per data type so each panel finds the most recent
+		// case sheet that actually has that data — not necessarily the same visit.
+		// Wrapped in try/catch so any DB error simply hides the panel rather than crashing.
+		$prevCaseSheet = null;
+		$prevVitals    = [];
+		$prevLabData   = [];
+		try {
+			$stmt = $pdo->prepare(
+				'SELECT case_sheet_id, visit_datetime, vitals_json
+				   FROM case_sheets
+				  WHERE patient_id = ?
+				    AND case_sheet_id != ?
+				    AND status = ?
+				    AND vitals_json IS NOT NULL
+				    AND vitals_json != ?
+				  ORDER BY visit_datetime DESC
+				  LIMIT 1'
+			);
+			$stmt->execute([$caseSheet['patient_id'], $caseSheetId, 'CLOSED', '{}']);
+			$prevVitalsSheet = $stmt->fetch();
+			if ($prevVitalsSheet) {
+				$prevCaseSheet = $prevVitalsSheet; // used by view for visit_datetime display
+				$prevVitals    = json_decode($prevVitalsSheet['vitals_json'], true) ?: [];
+			}
+
+			$stmt = $pdo->prepare(
+				'SELECT diagnosis
+				   FROM case_sheets
+				  WHERE patient_id = ?
+				    AND case_sheet_id != ?
+				    AND status = ?
+				    AND diagnosis IS NOT NULL
+				    AND diagnosis != ?
+				  ORDER BY visit_datetime DESC
+				  LIMIT 1'
+			);
+			$stmt->execute([$caseSheet['patient_id'], $caseSheetId, 'CLOSED', '{}']);
+			$prevLabSheet = $stmt->fetch();
+			if ($prevLabSheet) {
+				$prevLabData = json_decode($prevLabSheet['diagnosis'], true) ?: [];
+			}
+		} catch (Exception $e) {
+			// Leave comparison panels empty — better than a crash
+			$prevCaseSheet = null;
+			$prevVitals    = [];
+			$prevLabData   = [];
+		}
+
+		// Load all prior closed case sheets for Patient History tab
+		$stmt = $pdo->prepare(
+			'SELECT cs.case_sheet_id, cs.visit_datetime, cs.visit_type,
+			        cs.closure_type, cs.chief_complaint,
+			        cs.vitals_json, cs.assessment, cs.diagnosis,
+			        cs.plan_notes, cs.exam_notes,
+			        cs.doctor_assessment, cs.doctor_diagnosis,
+			        cs.doctor_plan_notes, cs.prescriptions, cs.follow_up_notes,
+			        u.first_name AS doctor_first, u.last_name AS doctor_last
+			   FROM case_sheets cs
+			   LEFT JOIN users u ON u.user_id = cs.assigned_doctor_user_id
+			  WHERE cs.patient_id = ?
+			    AND cs.case_sheet_id != ?
+			    AND cs.status = ?
+			  ORDER BY cs.visit_datetime DESC'
+		);
+		$stmt->execute([$caseSheet['patient_id'], $caseSheetId, 'CLOSED']);
+		$priorCaseSheets = $stmt->fetchAll();
+
+		// Resolve intake nurse name.
+		// Priority: snapshotted created_by_name → live users JOIN → audit log fallback.
 		$intakeUser = null;
-		if (!empty($caseSheet['created_by_user_id'])) {
+		if (!empty($caseSheet['created_by_name'])) {
+			$parts = explode(' ', trim($caseSheet['created_by_name']), 2);
+			$intakeUser = ['first_name' => $parts[0], 'last_name' => $parts[1] ?? ''];
+		} elseif (!empty($caseSheet['created_by_user_id'])) {
 			$stmt = $pdo->prepare('SELECT first_name, last_name FROM users WHERE user_id = ?');
 			$stmt->execute([$caseSheet['created_by_user_id']]);
-			$intakeUser = $stmt->fetch();
+			$intakeUser = $stmt->fetch() ?: null;
+		}
+		if (!$intakeUser) {
+			$stmt = $pdo->prepare(
+				'SELECT u.first_name, u.last_name
+				   FROM case_sheet_audit_log al
+				   JOIN users u ON u.user_id = al.user_id
+				  WHERE al.case_sheet_id = ? AND al.field_name = ? AND al.new_value = ?
+				  ORDER BY al.changed_at ASC LIMIT 1'
+			);
+			$stmt->execute([$caseSheetId, 'status', 'INTAKE_IN_PROGRESS']);
+			$intakeUser = $stmt->fetch() ?: null;
 		}
 
 		// Load audit log for this case sheet (most recent first)
@@ -336,6 +447,12 @@ class ClinicalController
 		foreach ($closureAudit as [$field, $old, $new]) {
 			$this->writeAuditLog($pdo, $caseSheetId, $userId, $field, $old, $new);
 		}
+
+		// Mark linked appointment as COMPLETED
+		$pdo->prepare(
+			"UPDATE appointments SET status = 'COMPLETED', updated_at = NOW()
+			  WHERE case_sheet_id = ? AND status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')"
+		)->execute([$caseSheetId]);
 
 		$_SESSION['dashboard_notice'] = 'Chart closed for '
 			. htmlspecialchars($row['first_name'] . ' ' . ($row['last_name'] ?? ''))
@@ -477,14 +594,15 @@ class ClinicalController
 
 		$stmt = $pdo->prepare(
 			'INSERT INTO case_sheets
-			    (patient_id, visit_type, status, created_by_user_id, chief_complaint)
-			 VALUES (?, ?, ?, ?, ?)'
+			    (patient_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
+			 VALUES (?, ?, ?, ?, ?, ?)'
 		);
 		$stmt->execute([
 			$patientId,
 			$visitType,
 			'INTAKE_IN_PROGRESS',
 			$_SESSION['user_id'],
+			trim($_SESSION['user_name'] ?? ''),
 			$chiefComplaint,
 		]);
 
@@ -494,6 +612,75 @@ class ClinicalController
 			$pdo, $newId, $_SESSION['user_id'],
 			'status', null, 'INTAKE_IN_PROGRESS'
 		);
+
+		// ── Carry over persistent fields from the most recent prior case sheet ──
+		// These are fields that don't change visit-to-visit and save the nurse
+		// from re-entering stable background data on every return visit.
+		$stmt = $pdo->prepare(
+			'SELECT vitals_json, assessment
+			   FROM case_sheets
+			  WHERE patient_id = ?
+			    AND case_sheet_id != ?
+			    AND status = ?
+			  ORDER BY visit_datetime DESC
+			  LIMIT 1'
+		);
+		$stmt->execute([$patientId, $newId, 'CLOSED']);
+		$prev = $stmt->fetch();
+
+		if ($prev) {
+			$prevVitals  = !empty($prev['vitals_json']) ? (json_decode($prev['vitals_json'], true) ?: []) : [];
+			$prevHistory = !empty($prev['assessment'])  ? (json_decode($prev['assessment'],  true) ?: []) : [];
+
+			// Fields to carry over from vitals_json
+			$carryVitalsKeys = [
+				// Background information
+				'medicine_sources', 'occupation', 'education', 'diet',
+				// Reproductive history
+				'number_of_children', 'has_uterus',
+				'type_of_delivery', 'delivery_location', 'delivery_source',
+				// Menstrual — age of onset only (other menstrual fields are visit-specific)
+				'menstrual_age_of_onset',
+			];
+
+			// Fields to carry over from assessment (JSON)
+			$carryHistoryKeys = [
+				// Medical conditions
+				'condition_dm', 'condition_htn', 'condition_tsh', 'condition_heart_disease',
+				'condition_others', 'surgical_history',
+				// Allergies
+				'allergies_json', 'no_known_allergies',
+				// Family history
+				'family_history_cancer', 'family_history_tuberculosis', 'family_history_diabetes',
+				'family_history_bp', 'family_history_thyroid', 'family_history_other',
+			];
+
+			$newVitals  = [];
+			$newHistory = [];
+
+			foreach ($carryVitalsKeys as $key) {
+				if (isset($prevVitals[$key])) {
+					$newVitals[$key] = $prevVitals[$key];
+				}
+			}
+			foreach ($carryHistoryKeys as $key) {
+				if (isset($prevHistory[$key])) {
+					$newHistory[$key] = $prevHistory[$key];
+				}
+			}
+
+			if (!empty($newVitals) || !empty($newHistory)) {
+				$pdo->prepare(
+					'UPDATE case_sheets
+					    SET vitals_json = ?, assessment = ?, updated_at = NOW()
+					  WHERE case_sheet_id = ?'
+				)->execute([
+					!empty($newVitals)  ? json_encode($newVitals)  : null,
+					!empty($newHistory) ? json_encode($newHistory) : null,
+					$newId,
+				]);
+			}
+		}
 
 		header('Location: intake.php?case_sheet_id=' . $newId);
 		exit;
@@ -519,7 +706,8 @@ class ClinicalController
 			exit;
 		}
 
-		$patientId = (int)($input['patient_id'] ?? 0);
+		$patientId   = (int)($input['patient_id'] ?? 0);
+		$caseSheetId = (int)($input['case_sheet_id'] ?? 0); // optional — used for audit log
 		if ($patientId <= 0) {
 			echo json_encode(['success' => false, 'message' => 'Missing patient ID.']);
 			exit;
@@ -549,30 +737,57 @@ class ClinicalController
 				: (int)$input['age_years'];
 		}
 
-		$setClauses = [];
-		$params     = [];
+		// Collect only the fields present in the input
+		$fieldsToUpdate = [];
 		foreach ($allowed as $field) {
 			if (array_key_exists($field, $input)) {
-				$setClauses[] = "`$field` = ?";
-				// Convert empty strings to NULL for nullable columns
-				$params[]     = ($input[$field] === '' || $input[$field] === null) ? null : $input[$field];
+				$fieldsToUpdate[$field] = ($input[$field] === '' || $input[$field] === null)
+					? null
+					: $input[$field];
 			}
 		}
 
-		if (empty($setClauses)) {
+		if (empty($fieldsToUpdate)) {
 			echo json_encode(['success' => false, 'message' => 'No fields to update.']);
 			exit;
 		}
 
-		$params[] = $patientId;
-
 		try {
 			$pdo = getDBConnection();
+
+			// ── Read current values before update (for audit log) ──────────
+			$colList = implode(', ', array_map(fn($f) => "`$f`", array_keys($fieldsToUpdate)));
+			$stmt    = $pdo->prepare("SELECT $colList FROM patients WHERE patient_id = ?");
+			$stmt->execute([$patientId]);
+			$currentValues = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+			// ── Perform the update ─────────────────────────────────────────
+			$setClauses = array_map(fn($f) => "`$f` = ?", array_keys($fieldsToUpdate));
+			$params     = array_values($fieldsToUpdate);
+			$params[]   = $patientId;
+
 			$pdo->prepare(
 				'UPDATE patients SET ' . implode(', ', $setClauses) . ' WHERE patient_id = ?'
 			)->execute($params);
 
-			// Return the refreshed patient row so JS can update the read-only display
+			// ── Write audit log for each changed field ──────────────────────
+			// Only logs if a case_sheet_id was provided — backward compatible
+			// with existing intake.php calls that don't pass one.
+			// Field names are prefixed "patient." to distinguish from case sheet fields.
+			if ($caseSheetId > 0) {
+				foreach ($fieldsToUpdate as $field => $newVal) {
+					$oldVal    = array_key_exists($field, $currentValues)
+						? ($currentValues[$field] === null ? null : (string)$currentValues[$field])
+						: null;
+					$newValStr = $newVal === null ? null : (string)$newVal;
+					$this->writeAuditLog(
+						$pdo, $caseSheetId, $_SESSION['user_id'],
+						'patient.' . $field, $oldVal, $newValStr
+					);
+				}
+			}
+
+			// ── Return the refreshed patient row so JS can update the display
 			$stmt = $pdo->prepare(
 				'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
 				        age_years, phone_e164, email, address_line1, city, state_province,
@@ -604,11 +819,12 @@ class ClinicalController
 			return; // No change — no log entry needed
 		}
 
+		$changedByName = trim($_SESSION['user_name'] ?? '');
 		$pdo->prepare(
 			'INSERT INTO case_sheet_audit_log
-			    (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
-			 VALUES (?, ?, ?, ?, ?, NOW())'
-		)->execute([$caseSheetId, $userId, $field, $oldValue, $newValue]);
+			    (case_sheet_id, user_id, changed_by_name, field_name, old_value, new_value, changed_at)
+			 VALUES (?, ?, ?, ?, ?, ?, NOW())'
+		)->execute([$caseSheetId, $userId, $changedByName ?: null, $field, $oldValue, $newValue]);
 	}
 
 	// ── Order lab tests (AJAX POST) ────────────────────────

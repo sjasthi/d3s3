@@ -47,6 +47,10 @@ load_language($_SESSION['language'] ?? 'en');
 		/* Extra top padding when the navbar is taller due to intake tabs */
 		body.has-intake-tabs .content-wrapper { padding-top: 30px; }
 
+		/* Vitals / menstrual comparison panels */
+		.vitals-compare-prev { color: #6c757d; font-size: 0.9rem; }
+		.vitals-compare-drastic { color: #dc3545 !important; font-weight: 600; }
+		.vitals-compare-no-record { color: #adb5bd; font-style: italic; font-size: 0.85rem; }
 	</style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?><?= !empty($caseSheet) ? ' has-intake-tabs' : '' ?>"
@@ -562,7 +566,47 @@ load_language($_SESSION['language'] ?? 'en');
 												</div>
 											</div>
 										</div>
+								<?php if (!empty($prevVitals)): ?>
+								<?php
+								$_prevMenHasData = !empty($prevVitals['menstrual_cycle_frequency'])
+								               || !empty($prevVitals['menstrual_duration_of_flow'])
+								               || !empty($prevVitals['menstrual_lmp'])
+								               || !empty($prevVitals['menstrual_mh']);
+								?>
+								<?php if ($_prevMenHasData): ?>
+								<div class="card shadow-sm mb-3 mt-3">
+									<div class="card-header bg-light py-2">
+										<span class="font-weight-bold text-secondary" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">
+											<i class="fas fa-exchange-alt mr-2"></i>Menstrual comparison (previous visit)
+										</span>
 									</div>
+									<div class="card-body p-0">
+										<table class="table table-sm table-bordered mb-0">
+											<thead class="thead-light"><tr><th>Field</th><th>Previous</th><th>This visit</th></tr></thead>
+											<tbody>
+											<?php foreach ([
+												['menstrual_cycle_frequency',  'Cycle Frequency', 'days'],
+												['menstrual_duration_of_flow', 'Duration of Flow','days'],
+												['menstrual_lmp',              'LMP',             ''],
+												['menstrual_mh',               'MH',              ''],
+											] as [$_mf, $_ml, $_mu]):
+												$_mPrev = $prevVitals[$_mf] ?? null;
+												$_mCurr = $vitals[$_mf] ?? null;
+											?>
+											<tr data-compare-field="<?= $_mf ?>" data-compare-prev="<?= htmlspecialchars((string)($_mPrev ?? '')) ?>" data-compare-threshold="99999" data-compare-unit="<?= htmlspecialchars($_mu) ?>">
+												<td class="text-secondary small font-weight-bold"><?= $_ml ?></td>
+												<td class="vitals-compare-prev small"><?php if ($_mPrev !== null && $_mPrev !== ''): ?><?= htmlspecialchars($_mPrev) ?><?php if ($_mu): ?> <small class="text-muted"><?= $_mu ?></small><?php endif; ?><?php else: ?><span class="text-muted">no prior record</span><?php endif; ?></td>
+												<td class="compare-curr-td small"><span class="compare-curr-val"><?= ($_mCurr !== null && $_mCurr !== '') ? htmlspecialchars((string)$_mCurr) : '' ?></span><?php if ($_mu && $_mCurr !== null && $_mCurr !== ''): ?><small class="compare-curr-unit text-muted ml-1"><?= $_mu ?></small><?php endif; ?><span class="compare-arrow"></span><?php if ($_mCurr === null || $_mCurr === ''): ?><span class="vitals-compare-no-record">not recorded</span><?php endif; ?></td>
+											</tr>
+											<?php endforeach; ?>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<?php endif; ?>
+								<?php endif; ?>
+									</div>
+
 								</form>
 								<div class="tab-navigation">
 									<button type="button" class="btn btn-secondary btn-next-tab" data-target="#tab-verification"><i class="fas fa-chevron-left"></i> Previous</button>
@@ -674,6 +718,67 @@ load_language($_SESSION['language'] ?? 'en');
 
 							<!-- ── General Tab ────────────────────────────── -->
 							<div class="tab-pane fade" id="tab-general" role="tabpanel">
+								<?php if (!empty($prevVitals)): ?>
+								<!-- ── Vitals Comparison Panel ─────────────────── -->
+								<div class="card shadow-sm mb-3">
+									<div class="card-header bg-light py-2">
+										<span class="font-weight-bold text-secondary" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">
+											<i class="fas fa-exchange-alt mr-2"></i>Vitals comparison (previous visit)
+										</span>
+										<span class="text-muted float-right small"><span style="color:#dc3545;">&#9632;</span> = change exceeds threshold</span>
+									</div>
+									<div class="card-body p-0">
+										<table class="table table-sm table-bordered mb-0">
+											<thead class="thead-light">
+												<tr>
+													<th style="width:150px;">Vital</th>
+													<th style="width:150px;">Previous</th>
+													<th style="width:150px;">This visit</th>
+												</tr>
+											</thead>
+											<tbody>
+											<?php
+											$_intakeVitalsRows = [
+												['general_bp_systolic',  ['bp_systolic'],  'Systolic BP',  'mmHg', 20],
+												['general_bp_diastolic', ['bp_diastolic'], 'Diastolic BP', 'mmHg', 10],
+												['general_pulse',        ['pulse'],        'Pulse',        '/mt',  20],
+												['spo2',                 [],               'SpO2',         '%',    5],
+												['temperature',          [],               'Temperature',  '°F',   1],
+												['general_height',       ['height_cm'],    'Height',       'cm',   5],
+												['general_weight',       ['weight_kg'],    'Weight',       'kg',   5],
+												['general_bmi',          [],               'BMI',          '',     3],
+											];
+											foreach ($_intakeVitalsRows as [$_vf, $_va, $_vl, $_vu, $_vt]):
+												$_currVal = null;
+												foreach (array_merge([$_vf], $_va) as $_vk) {
+													if (isset($vitals[$_vk]) && $vitals[$_vk] !== '') { $_currVal = $vitals[$_vk]; break; }
+												}
+												$_prevVal = null;
+												foreach (array_merge([$_vf], $_va) as $_vk) {
+													if (isset($prevVitals[$_vk]) && $prevVitals[$_vk] !== '') { $_prevVal = $prevVitals[$_vk]; break; }
+												}
+												$_drastic = $_prevVal !== null && $_currVal !== null && is_numeric($_prevVal) && is_numeric($_currVal) && abs((float)$_currVal - (float)$_prevVal) >= $_vt;
+											?>
+											<tr data-compare-field="<?= $_vf ?>" data-compare-prev="<?= htmlspecialchars((string)($_prevVal ?? '')) ?>" data-compare-threshold="<?= $_vt ?>" data-compare-unit="<?= htmlspecialchars($_vu) ?>">
+												<td class="text-secondary small font-weight-bold"><?= $_vl ?></td>
+												<td class="vitals-compare-prev small">
+													<?php if ($_prevVal !== null): ?><?= htmlspecialchars($_prevVal) ?><?php if ($_vu): ?> <small class="text-muted"><?= $_vu ?></small><?php endif; ?>
+													<?php else: ?><span class="text-muted">no prior record</span><?php endif; ?>
+												</td>
+												<td class="compare-curr-td<?= $_drastic ? ' vitals-compare-drastic' : '' ?> small">
+													<span class="compare-curr-val"><?= $_currVal !== null ? htmlspecialchars((string)$_currVal) : '' ?></span>
+													<?php if ($_vu && $_currVal !== null): ?><small class="compare-curr-unit<?= (!$_drastic) ? ' text-muted' : '' ?> ml-1"><?= $_vu ?></small><?php endif; ?>
+													<span class="compare-arrow"><?= $_drastic ? (((float)$_currVal > (float)$_prevVal) ? ' ↑' : ' ↓') : '' ?></span>
+													<?php if ($_currVal === null): ?><span class="vitals-compare-no-record">not recorded</span><?php endif; ?>
+												</td>
+											</tr>
+											<?php endforeach; ?>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<?php endif; ?>
+
 								<form class="intake-auto-save">
 									<div class="card card-outline card-danger mb-3">
 										<div class="card-header">
@@ -1222,13 +1327,60 @@ load_language($_SESSION['language'] ?? 'en');
 				var bmi = (w / ((h / 100) * (h / 100))).toFixed(1);
 				var $bmiField = $('input[data-field="general_bmi"]');
 				$bmiField.val(bmi);
+				// Delay longer than the height/weight save (500ms) so the JSON
+				// column is not read before their writes have completed, which
+				// would cause BMI to be silently overwritten by the racing save.
 				clearTimeout(saveTimeout['general_bmi']);
 				saveTimeout['general_bmi'] = setTimeout(function () {
 					autoSave('general_bmi', bmi);
-				}, 500);
+				}, 1200);
 			}
 		}
 		$('input[data-field="general_height"], input[data-field="general_weight"]').on('input change', recalcIntakeBmi);
+
+		// ── Live comparison table updates ──────────────────
+		// Mirrors the same logic as review.php: when any field with a
+		// data-compare-field row exists, update the "This visit" cell live.
+		function intakeUpdateCompareRow(field, newVal) {
+			var $row = $('tr[data-compare-field="' + field + '"]');
+			if (!$row.length) return;
+			var prevStr   = $row.data('compare-prev');
+			var prev      = parseFloat(prevStr);
+			var threshold = parseFloat($row.data('compare-threshold'));
+			var unit      = $row.data('compare-unit') || '';
+			var $curr     = $row.find('.compare-curr-val');
+			var $unit     = $row.find('.compare-curr-unit');
+			var $arrow    = $row.find('.compare-arrow');
+			var $td       = $row.find('.compare-curr-td');
+			var $noRec    = $row.find('.vitals-compare-no-record');
+			if (newVal === '' || newVal === null) {
+				$curr.text('');
+				$unit.text('').addClass('text-muted');
+				$arrow.text('');
+				$td.removeClass('vitals-compare-drastic');
+				$noRec.show();
+			} else {
+				$noRec.hide();
+				$curr.text(newVal);
+				if (unit) $unit.text(unit).show();
+				var numVal = parseFloat(newVal);
+				var drastic = !isNaN(prev) && !isNaN(numVal) && threshold < 99999 && Math.abs(numVal - prev) >= threshold;
+				if (drastic) {
+					$td.addClass('vitals-compare-drastic');
+					$unit.removeClass('text-muted');
+					$arrow.text(numVal > prev ? ' ↑' : ' ↓');
+				} else {
+					$td.removeClass('vitals-compare-drastic');
+					$unit.addClass('text-muted');
+					$arrow.text('');
+				}
+			}
+		}
+
+		// Hook into the existing auto-save listeners — update comparison after each change
+		$('.intake-auto-save').on('change input', 'input[data-field], select[data-field]', function () {
+			intakeUpdateCompareRow($(this).data('field'), $(this).val());
+		});
 
 		// ── Allergy row management (History tab) ─────────
 		function escHtml(s) {
@@ -1243,6 +1395,23 @@ load_language($_SESSION['language'] ?? 'en');
 				if (al || rx) rows.push({ allergy: al, reaction: rx });
 			});
 			autoSave('allergies_json', JSON.stringify(rows));
+			// Keep patients.allergies plain text summary in sync
+			var patId = parseInt(document.getElementById('ve-patient_id').value, 10);
+			if (patId > 0 && caseSheetId) {
+				var summary = rows.map(function(r) { return r.allergy; }).filter(Boolean).join(', ');
+				$.ajax({
+					url: 'intake.php?action=update-patient',
+					method: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({
+						csrf_token:    csrfToken,
+						patient_id:    patId,
+						case_sheet_id: caseSheetId,
+						allergies:     summary
+					}),
+					dataType: 'json'
+				});
+			}
 		}
 
 		function wireAllergyRow(row) {

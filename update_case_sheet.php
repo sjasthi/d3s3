@@ -140,11 +140,12 @@ function writeAudit(PDO $pdo, $caseSheetId, int $userId, string $field, ?string 
 	if ($old === $new) {
 		return; // Value unchanged — no log entry
 	}
+	$changedByName = trim($_SESSION['user_name'] ?? '');
 	$pdo->prepare(
 		'INSERT INTO case_sheet_audit_log
-		    (case_sheet_id, user_id, field_name, old_value, new_value, changed_at)
-		 VALUES (?, ?, ?, ?, ?, NOW())'
-	)->execute([$caseSheetId, $userId, $field, $old, $new]);
+		    (case_sheet_id, user_id, changed_by_name, field_name, old_value, new_value, changed_at)
+		 VALUES (?, ?, ?, ?, ?, ?, NOW())'
+	)->execute([$caseSheetId, $userId, $changedByName ?: null, $field, $old, $new]);
 }
 
 /**

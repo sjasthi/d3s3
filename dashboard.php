@@ -55,6 +55,30 @@ if ($_isClinicalRole) { try {
 	$stmtStale->execute();
 	$staleSheets = $stmtStale->fetchAll(PDO::FETCH_ASSOC);
 
+	// ── Prior-day unresolved appointments (for stale-appointments banner) ────
+	$staleAppts = [];
+	if (can($_userRole, 'appointments')) {
+		$_stalApptSql = "SELECT a.appointment_id, a.scheduled_date, a.scheduled_time,
+		                        a.status AS appt_status,
+		                        p.first_name, p.last_name, p.patient_code,
+		                        d.first_name AS doc_first, d.last_name AS doc_last
+		                   FROM appointments a
+		                   JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
+		                   JOIN patients    p  ON p.patient_id     = cs.patient_id
+		                   JOIN users       d  ON d.user_id        = a.doctor_user_id
+		                  WHERE a.scheduled_date < CURDATE()
+		                    AND a.status IN ('SCHEDULED','CONFIRMED','IN_PROGRESS')";
+		$_stalApptParams = [];
+		if ($_userRole === 'DOCTOR') {
+			$_stalApptSql .= ' AND a.doctor_user_id = ?';
+			$_stalApptParams[] = (int)$_SESSION['user_id'];
+		}
+		$_stalApptSql .= ' ORDER BY a.scheduled_date ASC';
+		$_stmtStalAppt = $pdo->prepare($_stalApptSql);
+		$_stmtStalAppt->execute($_stalApptParams);
+		$staleAppts = $_stmtStalAppt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	// Doctor's claimed cases
 	if ($_userRole === 'DOCTOR') {
 		$stmt = $pdo->prepare(
@@ -128,14 +152,16 @@ if ($_isClinicalRole) { try {
 		$myActiveReviews
 	);
 
-	// ── Today’s scheduled appointments (for dashboard card) ────────────────────
-	$todayScheduledAppts = [];
+	// ── Today's scheduled appointments (for dashboard cards) ────────────────────
+	$todayScheduledAppts = []; // Today's appointments
 	if (can($_userRole, 'appointments')) {
 		$_apptSql = "SELECT a.appointment_id, a.case_sheet_id, a.scheduled_time,
 		                    a.status AS appt_status,
+		                    cs.status AS cs_status, cs.chief_complaint,
 		                    p.patient_id, p.patient_code, p.first_name, p.last_name,
 		                    p.age_years, p.sex,
-		                    d.first_name AS doc_first, d.last_name AS doc_last
+		                    d.first_name AS doc_first, d.last_name AS doc_last,
+		                    d.user_id AS doctor_user_id
 		               FROM appointments a
 		               JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
 		               JOIN patients    p  ON p.patient_id     = cs.patient_id
@@ -143,6 +169,10 @@ if ($_isClinicalRole) { try {
 		              WHERE a.scheduled_date = CURDATE()
 		                AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')";
 		$_apptParams = [];
+		// Both nurses and doctors: only show appointments where intake is not yet complete.
+		// Once intake is complete the patient drops to the queue (nurse) or
+		// Patients Ready for Review (doctor).
+		$_apptSql .= " AND cs.status IN ('SCHEDULED','INTAKE_IN_PROGRESS')";
 		if ($_userRole === 'DOCTOR') {
 			$_apptSql .= ' AND a.doctor_user_id = ?';
 			$_apptParams[] = (int)$_SESSION['user_id'];
@@ -151,6 +181,7 @@ if ($_isClinicalRole) { try {
 		$_stmt = $pdo->prepare($_apptSql);
 		$_stmt->execute($_apptParams);
 		$todayScheduledAppts = $_stmt->fetchAll(PDO::FETCH_ASSOC);
+
 	}
 } catch (PDOException $e) {
 	// DB error - leave all clinical stats at their zero defaults
@@ -362,6 +393,72 @@ $roleLabel = [
 			<div class="container-fluid">
 
 			<?php if ($_isClinicalRole): ?>
+
+			<?php if (!empty($staleAppts)): ?>
+			<?php $staleApptCount = count($staleAppts); ?>
+			<!-- ── Stale appointments notification ─────────────────── -->
+			<div class="alert alert-danger alert-dismissible fade show mb-4 py-2 d-flex align-items-center" role="alert">
+				<i class="fas fa-calendar-times mr-2"></i>
+				<strong><?= $staleApptCount ?> unresolved <?= $staleApptCount === 1 ? 'appointment' : 'appointments' ?> from a previous day<?= $staleApptCount === 1 ? '' : 's' ?></strong>
+				<button type="button" class="btn btn-sm btn-danger ml-3 py-0 px-2"
+				        data-toggle="modal" data-target="#staleApptsModal">
+					<i class="fas fa-eye mr-1"></i>View
+				</button>
+				<button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+
+			<!-- ── Stale appointments modal ────────────────────────── -->
+			<div class="modal fade" id="staleApptsModal" tabindex="-1" role="dialog"
+			     aria-labelledby="staleApptsModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+					<div class="modal-content">
+						<div class="modal-header" style="background:#f8d7da;">
+							<h5 class="modal-title" id="staleApptsModalLabel">
+								<i class="fas fa-calendar-times mr-2 text-danger"></i>
+								Unresolved Appointments from Previous Days
+							</h5>
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body p-0">
+							<p class="px-3 pt-3 pb-2 mb-0 small text-muted">
+								These appointments were never marked as completed, cancelled, or no-show. Please resolve them in <a href="appointments.php">Appointments</a>.
+							</p>
+							<ul class="list-unstyled mb-0">
+							<?php foreach ($staleAppts as $_sai => $_sa): ?>
+							<li class="<?= $_sai < $staleApptCount - 1 ? 'border-bottom' : '' ?>">
+								<div class="d-flex align-items-center justify-content-between px-3 py-2">
+									<div>
+										<strong><?= htmlspecialchars($_sa['first_name'] . ' ' . ($_sa['last_name'] ?? '')) ?></strong>
+										<span class="text-muted small ml-1">(<?= htmlspecialchars($_sa['patient_code']) ?>)</span>
+										<br>
+										<small class="text-muted">
+											<?= htmlspecialchars(date('D, M j', strtotime($_sa['scheduled_date']))) ?>
+											<?= $_sa['scheduled_time'] ? ' at ' . htmlspecialchars(date('g:i A', strtotime($_sa['scheduled_time']))) : '' ?>
+											&middot; Dr. <?= htmlspecialchars($_sa['doc_first'] . ' ' . $_sa['doc_last']) ?>
+										</small>
+									</div>
+									<div class="text-right ml-3">
+										<span class="badge badge-danger"><?= htmlspecialchars($_sa['appt_status']) ?></span>
+									</div>
+								</div>
+							</li>
+							<?php endforeach; ?>
+							</ul>
+						</div>
+						<div class="modal-footer">
+							<a href="appointments.php" class="btn btn-primary btn-sm">
+								<i class="fas fa-calendar-alt mr-1"></i>Go to Appointments
+							</a>
+							<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
 
 			<?php if (!empty($staleSheets)): ?>
 			<?php $staleCount = count($staleSheets); ?>
@@ -675,12 +772,13 @@ $roleLabel = [
 				</div>
 			</div>
 
-			<!-- ── Today’s Appointments ───────────────────────────────── -->
+
+			<!-- ── Today's Appointments ───────────────────────────────── -->
 			<?php if (!empty($todayScheduledAppts)): ?>
 			<div class="card card-outline card-primary mb-4" id="todayApptsCard">
 				<div class="card-header d-flex align-items-center justify-content-between">
 					<h3 class="card-title mb-0">
-						<i class="fas fa-calendar-day mr-2"></i>Today’s Appointments
+						<i class="fas fa-calendar-day mr-2"></i>Today's Appointments
 						<span class="badge badge-primary ml-2"><?= count($todayScheduledAppts) ?></span>
 					</h3>
 					<a href="appointments.php" class="btn btn-sm btn-outline-primary">
@@ -695,37 +793,76 @@ $roleLabel = [
 									<th style="width:80px">Time</th>
 									<th>Patient</th>
 									<th class="d-none d-md-table-cell">Doctor</th>
-									<th style="width:110px">Status</th>
+									<th class="d-none d-lg-table-cell">Chief Complaint</th>
+									<th style="width:120px">Status</th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody id="todayApptsTbody">
 							<?php
+							$_isNurseOrAdmin = in_array($_userRole, ['NURSE','TRIAGE_NURSE','ADMIN','SUPER_ADMIN']);
 							$_apptBadges = ['SCHEDULED'=>'badge-info','CONFIRMED'=>'badge-primary','IN_PROGRESS'=>'badge-warning'];
 							$_apptLabels = ['SCHEDULED'=>'Scheduled','CONFIRMED'=>'Confirmed','IN_PROGRESS'=>'In Progress'];
 							foreach ($todayScheduledAppts as $_ta):
-								$_taName = htmlspecialchars($_ta['first_name'] . ' ' . ($_ta['last_name'] ?? ''));
-								$_taCode = htmlspecialchars($_ta['patient_code']);
-								$_taDoc  = htmlspecialchars('Dr. ' . $_ta['doc_first'] . ' ' . $_ta['doc_last']);
-								$_taTime = $_ta['scheduled_time'] ? htmlspecialchars(date('g:i A', strtotime($_ta['scheduled_time']))) : '';
+								$_taName       = htmlspecialchars($_ta['first_name'] . ' ' . ($_ta['last_name'] ?? ''));
+								$_taCode       = htmlspecialchars($_ta['patient_code']);
+								$_taDoc        = htmlspecialchars('Dr. ' . $_ta['doc_first'] . ' ' . $_ta['doc_last']);
+								$_taTime       = $_ta['scheduled_time'] ? htmlspecialchars(date('g:i A', strtotime($_ta['scheduled_time']))) : '';
+								$_taCsStatus   = $_ta['cs_status'] ?? '';
+								$_taIntakeIncomplete = in_array($_taCsStatus, ['SCHEDULED', 'INTAKE_IN_PROGRESS']);
+								if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE') {
+									$_taStatusBadge = '<span class="badge badge-success">Ready for Review</span>';
+								} else {
+									$_taStatusBadge = '<span class="badge ' . ($_apptBadges[$_ta['appt_status']] ?? 'badge-secondary') . '">'
+										. ($_apptLabels[$_ta['appt_status']] ?? htmlspecialchars($_ta['appt_status'])) . '</span>';
+								}
 							?>
 							<tr data-appt-id="<?= (int)$_ta['appointment_id'] ?>">
 								<td class="text-nowrap small text-muted"><?= $_taTime ?: '<span class="text-muted">&mdash;</span>' ?></td>
 								<td>
-									<strong
-										class="appt-patient-link text-primary"
-										style="cursor:pointer;text-decoration:underline dotted;"
-										data-appt-id="<?= (int)$_ta['appointment_id'] ?>"
-										data-case-sheet-id="<?= (int)$_ta['case_sheet_id'] ?>"
-										data-patient-name="<?= $_taName ?>"
-										data-patient-code="<?= $_taCode ?>"
-										data-doc-name="<?= $_taDoc ?>"
-										data-scheduled-time="<?= $_taTime ?>"
-										data-appt-status="<?= htmlspecialchars($_ta['appt_status']) ?>"
-									><?= $_taName ?></strong>
+									<a href="patients.php?action=view&id=<?= (int)$_ta['patient_id'] ?>" class="font-weight-bold text-primary">
+										<?= $_taName ?>
+									</a>
 									<br><small class="text-muted"><?= $_taCode ?><?= $_ta['age_years'] ? ' &middot; ' . (int)$_ta['age_years'] . 'y' : '' ?></small>
 								</td>
 								<td class="small d-none d-md-table-cell"><?= $_taDoc ?></td>
-								<td><span class="badge <?= $_apptBadges[$_ta['appt_status']] ?? 'badge-secondary' ?>"><?= $_apptLabels[$_ta['appt_status']] ?? htmlspecialchars($_ta['appt_status']) ?></span></td>
+								<td class="small d-none d-lg-table-cell text-muted"><?= htmlspecialchars($_ta['chief_complaint'] ?? '—') ?></td>
+								<td><?= $_taStatusBadge ?></td>
+								<td class="text-right text-nowrap">
+									<?php if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE'): ?>
+										<form method="post" action="intake.php?action=claim" style="display:inline">
+											<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+											<input type="hidden" name="case_sheet_id" value="<?= (int)$_ta['case_sheet_id'] ?>">
+											<button type="submit" class="btn btn-sm btn-success mr-1"><i class="fas fa-stethoscope mr-1"></i>Review</button>
+										</form>
+									<?php elseif ($_isNurseOrAdmin && $_taIntakeIncomplete): ?>
+										<a href="intake.php?case_sheet_id=<?= (int)$_ta['case_sheet_id'] ?>" class="btn btn-sm btn-warning mr-1">
+											<i class="fas fa-pencil-alt mr-1"></i><?= $_taCsStatus === 'INTAKE_IN_PROGRESS' ? 'Continue' : 'Start' ?> Intake
+										</a>
+										<button type="button" class="btn btn-sm btn-danger no-show-btn mr-1"
+										        data-appointment-id="<?= (int)$_ta['appointment_id'] ?>"
+										        data-case-sheet-id="<?= (int)$_ta['case_sheet_id'] ?>"
+										        data-patient-name="<?= $_taName ?>">
+											<i class="fas fa-user-times mr-1"></i>No Show
+										</button>
+									<?php endif; ?>
+									<button type="button" class="btn btn-sm btn-outline-warning mr-1 taReschedBtn"
+									        data-appt-id="<?= (int)$_ta['appointment_id'] ?>"
+									        data-patient-name="<?= $_taName ?>"
+									        data-patient-code="<?= $_taCode ?>"
+									        data-doc-name="<?= $_taDoc ?>"
+									        data-scheduled-time="<?= $_taTime ?>"
+									        data-case-sheet-id="<?= (int)$_ta['case_sheet_id'] ?>"
+									        title="Reschedule"><i class="fas fa-calendar-alt"></i></button>
+									<button type="button" class="btn btn-sm btn-outline-danger taCancelBtn"
+									        data-appt-id="<?= (int)$_ta['appointment_id'] ?>"
+									        data-patient-name="<?= $_taName ?>"
+									        data-patient-code="<?= $_taCode ?>"
+									        data-doc-name="<?= $_taDoc ?>"
+									        data-scheduled-time="<?= $_taTime ?>"
+									        data-case-sheet-id="<?= (int)$_ta['case_sheet_id'] ?>"
+									        title="Cancel"><i class="fas fa-times"></i></button>
+								</td>
 							</tr>
 							<?php endforeach; ?>
 							</tbody>
@@ -734,6 +871,7 @@ $roleLabel = [
 				</div>
 			</div>
 			<?php endif; ?>
+			<!-- ── Bottom two-column section ──────────────────────────── -->
 
 						<!-- ── Live Patient Queue ────────────────────────────────── -->
 			<div class="card card-outline card-warning mb-4" id="queueCard">
@@ -779,6 +917,7 @@ $roleLabel = [
 				</div>
 			</div>
 
+
 			<!-- ── Doctor: My Active Reviews ─────────────────────────── -->
 			<?php if ($_userRole === 'DOCTOR'): ?>
 			<div class="card card-outline card-info mb-4" id="myReviewsCard">
@@ -808,7 +947,7 @@ $roleLabel = [
 								<?php foreach ($myActiveReviews as $r): ?>
 								<tr>
 									<td>
-										<strong><?= htmlspecialchars($r['first_name'] . ' ' . ($r['last_name'] ?? '')) ?></strong>
+										<a href="patients.php?action=view&id=<?= (int)$r['patient_id'] ?>" class="font-weight-bold text-primary"><?= htmlspecialchars($r['first_name'] . ' ' . ($r['last_name'] ?? '')) ?></a>
 										<br><small class="text-muted"><?= htmlspecialchars($r['patient_code']) ?>
 										<?= $r['sex'] && $r['sex'] !== 'UNKNOWN' ? ' &middot; ' . htmlspecialchars($r['sex']) : '' ?>
 										<?= $r['age_years'] ? ' &middot; ' . (int)$r['age_years'] . 'y' : '' ?></small>
@@ -832,7 +971,6 @@ $roleLabel = [
 			</div>
 			<?php endif; ?>
 
-			<!-- ── Bottom two-column section ──────────────────────────── -->
 			<div class="row">
 				<!-- Upcoming calendar events (real data) -->
 				<div class="col-lg-6 mb-4">
@@ -958,6 +1096,86 @@ $roleLabel = [
 	</footer>
 </div>
 
+<?php if (can($_userRole, 'appointments', 'W')): ?>
+<!-- ── No Show Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="noShowModal" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">No Show — <span id="noShowPatientName"></span></h5>
+				<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<div id="noShowAlert" class="alert d-none" role="alert"></div>
+				<div id="noShowChoicePanel">
+					<p class="mb-3">What would you like to do?</p>
+					<div class="d-flex">
+						<button type="button" class="btn btn-warning mr-2" id="noShowShowReschedule">
+							<i class="fas fa-calendar-alt mr-1"></i>Reschedule
+						</button>
+						<button type="button" class="btn btn-danger" id="noShowCancelBtn">
+							<i class="fas fa-times mr-1"></i>Cancel Appointment
+						</button>
+					</div>
+				</div>
+				<div id="noShowReschedulePanel" class="d-none mt-3">
+					<hr>
+					<div class="form-group">
+						<label for="noShowNewDate" class="font-weight-bold">New Date <span class="text-danger">*</span></label>
+						<input type="date" class="form-control" id="noShowNewDate">
+					</div>
+					<div class="form-group mb-0">
+						<label for="noShowNewTime">New Time (optional)</label>
+						<input type="time" class="form-control" id="noShowNewTime">
+					</div>
+					<div class="mt-3">
+						<button type="button" class="btn btn-warning" id="noShowConfirmReschedule">
+							<i class="fas fa-calendar-check mr-1"></i>Confirm Reschedule
+						</button>
+						<button type="button" class="btn btn-link" id="noShowBackBtn">Back</button>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
+
+<?php if (can($_userRole, 'appointments', 'W')): ?>
+<!-- ── Assign Doctor Modal (nurse dashboard) ─────────────────────── -->
+<div class="modal fade" id="dashAssignDoctorModal" tabindex="-1" role="dialog" aria-labelledby="dashAssignDoctorTitle" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="dashAssignDoctorTitle">Assign Doctor</h5>
+				<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<div id="dashAssignAlert" class="alert d-none" role="alert"></div>
+				<p class="text-muted small mb-3">
+					Assigning a doctor will move this case to <strong>Doctor Review</strong> status immediately.
+				</p>
+				<div class="form-group mb-0">
+					<label for="dashDoctorSelect" class="font-weight-bold">Select Doctor</label>
+					<select class="form-control" id="dashDoctorSelect">
+						<option value="">Loading doctors…</option>
+					</select>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="dashAssignConfirmBtn">
+					<i class="fas fa-user-md mr-1"></i>Assign
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
+
 <script src="assets/js/jquery.min.js"></script>
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
@@ -1069,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', function () {
 var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
 var currentApptId = null;
 
-$(document).on('click', '.appt-patient-link', function () {
+$(document).on('click', '.taReschedBtn, .taCancelBtn', function () {
 	currentApptId = parseInt($(this).data('appt-id'));
 	var caseSheetId = parseInt($(this).data('case-sheet-id'));
 	var patientName = $(this).data('patient-name');
@@ -1159,6 +1377,8 @@ var sortable   = null;
 function statusBadge(status) {
 	if (status === 'INTAKE_IN_PROGRESS') return '<span class="badge badge-status-in-progress text-white">In Progress</span>';
 	if (status === 'INTAKE_COMPLETE')    return '<span class="badge badge-status-complete text-white">Ready</span>';
+	if (status === 'SCHEDULED')          return '<span class="badge badge-success text-white">Scheduled</span>';
+	if (status === 'DOCTOR_REVIEW')      return '<span class="badge badge-primary text-white">In Review</span>';
 	return '<span class="badge badge-secondary">' + status + '</span>';
 }
 
@@ -1173,6 +1393,21 @@ function actionCell(row) {
 	if ((USER_ROLE === 'NURSE' || USER_ROLE === 'TRIAGE_NURSE') && row.status === 'INTAKE_IN_PROGRESS') {
 		return '<a href="intake.php?case_sheet_id=' + row.case_sheet_id + '" class="btn btn-sm btn-warning">' +
 			'<i class="fas fa-pencil-alt mr-1"></i>Continue</a>';
+	}
+	if ((USER_ROLE === 'NURSE' || USER_ROLE === 'TRIAGE_NURSE') && row.status === 'INTAKE_COMPLETE') {
+		if (row.doctor_name) {
+			// Doctor already assigned — show name with a reassign option
+			return '<span class="text-success small"><i class="fas fa-user-md mr-1"></i>' +
+				$('<span>').text(row.doctor_name).html() + '</span> ' +
+				'<button type="button" class="btn btn-sm btn-outline-secondary dash-assign-btn ml-1" ' +
+				'data-case-sheet-id="' + row.case_sheet_id + '" ' +
+				'data-patient-name="' + row.patient_name + '" ' +
+				'title="Reassign"><i class="fas fa-exchange-alt"></i></button>';
+		}
+		return '<button type="button" class="btn btn-sm btn-info dash-assign-btn" ' +
+			'data-case-sheet-id="' + row.case_sheet_id + '" ' +
+			'data-patient-name="' + row.patient_name + '">' +
+			'<i class="fas fa-user-md mr-1"></i>Assign Doctor</button>';
 	}
 	return '';
 }
@@ -1196,7 +1431,7 @@ function renderQueue(rows) {
 		html += '<tr class="queue-row" data-id="' + row.case_sheet_id + '">';
 		html += '<td class="queue-drag-handle"><i class="fas fa-grip-vertical"></i></td>';
 		html += '<td class="text-muted">' + (idx + 1) + '</td>';
-		html += '<td><strong>' + row.patient_name + '</strong><br><small class="text-muted">' + meta + '</small></td>';
+		html += '<td><a href="patients.php?action=view&id=' + row.patient_id + '" class="font-weight-bold text-primary">' + row.patient_name + '</a><br><small class="text-muted">' + meta + '</small></td>';
 		html += '<td>' + statusBadge(row.status) + '</td>';
 		html += '<td><span class="badge badge-info">' + (row.visit_type || '') + '</span></td>';
 		html += '<td>' + (row.chief_complaint || '') + '</td>';
@@ -1264,6 +1499,157 @@ document.addEventListener('DOMContentLoaded', function () {
 	}
 });
 <?php endif; ?>
+	// ── No Show modal ──────────────────────────────────────
+	var noShowApptId = null;
+
+	$(document).on('click', '.no-show-btn', function () {
+		noShowApptId = $(this).data('appointment-id');
+		$('#noShowPatientName').text($(this).data('patient-name'));
+		$('#noShowAlert').addClass('d-none').text('');
+		$('#noShowChoicePanel').removeClass('d-none');
+		$('#noShowReschedulePanel').addClass('d-none');
+		$('#noShowNewDate, #noShowNewTime').val('');
+		$('#noShowModal').modal('show');
+	});
+
+	$('#noShowShowReschedule').on('click', function () {
+		$('#noShowChoicePanel').addClass('d-none');
+		$('#noShowReschedulePanel').removeClass('d-none');
+	});
+
+	$('#noShowBackBtn').on('click', function () {
+		$('#noShowReschedulePanel').addClass('d-none');
+		$('#noShowChoicePanel').removeClass('d-none');
+		$('#noShowAlert').addClass('d-none').text('');
+	});
+
+	$('#noShowConfirmReschedule').on('click', function () {
+		var newDate = $('#noShowNewDate').val();
+		if (!newDate) {
+			$('#noShowAlert').attr('class', 'alert alert-warning').text('Please select a new date.').removeClass('d-none');
+			return;
+		}
+		var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving…');
+		$.ajax({
+			url: 'appointments.php?action=reschedule',
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				csrf_token:     CSRF_TOKEN,
+				appointment_id: noShowApptId,
+				scheduled_date: newDate,
+				scheduled_time: $('#noShowNewTime').val() || null,
+			}),
+			dataType: 'json',
+			success: function (r) {
+				$btn.prop('disabled', false).html('<i class="fas fa-calendar-check mr-1"></i>Confirm Reschedule');
+				if (r.success) {
+					$('#noShowModal').modal('hide');
+					window.location.reload();
+				} else {
+					$('#noShowAlert').attr('class', 'alert alert-danger').text(r.message || 'Reschedule failed.').removeClass('d-none');
+				}
+			},
+			error: function () {
+				$btn.prop('disabled', false).html('<i class="fas fa-calendar-check mr-1"></i>Confirm Reschedule');
+				$('#noShowAlert').attr('class', 'alert alert-danger').text('A network error occurred.').removeClass('d-none');
+			}
+		});
+	});
+
+	$('#noShowCancelBtn').on('click', function () {
+		var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Cancelling…');
+		$.ajax({
+			url: 'appointments.php?action=cancel',
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				csrf_token:     CSRF_TOKEN,
+				appointment_id: noShowApptId,
+			}),
+			dataType: 'json',
+			success: function (r) {
+				$btn.prop('disabled', false).html('<i class="fas fa-times mr-1"></i>Cancel Appointment');
+				if (r.success) {
+					$('#noShowModal').modal('hide');
+					window.location.reload();
+				} else {
+					$('#noShowAlert').attr('class', 'alert alert-danger').text(r.message || 'Cancellation failed.').removeClass('d-none');
+				}
+			},
+			error: function () {
+				$btn.prop('disabled', false).html('<i class="fas fa-times mr-1"></i>Cancel Appointment');
+				$('#noShowAlert').attr('class', 'alert alert-danger').text('A network error occurred.').removeClass('d-none');
+			}
+		});
+	});
+
+	// ── Assign Doctor from queue (nurse) ──────────────────
+	var dashAssignCaseSheetId = null;
+	var dashDoctorsLoaded = false;
+
+	function dashLoadDoctors() {
+		if (dashDoctorsLoaded) return;
+		$.getJSON('appointments.php?action=get-doctors', function (data) {
+			var $sel = $('#dashDoctorSelect').empty();
+			if (!data.doctors || data.doctors.length === 0) {
+				$sel.append('<option value="">No active doctors found</option>');
+				return;
+			}
+			$sel.append('<option value="">— Select a doctor —</option>');
+			data.doctors.forEach(function (d) {
+				$sel.append('<option value="' + d.user_id + '">Dr. ' + $('<span>').text(d.first_name + ' ' + d.last_name).html() + '</option>');
+			});
+			dashDoctorsLoaded = true;
+		});
+	}
+
+	$(document).on('click', '.dash-assign-btn', function () {
+		dashAssignCaseSheetId = $(this).data('case-sheet-id');
+		var patientName = $(this).data('patient-name');
+		$('#dashAssignDoctorTitle').text('Assign Doctor — ' + patientName);
+		$('#dashAssignAlert').addClass('d-none').text('');
+		$('#dashDoctorSelect').val('');
+		dashLoadDoctors();
+		$('#dashAssignDoctorModal').modal('show');
+	});
+
+	$('#dashAssignConfirmBtn').on('click', function () {
+		var doctorId = $('#dashDoctorSelect').val();
+		if (!doctorId) {
+			$('#dashAssignAlert').attr('class', 'alert alert-warning').text('Please select a doctor.').removeClass('d-none');
+			return;
+		}
+		var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Assigning…');
+		$.ajax({
+			url: 'appointments.php?action=assign-doctor',
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				csrf_token:     CSRF_TOKEN,
+				case_sheet_id:  dashAssignCaseSheetId,
+				doctor_user_id: parseInt(doctorId),
+			}),
+			dataType: 'json',
+			success: function (r) {
+				$btn.prop('disabled', false).html('<i class="fas fa-user-md mr-1"></i>Assign');
+				if (r.success) {
+					$('#dashAssignAlert').attr('class', 'alert alert-success').text(r.message).removeClass('d-none');
+					setTimeout(function () {
+						$('#dashAssignDoctorModal').modal('hide');
+						pollQueue();
+					}, 1200);
+				} else {
+					$('#dashAssignAlert').attr('class', 'alert alert-danger').text(r.message || 'Assignment failed.').removeClass('d-none');
+				}
+			},
+			error: function () {
+				$btn.prop('disabled', false).html('<i class="fas fa-user-md mr-1"></i>Assign');
+				$('#dashAssignAlert').attr('class', 'alert alert-danger').text('A network error occurred.').removeClass('d-none');
+			}
+		});
+	});
+
 }());
 </script>
 </body>

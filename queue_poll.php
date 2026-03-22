@@ -4,7 +4,7 @@
  * Returns the current patient queue as JSON.
  *
  * Role access:
- *   DOCTOR        → sees all INTAKE_COMPLETE cases (any date)
+ *   DOCTOR        → sees INTAKE_COMPLETE and SCHEDULED cases assigned to them (DOCTOR_REVIEW shows in My Active Reviews)
  *   NURSE / TRIAGE_NURSE → sees INTAKE_IN_PROGRESS + INTAKE_COMPLETE (any date)
  *   Any clinical  → all open, non-closed cases regardless of visit date
  *
@@ -35,6 +35,7 @@ $pdo = getDBConnection();
 
 // Determine which statuses to show per role
 if ($role === 'DOCTOR') {
+	// Only INTAKE_COMPLETE (Ready) — SCHEDULED stays in Today's Appointments
 	$statuses = ['INTAKE_COMPLETE'];
 } else {
 	// NURSE, TRIAGE_NURSE, PARAMEDIC, DATA_ENTRY_OPERATOR, ADMIN, SUPER_ADMIN:
@@ -44,6 +45,16 @@ if ($role === 'DOCTOR') {
 
 $placeholders = implode(',', array_fill(0, count($statuses), '?'));
 
+// Doctors only see cases assigned to them
+$doctorFilter       = '';
+$doctorFilterParams = [];
+if ($role === 'DOCTOR') {
+	$doctorFilter       = 'AND (cs.assigned_doctor_user_id = ? OR cs.assigned_doctor_user_id IS NULL)';
+	$doctorFilterParams = [(int)$_SESSION['user_id']];
+}
+
+$params = array_merge($statuses, $doctorFilterParams);
+
 $stmt = $pdo->prepare(
 	"SELECT cs.case_sheet_id,
 	        cs.patient_id,
@@ -52,11 +63,13 @@ $stmt = $pdo->prepare(
 	        cs.chief_complaint,
 	        cs.visit_datetime,
 	        cs.queue_position,
+	        cs.assigned_doctor_name,
 	        p.first_name,
 	        p.last_name,
 	        p.patient_code,
 	        p.sex,
 	        p.age_years,
+	        cs.created_by_name AS intake_by_name,
 	        u.first_name  AS intake_first,
 	        u.last_name   AS intake_last,
 	        ad.first_name AS doctor_first,
@@ -66,14 +79,24 @@ $stmt = $pdo->prepare(
 	   LEFT JOIN users u  ON u.user_id    = cs.created_by_user_id
 	   LEFT JOIN users ad ON ad.user_id   = cs.assigned_doctor_user_id
 	  WHERE cs.status IN ($placeholders)
+	  $doctorFilter
 	  ORDER BY COALESCE(cs.queue_position, 999999) ASC, cs.visit_datetime ASC"
 );
-$stmt->execute($statuses);
+$stmt->execute($params);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Format for JSON
 $out = [];
 foreach ($rows as $r) {
+	// Prefer snapshotted name, fall back to live JOIN
+	$intakeBy = !empty($r['intake_by_name'])
+		? $r['intake_by_name']
+		: trim(($r['intake_first'] ?? '') . ' ' . ($r['intake_last'] ?? ''));
+
+	$doctorName = !empty($r['assigned_doctor_name'])
+		? $r['assigned_doctor_name']
+		: ($r['doctor_first'] ? trim($r['doctor_first'] . ' ' . $r['doctor_last']) : null);
+
 	$out[] = [
 		'case_sheet_id'  => (int)$r['case_sheet_id'],
 		'patient_id'     => (int)$r['patient_id'],
@@ -86,8 +109,8 @@ foreach ($rows as $r) {
 		'patient_code'   => $r['patient_code'],
 		'sex'            => ($r['sex'] && $r['sex'] !== 'UNKNOWN') ? $r['sex'] : '',
 		'age_years'      => $r['age_years'] ? (int)$r['age_years'] : null,
-		'intake_by'      => trim(($r['intake_first'] ?? '') . ' ' . ($r['intake_last'] ?? '')),
-		'doctor_name'    => $r['doctor_first'] ? trim($r['doctor_first'] . ' ' . $r['doctor_last']) : null,
+		'intake_by'      => $intakeBy,
+		'doctor_name'    => $doctorName,
 	];
 }
 

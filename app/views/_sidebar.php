@@ -44,12 +44,14 @@ $_apptTodayCount = 0;
 if ($_navCanCaseSheetsRead && !$isAppointmentsPage) {
 	try {
 		$_apptPdo    = getDBConnection();
-		$_apptSql    = "SELECT COUNT(*) FROM appointments
-		                 WHERE scheduled_date = CURDATE()
-		                   AND status NOT IN ('CANCELLED','NO_SHOW')";
+		$_apptSql    = "SELECT COUNT(*) FROM appointments a
+		                 JOIN case_sheets cs ON cs.case_sheet_id = a.case_sheet_id
+		                WHERE a.scheduled_date = CURDATE()
+		                  AND a.status NOT IN ('CANCELLED','NO_SHOW','COMPLETED')
+		                  AND cs.status != 'CLOSED'";
 		$_apptParams = [];
 		if ($_userRole === 'DOCTOR') {
-			$_apptSql   .= ' AND doctor_user_id = ?';
+			$_apptSql   .= ' AND a.doctor_user_id = ?';
 			$_apptParams[] = $_SESSION['user_id'];
 		}
 		$_apptStmt = $_apptPdo->prepare($_apptSql);

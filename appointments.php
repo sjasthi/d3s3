@@ -4,7 +4,7 @@
  *
  * Routes:
  *   GET  (default)                 → appointments list view
- *   GET  ?action=patient-search    → AJAX patient search (patients with upcoming appointments)
+ *   GET  ?action=patient-search    → AJAX patient search
  *   GET  ?action=get-doctors       → AJAX list of active doctors
  *   POST ?action=assign-doctor     → AJAX assign INTAKE_COMPLETE case sheet to a doctor
  *   POST ?action=create-patient    → AJAX create new patient + stub case sheet

@@ -343,10 +343,10 @@ table tbody tr:has(.appt-open-drawer):hover td{background-color:rgba(0,0,0,.025)
 												: '<span class="text-muted">Unassigned</span>' ?>
 										</td>
 										<td>
-											<button type="button" class="btn btn-sm btn-outline-primary assign-btn"
+											<button type="button" class="btn btn-sm <?= $cs['assigned_doctor_user_id'] ? 'btn-outline-secondary' : 'btn-outline-primary' ?> assign-btn"
 											        data-case-sheet-id="<?= (int)$cs['case_sheet_id'] ?>"
 											        data-patient-name="<?= htmlspecialchars($cs['first_name'] . ' ' . ($cs['last_name'] ?? '')) ?>">
-												<i class="fas fa-user-md mr-1"></i>Assign
+												<i class="fas fa-user-md mr-1"></i><?= $cs['assigned_doctor_user_id'] ? 'Reassign' : 'Assign' ?>
 											</button>
 											<button type="button" class="btn btn-sm btn-success schedule-from-pending-btn ml-1"
 											        data-case-sheet-id="<?= (int)$cs['case_sheet_id'] ?>"
@@ -619,8 +619,7 @@ function apptActionDropdown(int $apptId, string $currentStatus, int $doctorUserI
 					<div class="col-md-6">
 						<div class="form-group">
 							<label for="schedDate">Date <span class="text-danger">*</span></label>
-							<input type="date" id="schedDate" class="form-control"
-							       min="<?= date('Y-m-d') ?>" />
+							<input type="date" id="schedDate" class="form-control" />
 						</div>
 					</div>
 					<!-- Time -->
@@ -798,6 +797,9 @@ $('#confirmAssignBtn').on('click', function () {
 			if (data.success) {
 				$feedback.attr('class', 'alert alert-success').text(data.message).removeClass('d-none');
 				$('#pending-row-' + caseSheetId + ' .assigned-doctor-cell').html(escHtml(data.doctor_name));
+				$('#pending-row-' + caseSheetId + ' .assign-btn')
+					.removeClass('btn-outline-primary').addClass('btn-outline-secondary')
+					.html('<i class="fas fa-user-md mr-1"></i>Reassign');
 			} else {
 				$feedback.attr('class', 'alert alert-danger').text(data.message || 'An error occurred.').removeClass('d-none');
 			}
@@ -983,8 +985,8 @@ $('#aamReschedBtn').on('click', function () {
 		contentType: 'application/json',
 		data:        JSON.stringify({
 			appointment_id: apptDrawerApptId,
-			new_date:       newDate,
-			new_time:       $('#aamReschedTime').val().trim() || null,
+			scheduled_date: newDate,
+			scheduled_time: $('#aamReschedTime').val().trim() || null,
 			note:           $('#aamReschedNote').val().trim() || null,
 			csrf_token:     CSRF_TOKEN
 		}),
