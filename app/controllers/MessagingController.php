@@ -5,6 +5,9 @@
  * Internal messaging between users.
  * All authenticated users have RW access (no additional role guard required
  * beyond session authentication, which is enforced by app/middleware/auth.php).
+ *
+ * Multi-recipient support: one row per recipient is inserted with a shared
+ * thread_id (32-char hex).  Reply All pre-selects all thread participants.
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -74,17 +77,30 @@ class MessagingController
 		$userId = (int)$_SESSION['user_id'];
 
 		$flashSuccess = null;
+		if (isset($_SESSION['messages_success'])) {
+			$flashSuccess = $_SESSION['messages_success'];
+			unset($_SESSION['messages_success']);
+		}
 
+		// Group by thread so multi-recipient sends appear as one row
 		$stmt = $pdo->prepare(
-			'SELECT m.*, u.first_name AS recipient_first, u.last_name AS recipient_last
+			'SELECT MIN(m.message_id) AS message_id,
+			        m.thread_id,
+			        GROUP_CONCAT(u.first_name, \' \', u.last_name
+			                     ORDER BY u.last_name SEPARATOR \', \') AS recipients_list,
+			        COUNT(*) AS recipient_count,
+			        MIN(m.subject) AS subject,
+			        MIN(m.sent_at) AS sent_at
 			   FROM messages m
 			   JOIN users u ON m.recipient_user_id = u.user_id
 			  WHERE m.sender_user_id = ?
-			  ORDER BY m.sent_at DESC'
+			  GROUP BY m.thread_id
+			  ORDER BY sent_at DESC'
 		);
 		$stmt->execute([$userId]);
 		$messages = $stmt->fetchAll();
 
+		$flashError  = null;
 		$unreadCount = 0;
 		$view        = 'sent';
 		require __DIR__ . '/../views/messages.php';
@@ -104,7 +120,7 @@ class MessagingController
 			// On success processSend() exits via redirect
 		}
 
-		// Fetch active users (excluding self) for recipient dropdown
+		// Fetch active users (excluding self) for recipient list
 		$stmt = $pdo->prepare(
 			'SELECT user_id, first_name, last_name, role
 			   FROM users
@@ -113,6 +129,36 @@ class MessagingController
 		);
 		$stmt->execute([$userId]);
 		$recipients = $stmt->fetchAll();
+
+		// Pre-selected recipient IDs (reply / reply-all / POST error repopulate)
+		$preselectedIds = [];
+		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+			// Repopulate after validation error
+			$preselectedIds = array_map('intval', $_POST['recipient_user_ids'] ?? []);
+		} elseif (isset($_GET['reply_all_thread'])) {
+			// Reply All: every participant in the thread except self
+			$stmt = $pdo->prepare(
+				'SELECT DISTINCT u.user_id
+				   FROM users u
+				  WHERE u.is_active = 1
+				    AND u.user_id != ?
+				    AND u.user_id IN (
+				        SELECT sender_user_id    FROM messages WHERE thread_id = ?
+				        UNION
+				        SELECT recipient_user_id FROM messages WHERE thread_id = ?
+				    )'
+			);
+			$stmt->execute([$userId, $_GET['reply_all_thread'], $_GET['reply_all_thread']]);
+			$preselectedIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+		} elseif (isset($_GET['reply_to'])) {
+			$preselectedIds = [(int)$_GET['reply_to']];
+		}
+
+		// Pre-filled subject (passed via GET for reply/reply-all)
+		$prefillSubject = '';
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			$prefillSubject = substr($_GET['reply_subject'] ?? '', 0, 200);
+		}
 
 		$view = 'compose';
 		require __DIR__ . '/../views/messages.php';
@@ -127,11 +173,9 @@ class MessagingController
 
 		$stmt = $pdo->prepare(
 			'SELECT m.*,
-			        s.first_name AS sender_first,    s.last_name AS sender_last,
-			        r.first_name AS recipient_first, r.last_name AS recipient_last
+			        s.first_name AS sender_first, s.last_name AS sender_last
 			   FROM messages m
-			   JOIN users s ON m.sender_user_id    = s.user_id
-			   JOIN users r ON m.recipient_user_id = r.user_id
+			   JOIN users s ON m.sender_user_id = s.user_id
 			  WHERE m.message_id = ?'
 		);
 		$stmt->execute([$id]);
@@ -157,6 +201,20 @@ class MessagingController
 			$message['is_read'] = 1;
 		}
 
+		// All recipients in this thread (for "To:" display and Reply All)
+		$threadRecipients = [];
+		if (!empty($message['thread_id'])) {
+			$stmt = $pdo->prepare(
+				'SELECT u.user_id, u.first_name, u.last_name
+				   FROM messages m
+				   JOIN users u ON m.recipient_user_id = u.user_id
+				  WHERE m.thread_id = ?
+				  ORDER BY u.last_name, u.first_name'
+			);
+			$stmt->execute([$message['thread_id']]);
+			$threadRecipients = $stmt->fetchAll();
+		}
+
 		$view = 'view';
 		require __DIR__ . '/../views/messages.php';
 	}
@@ -169,12 +227,19 @@ class MessagingController
 			return 'Invalid request token.';
 		}
 
-		$recipientId = isset($_POST['recipient_user_id']) ? (int)$_POST['recipient_user_id'] : 0;
-		$subject     = trim($_POST['subject'] ?? '');
-		$body        = trim($_POST['body'] ?? '');
+		$rawIds      = $_POST['recipient_user_ids'] ?? [];
+		$recipientIds = array_values(array_unique(array_filter(array_map('intval', $rawIds))));
+		// Remove self silently
+		$recipientIds = array_values(array_filter($recipientIds, fn($id) => $id !== (int)$_SESSION['user_id']));
 
-		if ($recipientId <= 0) {
-			return 'Please select a recipient.';
+		$subject = trim($_POST['subject'] ?? '');
+		$body    = trim($_POST['body']    ?? '');
+
+		if (empty($recipientIds)) {
+			return 'Please select at least one recipient.';
+		}
+		if (count($recipientIds) > 20) {
+			return 'You may send to a maximum of 20 recipients at once.';
 		}
 		if ($subject === '') {
 			return 'Subject is required.';
@@ -189,21 +254,30 @@ class MessagingController
 			return 'Message body may not exceed 10,000 characters.';
 		}
 
-		// Verify recipient exists and is active
-		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare('SELECT user_id FROM users WHERE user_id = ? AND is_active = 1');
-		$stmt->execute([$recipientId]);
-		if (!$stmt->fetch()) {
-			return 'Selected recipient does not exist.';
+		// Verify all recipients exist and are active
+		$pdo          = getDBConnection();
+		$placeholders = implode(',', array_fill(0, count($recipientIds), '?'));
+		$stmt         = $pdo->prepare(
+			"SELECT COUNT(*) FROM users WHERE user_id IN ($placeholders) AND is_active = 1"
+		);
+		$stmt->execute($recipientIds);
+		if ((int)$stmt->fetchColumn() !== count($recipientIds)) {
+			return 'One or more selected recipients could not be found.';
 		}
 
-		$stmt = $pdo->prepare(
-			'INSERT INTO messages (sender_user_id, recipient_user_id, subject, body)
-			 VALUES (?, ?, ?, ?)'
-		);
-		$stmt->execute([$_SESSION['user_id'], $recipientId, $subject, $body]);
+		// One thread_id shared by all rows in this send
+		$threadId = bin2hex(random_bytes(16));
 
-		$_SESSION['messages_success'] = 'Message sent successfully.';
+		$stmt = $pdo->prepare(
+			'INSERT INTO messages (thread_id, sender_user_id, recipient_user_id, subject, body)
+			 VALUES (?, ?, ?, ?, ?)'
+		);
+		foreach ($recipientIds as $rid) {
+			$stmt->execute([$threadId, $_SESSION['user_id'], $rid, $subject, $body]);
+		}
+
+		$n = count($recipientIds);
+		$_SESSION['messages_success'] = 'Message sent to ' . $n . ' recipient' . ($n !== 1 ? 's' : '') . '.';
 		header('Location: messages.php?action=sent');
 		exit;
 	}

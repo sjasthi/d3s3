@@ -115,27 +115,30 @@
 									<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 
 									<div class="form-group">
-										<label for="recipient_user_id">To <span class="text-danger">*</span></label>
-										<select name="recipient_user_id" id="recipient_user_id" class="form-control" required>
-											<option value="">— Select recipient —</option>
-											<?php
-											$roleLabels = ['SUPER_ADMIN'=>'Super Admin','ADMIN'=>'Admin','DOCTOR'=>'Doctor','TRIAGE_NURSE'=>'Triage Nurse','NURSE'=>'Nurse','PARAMEDIC'=>'Paramedic','GRIEVANCE_OFFICER'=>'Grievance Officer','EDUCATION_TEAM'=>'Education Team','DATA_ENTRY_OPERATOR'=>'Data Entry Operator'];
-											foreach ($recipients as $r):
-											?>
+										<label>To <span class="text-danger">*</span></label>
+										<?php
+										$roleLabels = ['SUPER_ADMIN'=>'Super Admin','ADMIN'=>'Admin','DOCTOR'=>'Doctor','TRIAGE_NURSE'=>'Triage Nurse','NURSE'=>'Nurse','PARAMEDIC'=>'Paramedic','GRIEVANCE_OFFICER'=>'Grievance Officer','EDUCATION_TEAM'=>'Education Team','DATA_ENTRY_OPERATOR'=>'Data Entry Operator'];
+										?>
+										<select name="recipient_user_ids[]" id="recipient_user_ids"
+										        class="form-control" multiple size="7" required>
+											<?php foreach ($recipients as $r): ?>
 											<option value="<?= (int)$r['user_id'] ?>"
-												<?= (int)($_POST['recipient_user_id'] ?? 0) === (int)$r['user_id'] ? 'selected' : '' ?>>
+												<?= in_array((int)$r['user_id'], $preselectedIds, true) ? 'selected' : '' ?>>
 												<?= htmlspecialchars($r['first_name'] . ' ' . $r['last_name']) ?>
 												(<?= htmlspecialchars($roleLabels[$r['role']] ?? $r['role']) ?>)
 											</option>
 											<?php endforeach; ?>
 										</select>
+										<small class="form-text text-muted">
+											Hold <kbd>Ctrl</kbd> (Windows/Linux) or <kbd>⌘</kbd> (Mac) to select multiple recipients.
+										</small>
 									</div>
 
 									<div class="form-group">
 										<label for="subject">Subject <span class="text-danger">*</span></label>
 										<input type="text" name="subject" id="subject" class="form-control"
 										       maxlength="200" required
-										       value="<?= htmlspecialchars($_POST['subject'] ?? '') ?>" />
+										       value="<?= htmlspecialchars($_POST['subject'] ?? $prefillSubject) ?>" />
 									</div>
 
 									<div class="form-group">
@@ -171,7 +174,16 @@
 									<dt class="col-sm-2">From</dt>
 									<dd class="col-sm-10"><?= htmlspecialchars($message['sender_first'] . ' ' . $message['sender_last']) ?></dd>
 									<dt class="col-sm-2">To</dt>
-									<dd class="col-sm-10"><?= htmlspecialchars($message['recipient_first'] . ' ' . $message['recipient_last']) ?></dd>
+									<dd class="col-sm-10">
+										<?php if (!empty($threadRecipients)): ?>
+											<?= htmlspecialchars(implode(', ', array_map(
+												fn($r) => $r['first_name'] . ' ' . $r['last_name'],
+												$threadRecipients
+											))) ?>
+										<?php else: ?>
+											<?= htmlspecialchars($message['recipient_first'] . ' ' . $message['recipient_last']) ?>
+										<?php endif; ?>
+									</dd>
 									<dt class="col-sm-2">Date</dt>
 									<dd class="col-sm-10"><?= htmlspecialchars(date('d M Y H:i', strtotime($message['sent_at']))) ?></dd>
 								</dl>
@@ -183,10 +195,18 @@
 									<i class="fas fa-arrow-left mr-1"></i>Back to Inbox
 								</a>
 								<?php if ((int)$message['recipient_user_id'] === (int)$_SESSION['user_id']): ?>
-								<a href="messages.php?action=compose&reply_to=<?= (int)$message['sender_user_id'] ?>"
-								   class="btn btn-sm btn-outline-primary">
-									<i class="fas fa-reply mr-1"></i>Reply
-								</a>
+								<div>
+									<a href="messages.php?action=compose&reply_to=<?= (int)$message['sender_user_id'] ?>&reply_subject=<?= urlencode('Re: ' . $message['subject']) ?>"
+									   class="btn btn-sm btn-outline-primary mr-1">
+										<i class="fas fa-reply mr-1"></i>Reply
+									</a>
+									<?php if (count($threadRecipients) > 1): ?>
+									<a href="messages.php?action=compose&reply_all_thread=<?= urlencode($message['thread_id']) ?>&reply_subject=<?= urlencode('Re: ' . $message['subject']) ?>"
+									   class="btn btn-sm btn-primary">
+										<i class="fas fa-reply-all mr-1"></i>Reply All
+									</a>
+									<?php endif; ?>
+								</div>
 								<?php endif; ?>
 							</div>
 						</div>
@@ -221,13 +241,14 @@
 										<th><?= $view === 'inbox' ? 'From' : 'To' ?></th>
 										<th>Subject</th>
 										<th>Date</th>
-										<th></th>
 									</tr>
 								</thead>
 								<tbody>
 									<?php foreach ($messages as $msg): ?>
 									<?php $isUnread = ($view === 'inbox' && !$msg['is_read']); ?>
-									<tr class="<?= $isUnread ? 'font-weight-bold' : '' ?>">
+									<tr class="<?= $isUnread ? 'font-weight-bold' : '' ?>"
+									    style="cursor:pointer"
+									    onclick="window.location='messages.php?action=view&id=<?= (int)$msg['message_id'] ?>'">
 										<td class="text-center">
 											<?php if ($isUnread): ?>
 											<i class="fas fa-circle text-primary" style="font-size:.5rem;vertical-align:middle" title="Unread"></i>
@@ -237,22 +258,19 @@
 											<?php if ($view === 'inbox'): ?>
 											<?= htmlspecialchars($msg['sender_first'] . ' ' . $msg['sender_last']) ?>
 											<?php else: ?>
-											<?= htmlspecialchars($msg['recipient_first'] . ' ' . $msg['recipient_last']) ?>
+											<?= htmlspecialchars($msg['recipients_list']) ?>
+											<?php if (($msg['recipient_count'] ?? 1) > 1): ?>
+											<span class="badge badge-secondary ml-1"><?= (int)$msg['recipient_count'] ?></span>
+											<?php endif; ?>
 											<?php endif; ?>
 										</td>
 										<td><?= htmlspecialchars($msg['subject']) ?></td>
 										<td class="text-muted small"><?= htmlspecialchars(date('d M Y H:i', strtotime($msg['sent_at']))) ?></td>
-										<td>
-											<a href="messages.php?action=view&amp;id=<?= (int)$msg['message_id'] ?>"
-											   class="btn btn-sm btn-outline-primary">
-												<i class="fas fa-eye"></i>
-											</a>
-										</td>
 									</tr>
 									<?php endforeach; ?>
 									<?php if (empty($messages)): ?>
 									<tr>
-										<td colspan="5" class="text-center text-muted py-4">
+										<td colspan="4" class="text-center text-muted py-4">
 											<?= $view === 'inbox' ? 'Your inbox is empty.' : 'No sent messages.' ?>
 										</td>
 									</tr>
