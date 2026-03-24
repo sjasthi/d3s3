@@ -1,32 +1,30 @@
 <?php
 // app/config/lang.php
 
+function _load_csv(string $path): array {
+    $map = [];
+    if (!file_exists($path)) return $map;
+    $fh = fopen($path, 'r');
+    while (($row = fgetcsv($fh)) !== false) {
+        if (count($row) >= 2) {
+            $map[$row[0]] = $row[1];
+        }
+    }
+    fclose($fh);
+    return $map;
+}
+
 function load_language(string $lang = 'en'): void {
     $supported = ['en', 'te'];
     if (!in_array($lang, $supported)) {
         $lang = 'en';
     }
 
-    $files = ['case_sheet', 'intake'];
+    $GLOBALS['_LANG'] = _load_csv(__DIR__ . "/../../lang/labels_{$lang}.csv");
 
-    // Load requested language
-    $GLOBALS['_LANG'] = [];
-    foreach ($files as $file) {
-        $path = __DIR__ . "/../../lang/{$lang}/{$file}.php";
-        if (file_exists($path)) {
-            $GLOBALS['_LANG'] = array_merge($GLOBALS['_LANG'], require $path);
-        }
-    }
-
-    // Load English fallback (used by __() when a key is missing in non-English)
     $GLOBALS['_LANG_FALLBACK'] = [];
     if ($lang !== 'en') {
-        foreach ($files as $file) {
-            $path = __DIR__ . "/../../lang/en/{$file}.php";
-            if (file_exists($path)) {
-                $GLOBALS['_LANG_FALLBACK'] = array_merge($GLOBALS['_LANG_FALLBACK'], require $path);
-            }
-        }
+        $GLOBALS['_LANG_FALLBACK'] = _load_csv(__DIR__ . '/../../lang/labels_en.csv');
     }
 }
 

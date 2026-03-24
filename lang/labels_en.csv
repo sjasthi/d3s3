@@ -1,0 +1,265 @@
+tab_verification,Verification
+tab_personal,Personal
+tab_history,History
+tab_general,General
+tab_examinations,Examinations
+tab_labs,Labs
+tab_summary,Summary
+tab_intake,Intake
+dark_mode,Dark mode
+display_settings,Display Settings
+language,Language
+dashboard,Dashboard
+page_title,Patient Intake
+subtitle_ncd,NCD Screening and Treatment Documentation
+subtitle_step1,Select or register a patient to begin intake.
+saved,Saved
+patient,Patient
+search_existing_patient,Search Existing Patient
+search_placeholder,"Search by name, patient code, or phone..."
+register_new_patient,Register New Patient
+new_patient_registration,New Patient Registration
+first_name,First Name
+last_name,Last Name
+sex,Sex
+sex_select,-- Select Sex --
+sex_unknown,Unknown
+sex_male,Male
+sex_female,Female
+sex_other,Other
+date_of_birth,Date of Birth
+age_years,Age (years)
+age_label,Age
+phone,Phone
+email,Email
+register_and_select,Register & Select
+visit_details,Visit Details
+visit_type,Visit Type
+select_placeholder,-- Select --
+select_option,Select...
+visit_camp,Camp
+visit_clinic,Clinic
+visit_follow_up,Follow-up
+visit_emergency,Emergency
+other,Other
+chief_complaint,Chief Complaint
+chief_complaint_placeholder,Primary reason for visit
+create_case_sheet,Create Case Sheet & Continue
+cancel,Cancel
+patient_verification,Patient Verification
+edit_patient_info,Edit Patient Info
+identity,Identity
+contact,Contact
+clinical,Clinical
+address,Address
+emergency_contact,Emergency Contact
+full_name,Full Name
+patient_code,Patient Code
+blood_group,Blood Group
+street,Street
+city,City
+state,State
+pin_code,PIN Code
+name,Name
+select_blood_group,Select Blood Group
+street_address,Street Address
+contact_name,Contact Name
+contact_phone,Contact Phone
+save_changes,Save Changes
+patient_verified_continue,Patient Verified — Continue
+presenting_complaint,Presenting Complaint
+symptoms_complaints,Symptoms / Complaints
+duration_of_symptoms,Duration of Symptoms
+duration_placeholder,"e.g., 3 days, 2 weeks"
+background_information,Background Information
+medicine_sources,Medicine Sources
+none,None
+private,Private
+government,Government
+occupation,Occupation
+education,Education
+diet,Diet
+reproductive_history,Reproductive History
+number_of_children,Number of Children
+uterus,Uterus
+yes,Yes
+no,No
+delivery_details,Delivery Details
+type_of_delivery,Type of Delivery
+delivery_location,Delivery Location
+delivery_source,Delivery Source
+menstrual_details,Menstrual Details
+age_of_onset,Age of Onset
+years,Years
+cycle_frequency,Cycle Frequency
+days,Days
+duration_of_flow,Duration of Flow
+lmp,LMP
+mh,MH
+regular,Regular
+irregular,Irregular
+previous,Previous
+next,Next
+medical_conditions,Medical Conditions
+condition_dm,DM (Diabetes)
+condition_htn,HTN (Hypertension)
+condition_tsh,TSH (Thyroid)
+condition_heart_disease,Heart Disease
+cond_no,No
+cond_current,Current
+cond_past,Past
+other_conditions,Other Conditions
+surgical_history,Surgical History
+allergies,Allergies
+no_known_allergies,No known allergies
+no_known_allergies_hint,(Check this if the patient has no allergies — do not leave blank)
+allergy_substance,Allergy / Drug / Substance
+allergy_reaction,Reaction / Symptom
+add_another_allergy,Add Another Allergy
+family_history,Family History
+fh_cancer,Cancer
+fh_tuberculosis,Tuberculosis
+fh_diabetes,Diabetes
+fh_bp,BP (Hypertension)
+fh_thyroid,Thyroid
+other_family_history,Other Family History
+vital_signs,Vital Signs
+pulse,Pulse
+bp,B.P.
+temperature,Temperature
+physical_examination,Physical Examination
+heart,Heart
+lungs,Lungs
+liver,Liver
+spleen,Spleen
+lymph_glands,Lymph Glands
+anthropometric_measurements,Anthropometric Measurements
+height,Height
+weight,Weight
+obesity_overweight,Obesity / Overweight
+head_and_neck,Head and Neck
+mouth,Mouth
+lips,Lips
+buccal_mucosa,Buccal Mucosa
+teeth,Teeth
+tongue,Tongue
+oropharynx,Oropharynx
+hypo,Hypo
+naso_pharynx,Naso-Pharynx
+larynx,Larynx
+nose,Nose
+ears,Ears
+neck,Neck
+bones_joints,Bones and Joints
+abdomen_genital,Abdomen and Genital Organs
+breasts,Breasts
+left,Left
+right,Right
+axillary_nodes,Axillary Nodes
+breast_exam_diagram,Breast Examination Diagram
+breast_diagram,Breast Diagram
+edit,Edit
+draw,Draw
+pelvic_exam_introitus,Pelvic Examination Introitus
+cervix,Cervix
+ovaries,Ovaries
+adnexa,Adnexa
+pelvic_exam_diagram,Pelvic Examination Diagram
+pelvic_diagram,Pelvic Diagram
+rectal_examination,Rectal Examination
+skin,Skin
+remarks,Remarks
+gynae_examination,Gynaecological Examination
+via_diagram,VIA Diagram
+vili_diagram,VILI Diagram
+investigations,Investigations
+sr_creatinine,Sr. Creatinine
+others,Others
+cytology_report,Cytology Report
+papsmear,Papsmear
+papsmear_notes,Papsmear Notes
+colposcopy,Colposcopy
+colposcopy_notes,Colposcopy Notes
+biopsy,Biopsy
+biopsy_notes,Biopsy Notes
+done,Done
+advised,Advised
+lab_orders,Lab Orders
+order_lab_test,Order Lab Test
+no_lab_orders,No lab tests ordered yet.
+col_test,Test
+col_notes,Notes
+col_ordered_by,Ordered By
+col_status,Status
+col_ordered,Ordered
+status_completed,Completed
+status_pending,Pending
+assessment_disposition,Assessment & Disposition
+risk_level,Risk Level
+referral,Referral
+patient_acceptance,Patient Acceptance
+doctors_summary,Doctor's Summary
+summary_recommendations,Summary and Recommendations
+complete_intake,Complete Intake
+filter_tests,Filter tests
+filter_placeholder,Type to filter…
+order_notes_label,Order Notes
+order_notes_hint,"(optional — e.g. fasting required, special instructions)"
+order_notes_placeholder,Any notes for the lab…
+submit_order,Submit Order
+diagram_editor,Diagram Editor
+drawing_tool,Drawing Tool
+color_black,Black
+color_red,Red
+eraser,Eraser
+thickness,Thickness
+thickness_fine,Fine (2 px)
+thickness_normal,Normal (4 px)
+thickness_medium,Medium (6 px)
+thickness_thick,Thick (8 px)
+thickness_very_thick,Very thick (12 px)
+undo,Undo
+redo,Redo
+clear,Clear
+diagram_hint_before,Draw on the diagram above. Click
+diagram_hint_after,when finished.
+save_diagram,Save Diagram
+occupation_placeholder,"e.g. Teacher, Farmer, Homemaker"
+education_placeholder,"e.g. College, High School, None"
+diet_placeholder,"e.g. Vegetarian, Non-Vegetarian"
+delivery_lscs,LSCS
+delivery_nd,ND
+delivery_gh,GH
+bmi,BMI
+gynae_ps,P/S
+gynae_pv,P/V
+gynae_via,VIA
+gynae_vili,VILI
+spo2,SpO2
+lab_hb,Hb
+lab_fbs,FBS
+lab_tsh,TSH
+nav_dashboard,Dashboard
+nav_intake,Intake
+nav_my_reviews,My Reviews
+nav_patients,Patients
+nav_appointments,Appointments
+nav_labwork,Labwork
+nav_calendar,Calendar
+nav_feedback,Feedback
+nav_messages,Messages
+nav_tasks,Tasks
+nav_profile,Profile
+nav_settings,Settings
+nav_admin_panel,Admin Panel
+nav_assets,Assets
+nav_log_out,Log Out
+role_super_admin,Super Admin
+role_admin,Admin
+role_doctor,Doctor
+role_triage_nurse,Triage Nurse
+role_nurse,Nurse
+role_paramedic,Paramedic
+role_grievance_officer,Grievance Officer
+role_education_team,Education Team
+role_data_entry_operator,Data Entry Operator

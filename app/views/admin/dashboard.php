@@ -8,7 +8,7 @@
 	<link rel="stylesheet" href="assets/icons/css/all.min.css" />
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css" />
+	<link rel="stylesheet" href="assets/css/fullcalendar.min.css" />
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?>"
       data-theme-server="<?= htmlspecialchars($_SESSION['theme'] ?? 'system') ?>">
@@ -144,7 +144,7 @@
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
+<script src="assets/js/fullcalendar.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 	var typeColors = {
@@ -170,15 +170,16 @@ document.addEventListener('DOMContentLoaded', function () {
 	});
 
 	var cal = new FullCalendar.Calendar(document.getElementById('adminCalendarWidget'), {
-		initialView: 'listWeek',
+		initialView: 'listMonth',
+		initialDate: <?= json_encode($dashboardInitDate) ?>,
 		headerToolbar: {
 			left: 'prev,next',
 			center: 'title',
 			right: ''
 		},
 		events: events,
-		height: 300,
-		noEventsText: 'No upcoming events'
+		height: 260,
+		noEventsText: 'No events this month'
 	});
 	cal.render();
 });

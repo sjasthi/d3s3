@@ -18,6 +18,26 @@ class AdminController
                FROM events WHERE is_active = 1 ORDER BY start_datetime'
         )->fetchAll();
 
+        // Best initial date for the dashboard widget
+        $today              = date('Y-m-d');
+        $dashboardInitDate  = $today;
+        $upcoming           = null;
+        $latest             = null;
+        foreach ($events as $ev) {
+            $d = substr($ev['start_datetime'], 0, 10);
+            if ($d >= $today && ($upcoming === null || $d < $upcoming)) {
+                $upcoming = $d;
+            }
+            if ($latest === null || $d > $latest) {
+                $latest = $d;
+            }
+        }
+        if ($upcoming !== null) {
+            $dashboardInitDate = $upcoming;
+        } elseif ($latest !== null) {
+            $dashboardInitDate = $latest;
+        }
+
         $unreadMessages = 0;
         try {
             $stmt = $pdo->prepare('SELECT COUNT(*) FROM messages WHERE recipient_user_id = ? AND is_read = 0');
@@ -55,10 +75,88 @@ class AdminController
         $role   = $_SESSION['user_role'] ?? '';
         $userId = (int)($_SESSION['user_id'] ?? 0);
 
+        $canWriteEvents = can($role, 'events', 'W');
+
+        // ── Handle POST: create event (AJAX) ───────────────────
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
+
+            if (!$canWriteEvents) {
+                echo json_encode(['success' => false, 'message' => 'Permission denied.']);
+                exit;
+            }
+
+            if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+                echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
+                exit;
+            }
+
+            $title       = trim($_POST['title'] ?? '');
+            $eventType   = $_POST['event_type'] ?? 'OTHER';
+            $startDt     = trim($_POST['start_datetime'] ?? '');
+            $endDt       = trim($_POST['end_datetime'] ?? '') ?: null;
+            $location    = trim($_POST['location_name'] ?? '') ?: null;
+            $description = trim($_POST['description'] ?? '') ?: null;
+
+            if ($title === '') {
+                echo json_encode(['success' => false, 'message' => 'Title is required.']);
+                exit;
+            }
+
+            $validTypes = ['MEDICAL_CAMP', 'EDUCATIONAL_SEMINAR', 'TRAINING', 'MEETING', 'OTHER'];
+            if (!in_array($eventType, $validTypes, true)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid event type.']);
+                exit;
+            }
+
+            if ($startDt === '') {
+                echo json_encode(['success' => false, 'message' => 'Start date/time is required.']);
+                exit;
+            }
+
+            try {
+                $pdo->prepare(
+                    'INSERT INTO events (title, description, event_type, start_datetime, end_datetime,
+                                         location_name, is_active, status, created_by_user_id)
+                     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)'
+                )->execute([
+                    $title, $description, $eventType, $startDt, $endDt,
+                    $location, 'SCHEDULED', $userId,
+                ]);
+                $newId = (int)$pdo->lastInsertId();
+                echo json_encode(['success' => true, 'event_id' => $newId, 'message' => 'Event created.']);
+            } catch (\PDOException $e) {
+                error_log('createEvent error: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Database error.']);
+            }
+            exit;
+        }
+
         $events = $pdo->query(
             'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
                FROM events WHERE is_active = 1 ORDER BY start_datetime'
         )->fetchAll();
+
+        // Compute the best initial date for the calendar:
+        // prefer the nearest upcoming event, fall back to the most recent past event, then today.
+        $today       = date('Y-m-d');
+        $initialDate = $today;
+        $upcoming    = null;
+        $latest      = null;
+        foreach ($events as $ev) {
+            $d = substr($ev['start_datetime'], 0, 10);
+            if ($d >= $today && ($upcoming === null || $d < $upcoming)) {
+                $upcoming = $d;
+            }
+            if ($latest === null || $d > $latest) {
+                $latest = $d;
+            }
+        }
+        if ($upcoming !== null) {
+            $initialDate = $upcoming;
+        } elseif ($latest !== null) {
+            $initialDate = $latest;
+        }
 
         // Appointment events (shown to roles that have appointment access)
         $appointments = [];

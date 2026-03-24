@@ -747,8 +747,9 @@ class AppointmentController
 				'last_name'     => $lastName ?? '',
 			]);
 		} catch (\PDOException $e) {
+			error_log('createWalkInPatient error: ' . $e->getMessage());
 			http_response_code(500);
-			echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+			echo json_encode(['success' => false, 'message' => 'Database error.']);
 		}
 		exit;
 	}

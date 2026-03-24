@@ -8,7 +8,7 @@
 	<link rel="stylesheet" href="assets/icons/css/all.min.css" />
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css" />
+	<link rel="stylesheet" href="assets/css/fullcalendar.min.css" />
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?>"
       data-theme-server="<?= htmlspecialchars($_SESSION['theme'] ?? 'system') ?>">
@@ -67,6 +67,13 @@
 		<section class="content">
 			<div class="container-fluid">
 				<div class="card shadow-sm">
+					<?php if ($canWriteEvents): ?>
+					<div class="card-header border-0 d-flex justify-content-end">
+						<button class="btn btn-primary btn-sm" id="newEventBtn">
+							<i class="fas fa-plus mr-1"></i>New Event
+						</button>
+					</div>
+					<?php endif; ?>
 					<div class="card-body">
 						<div id="calendar"></div>
 					</div>
@@ -74,6 +81,61 @@
 			</div>
 		</section>
 	</div>
+
+	<!-- Create Event Modal -->
+	<?php if ($canWriteEvents): ?>
+	<div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="createEventModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="createEventModalLabel"><i class="fas fa-calendar-plus mr-2"></i>New Event</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<div id="createEventError" class="alert alert-danger d-none"></div>
+					<form id="createEventForm">
+						<div class="form-group">
+							<label for="evTitle">Title <span class="text-danger">*</span></label>
+							<input type="text" class="form-control" id="evTitle" name="title" required maxlength="255">
+						</div>
+						<div class="form-group">
+							<label for="evType">Type</label>
+							<select class="form-control" id="evType" name="event_type">
+								<option value="MEDICAL_CAMP">Medical Camp</option>
+								<option value="EDUCATIONAL_SEMINAR">Educational Seminar</option>
+								<option value="TRAINING">Training</option>
+								<option value="MEETING">Meeting</option>
+								<option value="OTHER" selected>Other</option>
+							</select>
+						</div>
+						<div class="form-row">
+							<div class="form-group col-md-6">
+								<label for="evStart">Start <span class="text-danger">*</span></label>
+								<input type="datetime-local" class="form-control" id="evStart" name="start_datetime" required>
+							</div>
+							<div class="form-group col-md-6">
+								<label for="evEnd">End</label>
+								<input type="datetime-local" class="form-control" id="evEnd" name="end_datetime">
+							</div>
+						</div>
+						<div class="form-group">
+							<label for="evLocation">Location</label>
+							<input type="text" class="form-control" id="evLocation" name="location_name" maxlength="255">
+						</div>
+						<div class="form-group">
+							<label for="evDesc">Description</label>
+							<textarea class="form-control" id="evDesc" name="description" rows="3" maxlength="2000"></textarea>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="createEventSave">Save Event</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<?php endif; ?>
 
 	<!-- Event Detail Modal -->
 	<div class="modal fade" id="eventModal" tabindex="-1" role="dialog" aria-labelledby="eventModalLabel" aria-hidden="true">
@@ -103,7 +165,7 @@
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
+<script src="assets/js/fullcalendar.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 	var typeColors = {
@@ -165,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	var calendarEl = document.getElementById('calendar');
 	var calendar = new FullCalendar.Calendar(calendarEl, {
 		initialView: 'dayGridMonth',
+		initialDate: <?= json_encode($initialDate) ?>,
 		headerToolbar: {
 			left: 'prev,next today',
 			center: 'title',
@@ -216,6 +279,63 @@ document.addEventListener('DOMContentLoaded', function () {
 		height: 'auto'
 	});
 	calendar.render();
+
+	<?php if ($canWriteEvents): ?>
+	document.getElementById('newEventBtn').addEventListener('click', function () {
+		document.getElementById('createEventForm').reset();
+		document.getElementById('createEventError').classList.add('d-none');
+		$('#createEventModal').modal('show');
+	});
+
+	document.getElementById('createEventSave').addEventListener('click', function () {
+		var btn = this;
+		var form = document.getElementById('createEventForm');
+		var errEl = document.getElementById('createEventError');
+		errEl.classList.add('d-none');
+
+		var title = document.getElementById('evTitle').value.trim();
+		var start = document.getElementById('evStart').value;
+		if (!title || !start) {
+			errEl.textContent = 'Title and start date/time are required.';
+			errEl.classList.remove('d-none');
+			return;
+		}
+
+		btn.disabled = true;
+		var data = new FormData(form);
+		data.append('csrf_token', <?= json_encode($_SESSION['csrf_token'] ?? '') ?>);
+
+		fetch('calendar.php', { method: 'POST', body: data })
+			.then(function (r) { return r.json(); })
+			.then(function (res) {
+				if (!res.success) {
+					errEl.textContent = res.message || 'Error saving event.';
+					errEl.classList.remove('d-none');
+					return;
+				}
+				var evType = form.event_type.value;
+				calendar.addEvent({
+					id:          res.event_id,
+					title:       title,
+					start:       start,
+					end:         form.end_datetime.value || undefined,
+					color:       typeColors[evType] || '#6c757d',
+					extendedProps: {
+						eventType:   evType,
+						location:    form.location_name.value,
+						description: form.description.value,
+						status:      'SCHEDULED',
+					},
+				});
+				$('#createEventModal').modal('hide');
+			})
+			.catch(function () {
+				errEl.textContent = 'Network error. Please try again.';
+				errEl.classList.remove('d-none');
+			})
+			.finally(function () { btn.disabled = false; });
+	});
+	<?php endif; ?>
 });
 </script>
 </body>

@@ -2,6 +2,10 @@
 if (!function_exists('can')) {
 	require_once __DIR__ . '/../config/permissions.php';
 }
+if (!function_exists('__')) {
+	require_once __DIR__ . '/../../app/config/lang.php';
+	load_language($_SESSION['language'] ?? 'en');
+}
 
 // ── Active-page detection ───────────────────────────────────────────────────
 $currentPage        = $_SERVER['PHP_SELF'];
@@ -87,15 +91,15 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<span class="d-block text-white"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></span>
 				<?php
 				$_roleLabels = [
-					'SUPER_ADMIN'         => 'Super Admin',
-					'ADMIN'               => 'Admin',
-					'DOCTOR'              => 'Doctor',
-					'TRIAGE_NURSE'        => 'Triage Nurse',
-					'NURSE'               => 'Nurse',
-					'PARAMEDIC'           => 'Paramedic',
-					'GRIEVANCE_OFFICER'   => 'Grievance Officer',
-					'EDUCATION_TEAM'      => 'Education Team',
-					'DATA_ENTRY_OPERATOR' => 'Data Entry Operator',
+					'SUPER_ADMIN'         => __('role_super_admin'),
+					'ADMIN'               => __('role_admin'),
+					'DOCTOR'              => __('role_doctor'),
+					'TRIAGE_NURSE'        => __('role_triage_nurse'),
+					'NURSE'               => __('role_nurse'),
+					'PARAMEDIC'           => __('role_paramedic'),
+					'GRIEVANCE_OFFICER'   => __('role_grievance_officer'),
+					'EDUCATION_TEAM'      => __('role_education_team'),
+					'DATA_ENTRY_OPERATOR' => __('role_data_entry_operator'),
 				];
 				?>
 				<small class="text-white-50"><?= htmlspecialchars($_roleLabels[$_userRole] ?? 'User') ?></small>
@@ -110,7 +114,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 					<a href="<?= $_navCanUsers ? 'admin.php' : 'dashboard.php' ?>"
 					   class="nav-link <?= ($isDashboardPage || $isAdminDashboard) ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-heart-pulse"></i>
-						<p>Dashboard</p>
+						<p><?= __('nav_dashboard') ?></p>
 					</a>
 				</li>
 
@@ -119,7 +123,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="intake.php" class="nav-link <?= $isIntakePage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-clipboard-list"></i>
-						<p>Intake</p>
+						<p><?= __('nav_intake') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -129,7 +133,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="dashboard.php" class="nav-link <?= $isReviewPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-notes-medical"></i>
-						<p>My Reviews</p>
+						<p><?= __('nav_my_reviews') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -139,7 +143,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="patients.php" class="nav-link <?= $isPatientsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-user-injured"></i>
-						<p>Patients</p>
+						<p><?= __('nav_patients') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -149,7 +153,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="appointments.php" class="nav-link <?= $isAppointmentsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-calendar-check"></i>
-						<p>Appointments</p>
+						<p><?= __('nav_appointments') ?></p>
 						<?php if ($_apptTodayCount > 0): ?>
 						<span class="right badge badge-primary"><?= $_apptTodayCount ?></span>
 						<?php endif; ?>
@@ -162,7 +166,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="lab_results.php" class="nav-link <?= $isLabResultsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-vial"></i>
-						<p>Labwork</p>
+						<p><?= __('nav_labwork') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -172,7 +176,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="calendar.php" class="nav-link <?= $isCalendarPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-calendar-alt"></i>
-						<p>Calendar</p>
+						<p><?= __('nav_calendar') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -182,7 +186,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="feedback.php" class="nav-link <?= $isFeedbackPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-comment-dots"></i>
-						<p>Feedback</p>
+						<p><?= __('nav_feedback') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -192,7 +196,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="messages.php" class="nav-link <?= $isMessagesPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-envelope"></i>
-						<p>Messages</p>
+						<p><?= __('nav_messages') ?></p>
 						<?php if ($_msgUnreadCount > 0): ?>
 						<span class="right badge badge-danger"><?= $_msgUnreadCount ?></span>
 						<?php endif; ?>
@@ -205,7 +209,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="tasks.php" class="nav-link <?= $isTasksPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-tasks"></i>
-						<p>Tasks</p>
+						<p><?= __('nav_tasks') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -214,7 +218,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="profile.php" class="nav-link <?= $isProfilePage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-user-circle"></i>
-						<p>Profile</p>
+						<p><?= __('nav_profile') ?></p>
 					</a>
 				</li>
 
@@ -222,7 +226,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="settings.php" class="nav-link <?= $isSettingsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-cog"></i>
-						<p>Settings</p>
+						<p><?= __('nav_settings') ?></p>
 					</a>
 				</li>
 
@@ -231,7 +235,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="admin.php?page=panel" class="nav-link <?= $isAdminPanel ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-user-shield"></i>
-						<p>Admin Panel</p>
+						<p><?= __('nav_admin_panel') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -241,7 +245,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="assets.php" class="nav-link <?= $isAssetsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-boxes"></i>
-						<p>Assets</p>
+						<p><?= __('nav_assets') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
@@ -250,7 +254,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="logout.php" class="nav-link">
 						<i class="nav-icon fas fa-sign-out-alt"></i>
-						<p>Log Out</p>
+						<p><?= __('nav_log_out') ?></p>
 					</a>
 				</li>
 

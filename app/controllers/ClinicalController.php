@@ -800,7 +800,8 @@ class ClinicalController
 
 			echo json_encode(['success' => true, 'message' => 'Patient information updated.', 'patient' => $patient]);
 		} catch (Exception $e) {
-			echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+			error_log('updatePatientInfo error: ' . $e->getMessage());
+			echo json_encode(['success' => false, 'message' => 'Database error.']);
 		}
 		exit;
 	}
