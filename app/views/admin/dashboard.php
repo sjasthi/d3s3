@@ -9,6 +9,49 @@
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
 	<link rel="stylesheet" href="assets/css/fullcalendar.min.css" />
+	<style>
+	/* Dashboard calendar widget */
+	#adminCalendarWidget .fc-toolbar { padding-bottom: .4rem; }
+	#adminCalendarWidget .fc-toolbar-title {
+		font-size: 1rem; font-weight: 700; color: var(--text-strong);
+	}
+	#adminCalendarWidget .fc .fc-button-primary {
+		background: var(--brand-primary); border-color: var(--brand-primary);
+		border-radius: 6px; padding: .3rem .65rem; font-size: .8rem;
+		min-height: 36px; min-width: 36px;
+	}
+	#adminCalendarWidget .fc .fc-button-primary:not(:disabled):hover,
+	#adminCalendarWidget .fc .fc-button-primary:not(:disabled).fc-button-active {
+		background: var(--brand-secondary); border-color: var(--brand-secondary);
+	}
+	#adminCalendarWidget .fc td,
+	#adminCalendarWidget .fc th { border-color: var(--border-soft) !important; }
+	#adminCalendarWidget .fc .fc-list-day-cushion {
+		background: var(--surface) !important; padding: 6px 12px;
+	}
+	#adminCalendarWidget .fc .fc-list-day-text,
+	#adminCalendarWidget .fc .fc-list-day-side-text {
+		font-size: .8rem; font-weight: 700;
+		color: var(--brand-primary) !important; text-decoration: none !important;
+	}
+	#adminCalendarWidget .fc .fc-list-event:hover td {
+		background: rgba(15,143,169,.06) !important;
+	}
+	#adminCalendarWidget .fc .fc-list-event-time {
+		font-size: .78rem; color: var(--text-muted); padding: 9px 10px; white-space: nowrap;
+	}
+	#adminCalendarWidget .fc .fc-list-event-title { font-size: .85rem; padding: 9px 10px; }
+	#adminCalendarWidget .fc .fc-list-empty-cushion {
+		color: var(--text-muted); font-size: .85rem;
+	}
+	body.dark-mode #adminCalendarWidget .fc .fc-list-day-cushion {
+		background: var(--surface-card) !important;
+	}
+	body.dark-mode #adminCalendarWidget .fc-list-event td {
+		background: var(--surface-card); border-color: var(--border-soft);
+	}
+	body.dark-mode #adminCalendarWidget .fc .fc-toolbar-title { color: var(--text-strong); }
+	</style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?>"
       data-theme-server="<?= htmlspecialchars($_SESSION['theme'] ?? 'system') ?>">

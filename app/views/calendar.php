@@ -9,6 +9,123 @@
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
 	<link rel="stylesheet" href="assets/css/fullcalendar.min.css" />
+	<style>
+	/* ── FullCalendar – tablet-polished, brand-integrated ─────────────────── */
+
+	/* Toolbar */
+	.fc .fc-toolbar { gap: .5rem; padding-bottom: .75rem; flex-wrap: wrap; }
+	.fc .fc-toolbar-title {
+		font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em;
+		color: var(--text-strong);
+	}
+	.fc .fc-button-primary {
+		background: var(--brand-primary); border-color: var(--brand-primary);
+		border-radius: 8px; padding: .5rem 1rem; font-size: .875rem;
+		font-weight: 500; min-height: 44px; min-width: 44px;
+		box-shadow: 0 1px 4px rgba(15,143,169,.25);
+		transition: background .15s, box-shadow .15s;
+	}
+	.fc .fc-button-primary:not(:disabled):hover,
+	.fc .fc-button-primary:not(:disabled):active,
+	.fc .fc-button-primary:not(:disabled).fc-button-active {
+		background: var(--brand-secondary); border-color: var(--brand-secondary);
+	}
+	.fc .fc-button-primary:focus {
+		box-shadow: 0 0 0 3px rgba(15,143,169,.3);
+	}
+
+	/* Column headers */
+	.fc .fc-col-header-cell-cushion {
+		font-size: .78rem; font-weight: 700; text-transform: uppercase;
+		letter-spacing: .05em; color: var(--text-muted);
+		padding: 10px 4px; text-decoration: none;
+	}
+
+	/* Day numbers */
+	.fc .fc-daygrid-day-number {
+		font-size: .95rem; font-weight: 500; padding: 6px 10px;
+		color: var(--text-strong); text-decoration: none;
+	}
+	.fc .fc-day-other .fc-daygrid-day-number { opacity: .35; }
+
+	/* Grid borders */
+	.fc td, .fc th { border-color: var(--border-soft) !important; }
+	.fc .fc-scrollgrid { border-color: var(--border-soft) !important; }
+
+	/* Today highlight */
+	.fc .fc-day-today { background: rgba(15,143,169,.07) !important; }
+	.fc .fc-day-today .fc-daygrid-day-number {
+		background: var(--brand-primary); color: #fff; border-radius: 50%;
+		width: 32px; height: 32px; display: flex; align-items: center;
+		justify-content: center; margin: 4px; padding: 0;
+	}
+
+	/* Event pills */
+	.fc .fc-daygrid-event {
+		border-radius: 6px; border: none !important; margin-bottom: 2px;
+		box-shadow: 0 1px 3px rgba(0,0,0,.12);
+		transition: transform .1s, box-shadow .1s;
+	}
+	.fc .fc-daygrid-event:active { transform: scale(.97); }
+	.fc-custom-event {
+		display: flex; align-items: center; gap: 5px;
+		padding: 4px 7px; min-height: 26px; overflow: hidden;
+	}
+	.fc-custom-event i { flex-shrink: 0; font-size: .72rem; opacity: .9; }
+	.fc-custom-event .fc-ev-title {
+		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		font-size: .8rem; font-weight: 500;
+	}
+	.fc-custom-event .fc-ev-time {
+		font-size: .72rem; opacity: .8; flex-shrink: 0;
+	}
+	.fc .fc-daygrid-more-link {
+		font-size: .78rem; font-weight: 600; color: var(--brand-primary);
+	}
+
+	/* Now-indicator */
+	.fc .fc-timegrid-now-indicator-line  { border-color: var(--brand-primary); }
+	.fc .fc-timegrid-now-indicator-arrow {
+		border-top-color: var(--brand-primary);
+		border-bottom-color: var(--brand-primary);
+	}
+
+	/* Time grid */
+	.fc .fc-timegrid-slot { height: 44px; }
+	.fc .fc-timegrid-slot-label {
+		font-size: .78rem; color: var(--text-muted);
+		vertical-align: top; padding-top: 4px;
+	}
+
+	/* List view */
+	.fc .fc-list-day-cushion { background: var(--surface) !important; padding: 10px 16px; }
+	.fc .fc-list-day-text,
+	.fc .fc-list-day-side-text {
+		font-size: .875rem; font-weight: 700;
+		color: var(--brand-primary) !important; text-decoration: none !important;
+	}
+	.fc .fc-list-event:hover td { background: rgba(15,143,169,.06) !important; }
+	.fc .fc-list-event-dot { border-color: currentColor; }
+	.fc .fc-list-event-time {
+		color: var(--text-muted); font-size: .85rem;
+		padding: 12px 14px; white-space: nowrap;
+	}
+	.fc .fc-list-event-title { font-size: .9rem; padding: 12px 14px; }
+	.fc .fc-list-empty-cushion { color: var(--text-muted); font-size: .9rem; }
+
+	/* Dark-mode overrides */
+	body.dark-mode .fc .fc-toolbar-title,
+	body.dark-mode .fc .fc-daygrid-day-number  { color: var(--text-strong); }
+	body.dark-mode .fc .fc-col-header-cell-cushion,
+	body.dark-mode .fc .fc-timegrid-slot-label,
+	body.dark-mode .fc .fc-list-event-time     { color: var(--text-muted); }
+	body.dark-mode .fc td,
+	body.dark-mode .fc th,
+	body.dark-mode .fc .fc-scrollgrid          { border-color: var(--border-soft) !important; }
+	body.dark-mode .fc .fc-day-today           { background: rgba(15,143,169,.14) !important; }
+	body.dark-mode .fc .fc-list-day-cushion    { background: var(--surface-card) !important; }
+	body.dark-mode .fc-list-event td           { background: var(--surface-card); border-color: var(--border-soft); }
+	</style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed<?= ($_SESSION['font_size'] ?? 'normal') === 'large' ? ' font-size-large' : '' ?>"
       data-theme-server="<?= htmlspecialchars($_SESSION['theme'] ?? 'system') ?>">
@@ -225,13 +342,39 @@ document.addEventListener('DOMContentLoaded', function () {
 	events = events.concat(apptEvents);
 
 	var calendarEl = document.getElementById('calendar');
+	var evTypeIcons = {
+		'MEDICAL_CAMP':        'fa-briefcase-medical',
+		'EDUCATIONAL_SEMINAR': 'fa-graduation-cap',
+		'TRAINING':            'fa-chalkboard-teacher',
+		'MEETING':             'fa-users',
+		'APPOINTMENT':         'fa-calendar-check',
+		'OTHER':               'fa-calendar-alt'
+	};
+
 	var calendar = new FullCalendar.Calendar(calendarEl, {
 		initialView: 'dayGridMonth',
 		initialDate: <?= json_encode($initialDate) ?>,
 		headerToolbar: {
 			left: 'prev,next today',
 			center: 'title',
-			right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+			right: 'dayGridMonth,timeGridWeek,listMonth'
+		},
+		fixedWeekCount: false,
+		dayMaxEvents: 3,
+		nowIndicator: true,
+		eventDisplay: 'block',
+		eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
+		eventContent: function(arg) {
+			var et   = arg.event.extendedProps.eventType || 'OTHER';
+			var icon = evTypeIcons[et] || 'fa-calendar-alt';
+			var time = arg.timeText
+				? '<span class="fc-ev-time">' + arg.timeText + '</span>'
+				: '';
+			return { html: '<div class="fc-custom-event">'
+				+ '<i class="fas ' + icon + '"></i>'
+				+ time
+				+ '<span class="fc-ev-title">' + arg.event.title + '</span>'
+				+ '</div>' };
 		},
 		events: events,
 		eventClick: function (info) {
