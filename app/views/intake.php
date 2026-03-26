@@ -64,6 +64,14 @@ load_language($_SESSION['language'] ?? 'en');
 			<li class="nav-item d-none d-sm-inline-block">
 				<span class="navbar-brand mb-0 h6 text-primary">CareSystem</span>
 			</li>
+			<?php if (!empty($caseSheet)): ?>
+			<li class="nav-item d-none d-md-inline-block">
+				<span class="navbar-text px-2 ml-1" style="border-left:1px solid #dee2e6;">
+					<strong class="text-dark"><?= htmlspecialchars($patient['first_name'] . ' ' . ($patient['last_name'] ?? '')) ?></strong>
+					<span class="badge badge-secondary ml-1"><?= htmlspecialchars($patient['patient_code']) ?></span>
+				</span>
+			</li>
+			<?php endif; ?>
 		</ul>
 
 		<?php if (!empty($caseSheet)): ?>
