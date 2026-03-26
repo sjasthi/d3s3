@@ -84,7 +84,7 @@ if ($_isClinicalRole) { try {
 		$stmt = $pdo->prepare(
 			'SELECT cs.case_sheet_id, cs.visit_type, cs.chief_complaint,
 			        cs.visit_datetime, cs.updated_at,
-			        p.first_name, p.last_name, p.patient_code, p.sex, p.age_years
+			        p.patient_id, p.first_name, p.last_name, p.patient_code, p.sex, p.age_years
 			   FROM case_sheets cs
 			   JOIN patients p ON p.patient_id = cs.patient_id
 			  WHERE cs.status = ? AND cs.assigned_doctor_user_id = ?
