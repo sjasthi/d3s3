@@ -1259,7 +1259,7 @@ $pageTitle = "Case Sheet";
 	</div>
 
 	<footer class="main-footer text-sm">
-		<strong>CareSystem</strong> &middot; Designed for clarity in bright conditions.
+		<strong>CareSystem</strong> &middot; &copy; 2026 D3S3 Health. All rights reserved.
 	</footer>
 </div>
 

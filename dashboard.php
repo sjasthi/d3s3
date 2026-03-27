@@ -244,8 +244,63 @@ $roleLabel = [
 	<link rel="stylesheet" href="assets/icons/css/all.min.css" />
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css" />
+	<link rel="stylesheet" href="assets/css/fullcalendar.min.css" />
 	<style>
+	/* ── FullCalendar dashboard widget ─────────────────────────────────── */
+	.fc .fc-toolbar { gap: .5rem; padding-bottom: .75rem; flex-wrap: wrap; }
+	.fc .fc-toolbar-title {
+		font-size: 1.1rem; font-weight: 700; letter-spacing: -.01em;
+		color: var(--text-strong);
+	}
+	.fc .fc-button-primary {
+		background: var(--brand-primary); border-color: var(--brand-primary);
+		border-radius: 8px; padding: .35rem .75rem; font-size: .8rem;
+		font-weight: 500; min-height: 36px; min-width: 36px;
+		transition: background .15s, box-shadow .15s;
+	}
+	.fc .fc-button-primary:not(:disabled):hover,
+	.fc .fc-button-primary:not(:disabled):active,
+	.fc .fc-button-primary:not(:disabled).fc-button-active {
+		background: var(--brand-secondary); border-color: var(--brand-secondary);
+	}
+	.fc .fc-col-header-cell-cushion {
+		font-size: .75rem; font-weight: 700; text-transform: uppercase;
+		letter-spacing: .05em; color: var(--text-muted);
+		padding: 8px 4px; text-decoration: none;
+	}
+	.fc .fc-daygrid-day-number {
+		font-size: .85rem; font-weight: 500; padding: 4px 8px;
+		color: var(--text-strong); text-decoration: none;
+	}
+	.fc .fc-day-other .fc-daygrid-day-number { opacity: .35; }
+	.fc td, .fc th { border-color: var(--border-soft) !important; }
+	.fc .fc-scrollgrid { border-color: var(--border-soft) !important; }
+	.fc .fc-day-today { background: rgba(15,143,169,.07) !important; }
+	.fc .fc-day-today .fc-daygrid-day-number {
+		background: var(--brand-primary); color: #fff; border-radius: 50%;
+		width: 28px; height: 28px; display: flex; align-items: center;
+		justify-content: center; margin: 3px; padding: 0;
+	}
+	.fc .fc-daygrid-event {
+		border-radius: 6px; border: none !important; margin-bottom: 2px;
+		box-shadow: 0 1px 3px rgba(0,0,0,.12);
+	}
+	.fc-custom-event {
+		display: flex; align-items: center; gap: 4px;
+		padding: 3px 6px; min-height: 22px; overflow: hidden;
+	}
+	.fc-custom-event i { flex-shrink: 0; font-size: .68rem; opacity: .9; }
+	.fc-custom-event .fc-ev-title {
+		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		font-size: .75rem; font-weight: 500;
+	}
+	.fc .fc-daygrid-more-link { font-size: .75rem; font-weight: 600; color: var(--brand-primary); }
+	body.dark-mode .fc .fc-toolbar-title,
+	body.dark-mode .fc .fc-daygrid-day-number  { color: var(--text-strong); }
+	body.dark-mode .fc .fc-col-header-cell-cushion { color: var(--text-muted); }
+	body.dark-mode .fc td, body.dark-mode .fc th,
+	body.dark-mode .fc .fc-scrollgrid { border-color: var(--border-soft) !important; }
+	body.dark-mode .fc .fc-day-today { background: rgba(15,143,169,.14) !important; }
 		/* ── Quick action tiles ───────────────────────────────────── */
 		.qa-tile {
 			display: flex;
@@ -1075,6 +1130,25 @@ $roleLabel = [
 					</a>
 				</div>
 			</div>
+
+			<?php if (can($_userRole, 'events')): ?>
+			<div class="row mt-3">
+				<div class="col-lg-6 mb-4">
+					<div class="card shadow-sm h-100">
+						<div class="card-header border-0 d-flex justify-content-between align-items-center">
+							<h3 class="card-title mb-0">
+								<i class="fas fa-calendar-alt mr-2 text-primary"></i>Upcoming Events
+							</h3>
+							<a href="calendar.php" class="btn btn-sm btn-outline-primary">Full calendar</a>
+						</div>
+						<div class="card-body p-2">
+							<div id="dashCalendarWidget"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
+
 			<?php endif; ?>
 
 			</div>
@@ -1082,7 +1156,7 @@ $roleLabel = [
 	</div>
 
 	<footer class="main-footer text-sm">
-		<strong>CareSystem</strong> &middot; Designed for clarity in bright conditions.
+		<strong>CareSystem</strong> &middot; &copy; 2026 D3S3 Health. All rights reserved.
 	</footer>
 </div>
 
@@ -1170,14 +1244,14 @@ $roleLabel = [
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
+<script src="assets/js/fullcalendar.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
 'use strict';
 
 /* ── Calendar widget ────────────────────────────────────────────── */
-<?php if ($_isClinicalRole): ?>
+<?php if (can($_userRole, 'events')): ?>
 var typeColors = {
 	'MEDICAL_CAMP':        '#007bff',
 	'EDUCATIONAL_SEMINAR': '#28a745',
@@ -1187,15 +1261,18 @@ var typeColors = {
 };
 var calEvents = <?= json_encode(array_map(function ($e) {
 	return [
-		'title' => $e['title'],
-		'start' => $e['start_datetime'],
-		'end'   => $e['end_datetime'],
-		'type'  => $e['event_type'],
-		'color' => '',
+		'title'          => $e['title'],
+		'start'          => $e['start_datetime'],
+		'end'            => $e['end_datetime'],
+		'color'          => '',
+		'extendedProps'  => ['eventType' => $e['event_type']],
 	];
 }, $calendarEvents), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-calEvents.forEach(function (e) { e.color = typeColors[e.type] || '#6c757d'; });
+calEvents.forEach(function (e) {
+	e.color = typeColors[(e.extendedProps || {}).eventType] || '#6c757d';
+});
 
+<?php if ($_isClinicalRole): ?>
 var apptCalEvents = <?= json_encode(array_map(function ($a) {
 	$start = $a['scheduled_date'];
 	if (!empty($a['scheduled_time'])) {
@@ -1206,27 +1283,57 @@ var apptCalEvents = <?= json_encode(array_map(function ($a) {
 		$title .= ' · Dr. ' . $a['doc_last'];
 	}
 	return [
-		'title' => $title,
-		'start' => $start,
-		'color' => '#6f42c1',
-		'type'  => 'APPOINTMENT',
-		'url'   => 'appointments.php',
+		'title'         => $title,
+		'start'         => $start,
+		'color'         => '#6f42c1',
+		'extendedProps' => ['eventType' => 'APPOINTMENT'],
 	];
 }, $calendarAppts), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 calEvents = calEvents.concat(apptCalEvents);
+<?php endif; ?>
 
 document.addEventListener('DOMContentLoaded', function () {
-	var calEl = document.getElementById('clinicalCalendarWidget');
+	var calEl = document.getElementById('dashCalendarWidget');
 	if (!calEl) return;
+	var evTypeIcons = {
+		'MEDICAL_CAMP':        'fa-briefcase-medical',
+		'EDUCATIONAL_SEMINAR': 'fa-graduation-cap',
+		'TRAINING':            'fa-chalkboard-teacher',
+		'MEETING':             'fa-users',
+		'APPOINTMENT':         'fa-calendar-check',
+		'OTHER':               'fa-calendar-alt'
+	};
 	new FullCalendar.Calendar(calEl, {
-		initialView:   'listWeek',
-		headerToolbar: { left: 'prev,next', center: 'title', right: '' },
+		initialView:    'listMonth',
+		headerToolbar:  { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
+		fixedWeekCount: false,
+		dayMaxEvents:   3,
+		nowIndicator:   true,
+		eventDisplay:   'block',
+		eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
+		eventContent: function (arg) {
+			var et   = arg.event.extendedProps.eventType || 'OTHER';
+			var icon = evTypeIcons[et] || 'fa-calendar-alt';
+			var time = arg.timeText
+				? '<span class="fc-ev-time" style="font-size:.68rem;opacity:.8;flex-shrink:0">' + arg.timeText + '</span>'
+				: '';
+			return { html: '<div class="fc-custom-event">'
+				+ '<i class="fas ' + icon + '"></i>'
+				+ time
+				+ '<span class="fc-ev-title">' + arg.event.title + '</span>'
+				+ '</div>' };
+		},
 		events:        calEvents,
-		height:        280,
-		noEventsText:  'No upcoming events'
+		height:        'auto',
+		eventClick: function (info) {
+			window.location.href = 'calendar.php';
+		}
 	}).render();
 });
 
+<?php endif; ?>
+
+<?php if ($_isClinicalRole): ?>
 /* ── Stat tile popup ────────────────────────────────────────────── */
 var STAT_PATIENTS = <?= json_encode($statPatients ?? [], JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 var STAT_LABELS = {

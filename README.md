@@ -244,7 +244,7 @@ d3s3/
 - **Brand-integrated styling**: toolbar buttons use `--brand-primary`, today cell rendered as a filled teal circle, borders use `--border-soft`; full dark-mode support
 - **Custom event content**: type-specific FontAwesome icons (medical camp, seminar, meeting, etc.) on each event pill
 - **Tablet-optimised**: 44 px tap targets, scale-on-tap feedback, `fixedWeekCount: false`, `dayMaxEvents: 3`, `nowIndicator: true`, simplified 3-view toolbar (Month / Week / List)
-- **Dashboard widget**: compact `listMonth` view with scoped brand-colour styling
+- **Dashboard widget**: compact calendar card embedded on the dashboard; uses the same self-hosted assets and brand-integrated CSS as `calendar.php`; month-grid and list views are both accessible via a toolbar toggle
 
 ### Messaging — Tom Select Recipient Input *(2026-03-25)*
 - Replaced the custom chip-widget recipient input with the **Tom Select** library for a polished, accessible multi-recipient selector
@@ -267,6 +267,13 @@ d3s3/
 - **LIKE wildcard escaping** (`PatientController`): `%` and `_` characters in patient search input are now escaped before being interpolated into LIKE patterns, so a literal `%` searches correctly instead of matching everything
 - **Lab test name length cap** (`ClinicalController`): test names longer than 255 characters are now silently skipped before the DB insert, preventing truncation errors on oversized AJAX payloads
 - **Backup directory** (`backups/.htaccess`): confirmed deny-all rule is in place, blocking direct web access to timestamped CSV exports
+
+### Dashboard Calendar Widget *(2026-03-26)*
+- Calendar widget now appears for **all roles with events access** — previously only rendered for clinical roles (`case_sheets = RW`); now correctly gated on `can($role, 'events')` so non-clinical roles such as `EDUCATION_TEAM` see the widget on their dashboard landing
+- Widget uses the same self-hosted FullCalendar assets and polished CSS as `calendar.php` (local `assets/js/fullcalendar.min.js` / `assets/css/fullcalendar.min.css` — no CDN dependency)
+- Matches `calendar.php` config: custom event content with type-specific FontAwesome icons, `fixedWeekCount: false`, `dayMaxEvents: 3`, `height: auto`, month/list view toggle in toolbar
+- Default view is **list** (`listMonth`); month-grid view accessible via toolbar toggle
+- Appointment overlay events (clinical roles only) include the patient name and doctor name, coloured purple to distinguish from scheduled events
 
 ### UX & Completeness Fixes *(2026-03-26)*
 - **Admin panel tiles**: Patient Management tile now links to `patients.php`; Messages tile now links to `messages.php`; the dead Help tile (no page exists) has been removed
