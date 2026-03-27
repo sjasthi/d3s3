@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS feedback (
                                          NOT NULL DEFAULT 'OPEN',
     submitted_by_user_id INT UNSIGNED    NOT NULL,
     assigned_to_user_id  INT UNSIGNED    NULL,
+    notes                TEXT            NULL,
     created_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
                                              ON UPDATE CURRENT_TIMESTAMP,

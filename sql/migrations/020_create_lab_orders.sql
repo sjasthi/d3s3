@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `lab_orders` (
   `completed_by_user_id`  int unsigned    DEFAULT NULL,
   `completed_at`          datetime        DEFAULT NULL,
   `result_notes`          text            DEFAULT NULL,
+  `notes`                 text            DEFAULT NULL,
   PRIMARY KEY (`order_id`),
   KEY `idx_lab_orders_case_sheet` (`case_sheet_id`),
   KEY `idx_lab_orders_patient`    (`patient_id`),

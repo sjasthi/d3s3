@@ -275,6 +275,12 @@ d3s3/
 - Default view is **list** (`listMonth`); month-grid view accessible via toolbar toggle
 - Appointment overlay events (clinical roles only) include the patient name and doctor name, coloured purple to distinguish from scheduled events
 
+### Universal Notes Column *(2026-03-27)*
+- Migration 024 adds a `notes TEXT DEFAULT NULL` column to every operational table (`users`, `user_preferences`, `patients`, `case_sheets`, `events`, `patient_feedback`, `assets`, `feedback`, `messages`, `tasks`, `lab_orders`, `role_permissions`, `patient_daily_sequence`)
+- Provides a catch-all field for stakeholders to record information not covered by the existing schema
+- Intentionally excluded: `case_sheet_audit_log`, `permission_change_log`, and `patient_record_access_log` — these are append-only audit logs whose integrity depends on rows never being modified after insert
+- `appointments` already had a `notes` column prior to this migration
+
 ### UX & Completeness Fixes *(2026-03-26)*
 - **Admin panel tiles**: Patient Management tile now links to `patients.php`; Messages tile now links to `messages.php`; the dead Help tile (no page exists) has been removed
 - **case-sheet.php — Save & Exit**: removed the fake `setTimeout` stub; since all fields are auto-saved on change via `update_case_sheet.php`, the button now redirects immediately

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS messages (
     body                TEXT            NOT NULL,
     is_read             TINYINT(1)      NOT NULL DEFAULT 0,
     sent_at             DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    notes               TEXT            NULL,
     PRIMARY KEY (message_id),
     CONSTRAINT fk_messages_sender
         FOREIGN KEY (sender_user_id)    REFERENCES users (user_id),

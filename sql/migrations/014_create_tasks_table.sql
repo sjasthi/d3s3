@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     assigned_to_user_id  INT UNSIGNED    NULL,
     created_by_user_id   INT UNSIGNED    NOT NULL,
     due_date             DATE            NULL,
+    notes                TEXT            NULL,
     created_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
                                              ON UPDATE CURRENT_TIMESTAMP,

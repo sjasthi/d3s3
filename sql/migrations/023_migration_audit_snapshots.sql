@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────────────────────
--- Migration: Permanent name snapshots on case_sheets and case_sheet_audit_log
+-- Migration 023: Permanent name snapshots on case_sheets and case_sheet_audit_log
 --
 -- Rationale: user_id foreign keys become unresolvable when staff leave and
 -- accounts are deleted or user_ids are invalid. Snapshotting the name at

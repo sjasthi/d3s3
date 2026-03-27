@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS role_permissions (
   role       VARCHAR(30)            NOT NULL,
   resource   VARCHAR(30)            NOT NULL,
   permission ENUM('R', 'RW', 'N')  NOT NULL DEFAULT 'N',
+  notes      TEXT                   DEFAULT NULL,
   PRIMARY KEY (role, resource)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

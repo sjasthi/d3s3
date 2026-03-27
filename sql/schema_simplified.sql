@@ -20,6 +20,7 @@ CREATE TABLE `users` (
   `role` enum('SUPER_ADMIN','ADMIN','DOCTOR','TRIAGE_NURSE','NURSE','GRIEVANCE_OFFICER','DATA_ENTRY_OPERATOR') NOT NULL DEFAULT 'DATA_ENTRY_OPERATOR',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `last_login_at` datetime DEFAULT NULL,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`user_id`),
@@ -44,6 +45,7 @@ CREATE TABLE `user_preferences` (
   `date_format` enum('DD/MM/YYYY','MM/DD/YYYY') NOT NULL DEFAULT 'DD/MM/YYYY',
   `session_timeout_minutes` smallint(5) unsigned NOT NULL DEFAULT 30,
   `email_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`pref_id`),
@@ -91,6 +93,7 @@ CREATE TABLE `patients` (
 
   -- Status
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
 
@@ -111,6 +114,7 @@ DROP TABLE IF EXISTS `patient_daily_sequence`;
 CREATE TABLE `patient_daily_sequence` (
   `seq_date` date NOT NULL,
   `last_n` int(10) unsigned NOT NULL DEFAULT 0,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   PRIMARY KEY (`seq_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Helper table to generate daily patient sequence numbers';
@@ -184,6 +188,7 @@ CREATE TABLE `case_sheets` (
 
   -- Metadata
   `is_locked` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Lock to prevent edits after finalization',
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
 
@@ -218,6 +223,7 @@ CREATE TABLE `events` (
   `status` enum('DRAFT','SCHEDULED','ACTIVE','COMPLETED','CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_by_user_id` int(10) unsigned DEFAULT NULL,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
 
@@ -280,6 +286,7 @@ CREATE TABLE `patient_feedback` (
   -- Admin tracking
   `status` enum('NEW','REVIEWED','RESOLVED','CLOSED') NOT NULL DEFAULT 'NEW',
   `admin_notes` text DEFAULT NULL,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
 
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -317,6 +324,7 @@ CREATE TABLE `assets` (
   `is_public` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1=public, 0=staff only',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `uploaded_by_user_id` int(10) unsigned DEFAULT NULL,
+  `notes` text DEFAULT NULL COMMENT 'Free-form notes for stakeholder use',
 
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
