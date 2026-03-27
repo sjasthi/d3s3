@@ -441,14 +441,15 @@ class AppointmentController
 		}
 
 		$caseSheetId   = (int)($body['case_sheet_id']  ?? 0);
+		$patientId     = (int)($body['patient_id']     ?? 0);
 		$doctorUserId  = (int)($body['doctor_user_id'] ?? 0);
 		$scheduledDate = trim($body['scheduled_date']  ?? '');
 		$scheduledTime = trim($body['scheduled_time']  ?? '') ?: null;
 		$visitMode     = $body['visit_mode'] ?? 'IN_PERSON';
 		$notes         = trim($body['notes'] ?? '') ?: null;
 
-		if ($caseSheetId <= 0 || $doctorUserId <= 0 || $scheduledDate === '') {
-			echo json_encode(['success' => false, 'message' => 'Patient, case sheet, doctor, and date are required.']);
+		if (($caseSheetId <= 0 && $patientId <= 0) || $doctorUserId <= 0 || $scheduledDate === '') {
+			echo json_encode(['success' => false, 'message' => 'Patient, doctor, and date are required.']);
 			exit;
 		}
 
@@ -467,6 +468,29 @@ class AppointmentController
 		}
 
 		$pdo = getDBConnection();
+
+		// If no case sheet was specified, find the most recent open one for the
+		// patient or create a new stub so the appointment has something to link to.
+		if ($caseSheetId <= 0 && $patientId > 0) {
+			$stmt = $pdo->prepare(
+				"SELECT case_sheet_id FROM case_sheets
+				  WHERE patient_id = ? AND status NOT IN ('CLOSED')
+				  ORDER BY visit_datetime DESC LIMIT 1"
+			);
+			$stmt->execute([$patientId]);
+			$existing = $stmt->fetchColumn();
+			if ($existing) {
+				$caseSheetId = (int)$existing;
+			} else {
+				$pdo->prepare(
+					'INSERT INTO case_sheets
+					    (patient_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
+					 VALUES (?, ?, ?, ?, ?, ?)'
+				)->execute([$patientId, 'OTHER', 'INTAKE_IN_PROGRESS',
+					$_SESSION['user_id'], trim($_SESSION['user_name'] ?? ''), '']);
+				$caseSheetId = (int)$pdo->lastInsertId();
+			}
+		}
 
 		// Verify doctor is active
 		$stmt = $pdo->prepare(

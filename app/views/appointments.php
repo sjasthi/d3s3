@@ -1195,8 +1195,9 @@ function selectSchedulePatient(patientId, patientName) {
 
 function loadPatientCases(patientId, preselectCaseId, preselectDoctorId) {
 	$.getJSON('appointments.php?action=patient-cases', { patient_id: patientId }, function (data) {
-		const $sel = $('#schedCaseSheetId').empty().append('<option value="">— Select a case sheet —</option>');
-		(data.cases || []).forEach(function (c) {
+		const cases = data.cases || [];
+		const $sel  = $('#schedCaseSheetId').empty().append('<option value="">— Select a case sheet —</option>');
+		cases.forEach(function (c) {
 			const label = '#' + c.case_sheet_id + ' — '
 				+ (c.chief_complaint ? c.chief_complaint.substring(0, 50) : c.visit_type)
 				+ ' [' + c.status + ']';
@@ -1204,16 +1205,27 @@ function loadPatientCases(patientId, preselectCaseId, preselectDoctorId) {
 				.data('doctor-id', c.assigned_doctor_user_id || 0);
 			$sel.append($opt);
 		});
-		$('#schedCaseSheetGroup').removeClass('d-none');
-		if (preselectCaseId) {
-			$sel.val(preselectCaseId);
+
+		// Only show the picker when there is genuine ambiguity (2+ open case sheets).
+		// With 0 or 1, auto-select (or leave blank for server-side stub creation)
+		// so the user never has to make an unnecessary choice.
+		if (cases.length >= 2) {
+			$('#schedCaseSheetGroup').removeClass('d-none');
+			if (preselectCaseId) {
+				$sel.val(preselectCaseId);
+			}
+		} else {
+			$('#schedCaseSheetGroup').addClass('d-none');
+			if (cases.length === 1) {
+				$sel.val(cases[0].case_sheet_id);
+			}
 		}
+
 		// Pre-fill doctor if assigned
 		if (preselectDoctorId) {
 			$('#schedDoctorId').val(preselectDoctorId);
 		} else {
-			const $selected = $sel.find(':selected');
-			const did = $selected.data('doctor-id');
+			const did = $sel.find(':selected').data('doctor-id');
 			if (did) $('#schedDoctorId').val(did);
 		}
 	});
@@ -1247,12 +1259,13 @@ $('#scheduleModal').on('hidden.bs.modal', function () {
 });
 
 $('#confirmScheduleBtn').on('click', function () {
-	const caseSheetId = parseInt($('#schedCaseSheetId').val(), 10);
+	const caseSheetId = parseInt($('#schedCaseSheetId').val(), 10) || 0;
+	const patientId   = parseInt($('#schedPatientId').val(), 10)   || 0;
 	const doctorId    = parseInt($('#schedDoctorId').val(), 10);
 	const date        = $('#schedDate').val().trim();
 	const $alert      = $('#scheduleAlert');
 
-	if (!caseSheetId || !doctorId || !date) {
+	if ((!caseSheetId && !patientId) || !doctorId || !date) {
 		$alert.attr('class', 'alert alert-warning').text('Please fill in all required fields.').removeClass('d-none');
 		return;
 	}
@@ -1264,7 +1277,8 @@ $('#confirmScheduleBtn').on('click', function () {
 		method:      'POST',
 		contentType: 'application/json',
 		data: JSON.stringify({
-			case_sheet_id:  caseSheetId,
+			case_sheet_id:  caseSheetId || null,
+			patient_id:     patientId   || null,
 			doctor_user_id: doctorId,
 			scheduled_date: date,
 			scheduled_time: $('#schedTime').val().trim() || null,
