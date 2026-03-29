@@ -585,26 +585,30 @@ load_language($_SESSION['language'] ?? 'en');
 								<div class="card shadow-sm mb-3 mt-3">
 									<div class="card-header bg-light py-2">
 										<span class="font-weight-bold text-secondary" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">
-											<i class="fas fa-exchange-alt mr-2"></i>Menstrual comparison (previous visit)
+											<i class="fas fa-exchange-alt mr-2"></i><?= __('cmp_menstrual_heading') ?>
 										</span>
 									</div>
 									<div class="card-body p-0">
 										<table class="table table-sm table-bordered mb-0">
-											<thead class="thead-light"><tr><th>Field</th><th>Previous</th><th>This visit</th></tr></thead>
+											<thead class="thead-light"><tr><th><?= __('cmp_col_field') ?></th><th><?= __('previous') ?></th><th><?= __('cmp_col_this_visit') ?></th></tr></thead>
 											<tbody>
-											<?php foreach ([
-												['menstrual_cycle_frequency',  'Cycle Frequency', 'days'],
-												['menstrual_duration_of_flow', 'Duration of Flow','days'],
-												['menstrual_lmp',              'LMP',             ''],
-												['menstrual_mh',               'MH',              ''],
+											<?php
+											$_mhEnumMap = ['REGULAR' => __('regular'), 'IRREGULAR' => __('irregular')];
+											foreach ([
+												['menstrual_cycle_frequency',  __('cycle_frequency'), 'days'],
+												['menstrual_duration_of_flow', __('duration_of_flow'),'days'],
+												['menstrual_lmp',              __('lmp'),             ''],
+												['menstrual_mh',               __('mh'),              ''],
 											] as [$_mf, $_ml, $_mu]):
 												$_mPrev = $prevVitals[$_mf] ?? null;
 												$_mCurr = $vitals[$_mf] ?? null;
+												$_mPrevDisplay = ($_mf === 'menstrual_mh' && $_mPrev !== null) ? ($_mhEnumMap[$_mPrev] ?? $_mPrev) : $_mPrev;
+												$_mCurrDisplay = ($_mf === 'menstrual_mh' && $_mCurr !== null) ? ($_mhEnumMap[$_mCurr] ?? $_mCurr) : $_mCurr;
 											?>
 											<tr data-compare-field="<?= $_mf ?>" data-compare-prev="<?= htmlspecialchars((string)($_mPrev ?? '')) ?>" data-compare-threshold="99999" data-compare-unit="<?= htmlspecialchars($_mu) ?>">
 												<td class="text-secondary small font-weight-bold"><?= $_ml ?></td>
-												<td class="vitals-compare-prev small"><?php if ($_mPrev !== null && $_mPrev !== ''): ?><?= htmlspecialchars($_mPrev) ?><?php if ($_mu): ?> <small class="text-muted"><?= $_mu ?></small><?php endif; ?><?php else: ?><span class="text-muted">no prior record</span><?php endif; ?></td>
-												<td class="compare-curr-td small"><span class="compare-curr-val"><?= ($_mCurr !== null && $_mCurr !== '') ? htmlspecialchars((string)$_mCurr) : '' ?></span><?php if ($_mu && $_mCurr !== null && $_mCurr !== ''): ?><small class="compare-curr-unit text-muted ml-1"><?= $_mu ?></small><?php endif; ?><span class="compare-arrow"></span><?php if ($_mCurr === null || $_mCurr === ''): ?><span class="vitals-compare-no-record">not recorded</span><?php endif; ?></td>
+												<td class="vitals-compare-prev small"><?php if ($_mPrevDisplay !== null && $_mPrevDisplay !== ''): ?><?= htmlspecialchars($_mPrevDisplay) ?><?php if ($_mu): ?> <small class="text-muted"><?= $_mu ?></small><?php endif; ?><?php else: ?><span class="text-muted"><?= __('cmp_no_prior_record') ?></span><?php endif; ?></td>
+												<td class="compare-curr-td small"><span class="compare-curr-val"><?= ($_mCurrDisplay !== null && $_mCurrDisplay !== '') ? htmlspecialchars((string)$_mCurrDisplay) : '' ?></span><?php if ($_mu && $_mCurrDisplay !== null && $_mCurrDisplay !== ''): ?><small class="compare-curr-unit text-muted ml-1"><?= $_mu ?></small><?php endif; ?><span class="compare-arrow"></span><?php if ($_mCurr === null || $_mCurr === ''): ?><span class="vitals-compare-no-record"><?= __('cmp_not_recorded') ?></span><?php endif; ?></td>
 											</tr>
 											<?php endforeach; ?>
 											</tbody>
@@ -731,30 +735,30 @@ load_language($_SESSION['language'] ?? 'en');
 								<div class="card shadow-sm mb-3">
 									<div class="card-header bg-light py-2">
 										<span class="font-weight-bold text-secondary" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">
-											<i class="fas fa-exchange-alt mr-2"></i>Vitals comparison (previous visit)
+											<i class="fas fa-exchange-alt mr-2"></i><?= __('cmp_vitals_heading') ?>
 										</span>
-										<span class="text-muted float-right small"><span style="color:#dc3545;">&#9632;</span> = change exceeds threshold</span>
+										<span class="text-muted float-right small"><span style="color:#dc3545;">&#9632;</span> <?= __('cmp_threshold_legend') ?></span>
 									</div>
 									<div class="card-body p-0">
 										<table class="table table-sm table-bordered mb-0">
 											<thead class="thead-light">
 												<tr>
-													<th style="width:150px;">Vital</th>
-													<th style="width:150px;">Previous</th>
-													<th style="width:150px;">This visit</th>
+													<th style="width:150px;"><?= __('cmp_col_vital') ?></th>
+													<th style="width:150px;"><?= __('previous') ?></th>
+													<th style="width:150px;"><?= __('cmp_col_this_visit') ?></th>
 												</tr>
 											</thead>
 											<tbody>
 											<?php
 											$_intakeVitalsRows = [
-												['general_bp_systolic',  ['bp_systolic'],  'Systolic BP',  'mmHg', 20],
-												['general_bp_diastolic', ['bp_diastolic'], 'Diastolic BP', 'mmHg', 10],
-												['general_pulse',        ['pulse'],        'Pulse',        '/mt',  20],
-												['spo2',                 [],               'SpO2',         '%',    5],
-												['temperature',          [],               'Temperature',  '°F',   1],
-												['general_height',       ['height_cm'],    'Height',       'cm',   5],
-												['general_weight',       ['weight_kg'],    'Weight',       'kg',   5],
-												['general_bmi',          [],               'BMI',          '',     3],
+												['general_bp_systolic',  ['bp_systolic'],  __('cmp_bp_systolic'),  'mmHg', 20],
+												['general_bp_diastolic', ['bp_diastolic'], __('cmp_bp_diastolic'), 'mmHg', 10],
+												['general_pulse',        ['pulse'],        __('pulse'),            '/mt',  20],
+												['spo2',                 [],               __('spo2'),             '%',    5],
+												['temperature',          [],               __('temperature'),      '°F',   1],
+												['general_height',       ['height_cm'],    __('height'),           'cm',   5],
+												['general_weight',       ['weight_kg'],    __('weight'),           'kg',   5],
+												['general_bmi',          [],               __('bmi'),              '',     3],
 											];
 											foreach ($_intakeVitalsRows as [$_vf, $_va, $_vl, $_vu, $_vt]):
 												$_currVal = null;
@@ -771,13 +775,13 @@ load_language($_SESSION['language'] ?? 'en');
 												<td class="text-secondary small font-weight-bold"><?= $_vl ?></td>
 												<td class="vitals-compare-prev small">
 													<?php if ($_prevVal !== null): ?><?= htmlspecialchars($_prevVal) ?><?php if ($_vu): ?> <small class="text-muted"><?= $_vu ?></small><?php endif; ?>
-													<?php else: ?><span class="text-muted">no prior record</span><?php endif; ?>
+													<?php else: ?><span class="text-muted"><?= __('cmp_no_prior_record') ?></span><?php endif; ?>
 												</td>
 												<td class="compare-curr-td<?= $_drastic ? ' vitals-compare-drastic' : '' ?> small">
 													<span class="compare-curr-val"><?= $_currVal !== null ? htmlspecialchars((string)$_currVal) : '' ?></span>
 													<?php if ($_vu && $_currVal !== null): ?><small class="compare-curr-unit<?= (!$_drastic) ? ' text-muted' : '' ?> ml-1"><?= $_vu ?></small><?php endif; ?>
 													<span class="compare-arrow"><?= $_drastic ? (((float)$_currVal > (float)$_prevVal) ? ' ↑' : ' ↓') : '' ?></span>
-													<?php if ($_currVal === null): ?><span class="vitals-compare-no-record">not recorded</span><?php endif; ?>
+													<?php if ($_currVal === null): ?><span class="vitals-compare-no-record"><?= __('cmp_not_recorded') ?></span><?php endif; ?>
 												</td>
 											</tr>
 											<?php endforeach; ?>
@@ -1349,6 +1353,14 @@ load_language($_SESSION['language'] ?? 'en');
 		// ── Live comparison table updates ──────────────────
 		// Mirrors the same logic as review.php: when any field with a
 		// data-compare-field row exists, update the "This visit" cell live.
+		// Enum → translated label map for fields that store coded values
+		var _intakeEnumDisplayMap = {
+			'menstrual_mh': {
+				'REGULAR':   '<?= addslashes(__('regular')) ?>',
+				'IRREGULAR': '<?= addslashes(__('irregular')) ?>'
+			}
+		};
+
 		function intakeUpdateCompareRow(field, newVal) {
 			var $row = $('tr[data-compare-field="' + field + '"]');
 			if (!$row.length) return;
@@ -1361,6 +1373,10 @@ load_language($_SESSION['language'] ?? 'en');
 			var $arrow    = $row.find('.compare-arrow');
 			var $td       = $row.find('.compare-curr-td');
 			var $noRec    = $row.find('.vitals-compare-no-record');
+			// Translate coded enum values to their display labels if a map exists
+			var displayVal = (_intakeEnumDisplayMap[field] && _intakeEnumDisplayMap[field][newVal])
+				? _intakeEnumDisplayMap[field][newVal]
+				: newVal;
 			if (newVal === '' || newVal === null) {
 				$curr.text('');
 				$unit.text('').addClass('text-muted');
@@ -1369,7 +1385,7 @@ load_language($_SESSION['language'] ?? 'en');
 				$noRec.show();
 			} else {
 				$noRec.hide();
-				$curr.text(newVal);
+				$curr.text(displayVal);
 				if (unit) $unit.text(unit).show();
 				var numVal = parseFloat(newVal);
 				var drastic = !isNaN(prev) && !isNaN(numVal) && threshold < 99999 && Math.abs(numVal - prev) >= threshold;
@@ -1580,12 +1596,18 @@ load_language($_SESSION['language'] ?? 'en');
 		});
 		$results.on('click', 'a', function (e) { e.preventDefault(); selectPatient($(this).data('patient')); });
 
+		var _sexDisplayMap = {
+			'MALE':   '<?= addslashes(__('sex_male')) ?>',
+			'FEMALE': '<?= addslashes(__('sex_female')) ?>',
+			'OTHER':  '<?= addslashes(__('sex_other')) ?>'
+		};
+
 		function selectPatient(p) {
 			$patientId.val(p.patient_id);
 			$('#selectedPatientName').text(p.first_name + ' ' + (p.last_name || ''));
 			$('#selectedPatientCode').text(p.patient_code);
-			$('#selectedPatientSex').text(p.sex && p.sex !== 'UNKNOWN' ? p.sex : '');
-			$('#selectedPatientAge').text(p.age_years ? ' | ' + p.age_years + ' years' : '');
+			$('#selectedPatientSex').text(p.sex && p.sex !== 'UNKNOWN' ? (_sexDisplayMap[p.sex] || p.sex) : '');
+			$('#selectedPatientAge').text(p.age_years ? ' | ' + p.age_years + ' <?= addslashes(__('years')) ?>' : '');
 			$('#selectedPatientPhone').text(p.phone_e164 ? ' | ' + p.phone_e164 : '');
 			$selected.removeClass('d-none'); $results.hide().empty();
 			$search.val('').prop('disabled', true); $('#toggleNewPatient').prop('disabled', true); $('#newPatientSection').addClass('d-none');

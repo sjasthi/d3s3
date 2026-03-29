@@ -263,3 +263,13 @@ role_paramedic,Paramedic
 role_grievance_officer,Grievance Officer
 role_education_team,Education Team
 role_data_entry_operator,Data Entry Operator
+cmp_vitals_heading,Vitals comparison (previous visit)
+cmp_threshold_legend,= change exceeds threshold
+cmp_col_vital,Vital
+cmp_col_this_visit,This visit
+cmp_bp_systolic,Systolic BP
+cmp_bp_diastolic,Diastolic BP
+cmp_no_prior_record,no prior record
+cmp_not_recorded,not recorded
+cmp_menstrual_heading,Menstrual comparison (previous visit)
+cmp_col_field,Field

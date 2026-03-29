@@ -263,3 +263,13 @@ role_paramedic,పారా మెడిక్
 role_grievance_officer,ఫిర్యాదుల అధికారి
 role_education_team,విద్యా బృందం
 role_data_entry_operator,డేటా ఎంట్రీ ఆపరేటర్
+cmp_vitals_heading,వైటల్స్ పోలిక (మునుపటి సందర్శన)
+cmp_threshold_legend,= మార్పు పరిమితిని మించింది
+cmp_col_vital,వైటల్
+cmp_col_this_visit,ఈ సందర్శన
+cmp_bp_systolic,సిస్టోలిక్ రక్తపోటు
+cmp_bp_diastolic,డయాస్టోలిక్ రక్తపోటు
+cmp_no_prior_record,మునుపటి రికార్డు లేదు
+cmp_not_recorded,నమోదు చేయలేదు
+cmp_menstrual_heading,రుతుక్రమ పోలిక (మునుపటి సందర్శన)
+cmp_col_field,క్షేత్రం
