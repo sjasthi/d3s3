@@ -25,6 +25,7 @@ $isTasksPage        = (strpos($currentPage, 'tasks.php')        !== false);
 $isAppointmentsPage = (strpos($currentPage, 'appointments.php') !== false);
 $isPatientsPage     = (strpos($currentPage, 'patients.php')     !== false);
 $isLabResultsPage   = (strpos($currentPage, 'lab_results.php')  !== false);
+$isAnalyticsPage    = (strpos($currentPage, 'analytics.php')    !== false);
 
 // ── Permission flags (computed once, used throughout) ───────────────────────
 // Each flag is derived entirely from the can() function so it automatically
@@ -213,6 +214,14 @@ if ($_navCanMessages && !$isMessagesPage) {
 					</a>
 				</li>
 				<?php endif; ?>
+
+				<!-- Analytics – always visible -->
+				<li class="nav-item">
+					<a href="analytics.php" class="nav-link <?= $isAnalyticsPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-chart-bar"></i>
+						<p>Analytics</p>
+					</a>
+				</li>
 
 				<!-- Profile – always visible -->
 				<li class="nav-item">

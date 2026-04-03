@@ -112,22 +112,28 @@
 			<div class="container-fluid">
 				<!-- Shortcuts -->
 				<div class="row mb-4">
-					<div class="col-md-4 col-sm-6 mb-3">
+					<div class="col-md-3 col-sm-6 mb-3">
 						<a href="emp_register.php" class="btn btn-primary btn-lg btn-block py-4">
 							<i class="fas fa-user-plus fa-2x mb-2 d-block"></i>
 							New User
 						</a>
 					</div>
-					<div class="col-md-4 col-sm-6 mb-3">
+					<div class="col-md-3 col-sm-6 mb-3">
 						<a href="assets.php" class="btn btn-info btn-lg btn-block py-4">
 							<i class="fas fa-boxes fa-2x mb-2 d-block"></i>
 							Assets
 						</a>
 					</div>
-					<div class="col-md-4 col-sm-6 mb-3">
+					<div class="col-md-3 col-sm-6 mb-3">
 						<a href="reports.php" class="btn btn-success btn-lg btn-block py-4">
 							<i class="fas fa-chart-line fa-2x mb-2 d-block"></i>
 							Reports
+						</a>
+					</div>
+					<div class="col-md-3 col-sm-6 mb-3">
+						<a href="analytics.php" class="btn btn-warning btn-lg btn-block py-4">
+							<i class="fas fa-chart-bar fa-2x mb-2 d-block"></i>
+							Analytics
 						</a>
 					</div>
 				</div>
