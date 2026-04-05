@@ -223,6 +223,24 @@ load_language($_SESSION['language'] ?? 'en');
 					<button id="btnThisMonth" class="btn btn-sm btn-outline-secondary">This month</button>
 					<button id="btnLast30"    class="btn btn-sm btn-outline-secondary">Last 30 days</button>
 					<button id="btnThisYear"  class="btn btn-sm btn-outline-secondary">This year</button>
+
+					<div class="dropdown ml-auto">
+						<button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+						        type="button" id="exportDropdown"
+						        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-print mr-1"></i>Export
+						</button>
+						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="exportDropdown">
+							<h6 class="dropdown-header">Print / Save as PDF</h6>
+							<a class="dropdown-item" href="#" id="btnPrintTab">
+								<i class="fas fa-file mr-2 text-muted"></i>Current tab only
+							</a>
+							<div class="dropdown-divider"></div>
+							<a class="dropdown-item" href="#" id="btnPrintAll">
+								<i class="fas fa-copy mr-2 text-muted"></i>Full report (all tabs)
+							</a>
+						</div>
+					</div>
 				</div>
 
 				<!-- ── Tab card ────────────────────────────────────────────── -->
@@ -475,6 +493,24 @@ load_language($_SESSION['language'] ?? 'en');
         delete tabCache[activeTab];
         loadTab(activeTab);
     };
+
+    // ── Print / Export ───────────────────────────────────────────────────────
+    function buildPrintUrl(tabs) {
+        return 'analytics.php?action=print'
+             + '&tabs='  + encodeURIComponent(tabs)
+             + '&from='  + encodeURIComponent(dateFrom)
+             + '&to='    + encodeURIComponent(dateTo);
+    }
+
+    document.getElementById('btnPrintTab').addEventListener('click', function (e) {
+        e.preventDefault();
+        window.open(buildPrintUrl(activeTab), '_blank');
+    });
+
+    document.getElementById('btnPrintAll').addEventListener('click', function (e) {
+        e.preventDefault();
+        window.open(buildPrintUrl('all'), '_blank');
+    });
 
     // ── Boot: fetch the Overview tab immediately on page load ────────────────
     loadTab('overview');

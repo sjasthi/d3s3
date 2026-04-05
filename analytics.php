@@ -30,9 +30,12 @@ if ($action === 'data') {
         exit('Invalid tab.');
     }
 
-    // Route to the matching data method: dataCaseload(), dataOutcomes(), etc.
     $method = 'data' . ucfirst($tab);
     $controller->$method();
+
+} elseif ($action === 'print') {
+    $controller->printReport();
+
 } else {
     $controller->index();
 }
