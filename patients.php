@@ -16,9 +16,27 @@ if (!isset($_SESSION['csrf_token'])) {
 
 require __DIR__ . '/app/middleware/auth.php';
 require_once __DIR__ . '/app/controllers/PatientController.php';
+require_once __DIR__ . '/app/controllers/PatientPortalController.php';
 
-$controller = new PatientController();
-$action     = $_GET['action'] ?? '';
+$controller       = new PatientController();
+$portalController = new PatientPortalController();
+$action           = $_GET['action'] ?? '';
+
+// POST-only portal account management actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+	$postAction = $_POST['portal_action'] ?? '';
+	switch ($postAction) {
+		case 'create_account':
+			$portalController->processCreateAccount();
+			break;
+		case 'reset_password':
+			$portalController->processResetPassword();
+			break;
+		case 'toggle_active':
+			$portalController->processToggleActive();
+			break;
+	}
+}
 
 switch ($action) {
 	case 'view':

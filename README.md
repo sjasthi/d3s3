@@ -45,48 +45,64 @@ A PHP/MySQL web application for patient care management, built as a capstone pro
 
 ```
 d3s3/
-├── index.php, login.php, dashboard.php, ...   # Entry points
+├── index.php                                  # Landing page (staff + patient sign-in)
+├── login.php, dashboard.php, logout.php       # Staff auth entry points
+├── patient_login.php, patient_portal.php      # Patient portal entry points
+├── portal_messages.php                        # Staff view of patient portal messages
 ├── patients.php, appointments.php             # Patient & scheduling entry points
 ├── lab_results.php                            # Labwork queue entry point
 ├── feedback.php, messages.php, tasks.php      # Staff feature entry points
 ├── assets.php, calendar.php, reports.php      # Resource & planning entry points
+├── analytics.php                              # Usage analytics entry point
 ├── app/
 │   ├── config/
 │   │   ├── database.php        # PDO connection (reads .env)
 │   │   ├── session.php         # Secure session configuration
-│   │   └── permissions.php     # 9-role × 8-resource access matrix + can() helper
+│   │   └── permissions.php     # 9-role × 10-resource access matrix + can() helper
 │   ├── controllers/
-│   │   ├── UserController.php       # Login, profile, registration
-│   │   ├── AdminController.php      # Admin dashboard, user management
-│   │   ├── ClinicalController.php   # Intake, case sheets, queue
-│   │   ├── PatientController.php    # Patient records, profile, access log
-│   │   ├── AppointmentController.php# Appointments list, doctor assignment
-│   │   ├── LabResultsController.php # Labwork queue and result completion
-│   │   ├── FeedbackController.php   # Grievance/feedback tracking
-│   │   ├── MessagingController.php  # Internal messaging
-│   │   └── TaskController.php       # Task management
+│   │   ├── UserController.php          # Login, profile, registration
+│   │   ├── AdminController.php         # Admin dashboard, user management
+│   │   ├── ClinicalController.php      # Intake, case sheets, queue
+│   │   ├── PatientController.php       # Patient records, profile, access log
+│   │   ├── PatientPortalController.php # All patient portal actions (patient + staff)
+│   │   ├── AppointmentController.php   # Appointments list, doctor assignment
+│   │   ├── LabResultsController.php    # Labwork queue and result completion
+│   │   ├── AssetController.php         # Asset library, file upload, send-to-patient
+│   │   ├── FeedbackController.php      # Grievance/feedback tracking
+│   │   ├── MessagingController.php     # Internal messaging
+│   │   └── TaskController.php          # Task management
 │   ├── middleware/
-│   │   └── auth.php            # Session guard
+│   │   ├── auth.php            # Staff session guard
+│   │   └── patient_auth.php    # Patient portal session guard
 │   └── views/
 │       ├── login.php
 │       ├── profile.php
 │       ├── _sidebar.php
 │       ├── patients.php         # Patient search / list
-│       ├── patient_profile.php  # 4-tab patient profile
+│       ├── patient_profile.php  # 4-tab patient profile + portal account management
 │       ├── appointments.php     # Appointments list & assignment
 │       ├── lab_results.php      # Labwork queue & result completion
+│       ├── portal_messages.php  # Staff inbox for patient portal messages
 │       ├── feedback.php, feedback_detail.php, feedback_submit.php
 │       ├── messages.php
 │       ├── tasks.php
+│       ├── portal/              # Patient-facing portal views
+│       │   ├── _nav.php, _nav_close.php
+│       │   ├── login.php, dashboard.php
+│       │   ├── appointments.php, health_record.php
+│       │   ├── lab_results.php, messages.php
+│       │   ├── feedback.php, profile.php
 │       └── admin/
 │           ├── dashboard.php
 │           ├── users.php
-│           └── emp_register.php
-├── assets/                     # CSS, JS, icons
-├── sql/                        # Database schema & migrations
-├── .env.example                # Environment template
-├── .htaccess                   # Apache config & security headers
-└── .user.ini                   # PHP-FPM settings (production)
+│           ├── emp_register.php
+│           └── assets.php       # Asset library UI
+├── uploads/assets/              # Locally uploaded asset files (auto-created)
+├── assets/                      # CSS, JS, icons
+├── sql/                         # Database schema & migrations
+├── .env.example                 # Environment template
+├── .htaccess                    # Apache config & security headers
+└── .user.ini                    # PHP-FPM settings (production)
 ```
 
 ## User Roles
@@ -107,7 +123,7 @@ d3s3/
 
 **Phase 1** — Authentication, role-based access control, admin dashboard, user management, employee self-registration, and user profiles.
 
-**Phase 2** — Case sheet system, patient records, appointments, labwork queue, internal messaging, task management, feedback/grievance tracking, shared calendar, asset library, reports, multilingual support (English / Telugu), and security hardening.
+**Phase 2** — Case sheet system, patient records, appointments, labwork queue, internal messaging, task management, feedback/grievance tracking, shared calendar, asset library (with file upload and patient delivery), analytics dashboard, patient-facing portal (appointments, health record, lab results, messaging, feedback), and security hardening. Multilingual support (English / Telugu) throughout.
 
 See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 

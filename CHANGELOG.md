@@ -205,3 +205,31 @@
 ### Security Fixes *(2026-04-01)*
 - **Stored XSS — patient search dropdown** (`intake.php`): patient data fields (`first_name`, `last_name`, `patient_code`, `sex`, `age_years`, `phone_e164`) are now HTML-escaped via jQuery's `$('<span>').text(v).html()` before being inserted into the search results list; previously these were concatenated into a raw HTML string and injectable
 - **Flash message escaping** (`intake.php`): `$flashSuccess` now passes through `htmlspecialchars()` at the output point, consistent with all other flash/error messages in the codebase
+
+### Patient Portal *(2026-04-08 – 2026-04-11)*
+- **Migration 026** creates `patient_accounts` (1:1 with patients, portal auth), `portal_message_threads`, `portal_messages` (threaded patient↔staff messaging), and `portal_feedback`
+- **Patient login** — `patient_login.php` → `PatientPortalController::login()`; separate from staff login; authenticates via email or username; session keys (`patient_account_id`, `patient_id`, `patient_name`) are distinct from staff keys
+- **Portal router** — `patient_portal.php?page=X` routes to: dashboard, appointments, health_record, lab_results, messages, feedback, profile
+- **Patient middleware** — `app/middleware/patient_auth.php` guards all portal pages
+- **Portal views** (`app/views/portal/`) — dashboard with next appointment, unread message count, and recent labs; appointments list; read-only health record (closed case sheets); lab results; threaded messaging; feedback/grievance submission; profile (allergies editable)
+- **Allergy pre-population** — on first intake for a patient, `ClinicalController` converts `patients.allergies` text to `allergies_json` format to pre-fill the History tab
+- **Staff portal messages** — `portal_messages.php` → `PatientPortalController::staffMessages()`; sidebar "Patient Messages" link with unread badge (gated by `patient_data` read)
+- **Account management** — SUPER_ADMIN / ADMIN can create, reset password, and toggle portal accounts from the patient profile page; all actions POST to `patients.php` with `portal_action`
+- **Login page** — added "Patient? Sign in to the Patient Portal" footer link on the staff login form
+
+### Landing Page *(2026-04-11)*
+- `index.php` replaced from a bare redirect with a full branded landing page
+- Authenticated staff redirect to `dashboard.php`; authenticated patients redirect to `patient_portal.php`
+- Unauthenticated visitors see two sign-in cards: "Staff Login" and "Patient Portal"
+
+### Asset Library Upgrade *(2026-04-11)*
+- **AssetController** extracted from `AdminController` into its own `app/controllers/AssetController.php`; `assets.php` entry point updated accordingly
+- **Migration 027** extends `asset_type` enum with `AUDIO` and `FORM`; adds `local_file_path` column for uploaded files; creates `patient_assets` table (staff sends an asset to a specific patient's portal; public assets visible to all portal patients)
+- **File upload** — assets can now be stored locally (`LOCAL` storage type) or linked externally (`URL`); uploads stored under `uploads/assets/YYYY/MM/` with UUID filenames; MIME validation via `finfo`; 20 MB cap
+- **Send to patient** — staff with both `assets` and `patient_data` read access can send any asset to a specific patient's portal via a patient-search modal; each delivery tracked in `patient_assets`
+- **Asset library UI** (`app/views/admin/assets.php`) fully rebuilt: type-filter bar, colour-coded type badges, create/edit/delete modal, send-to-patient modal with AJAX patient search, per-asset send-count badge
+
+### Analytics *(2026-04-08)*
+- Analytics dashboard (`analytics.php`) accessible to all authenticated roles; `AnalyticsController::buildScope()` gates what each role can see (admins see system-wide data; clinical roles see own-department data)
+- Migration 025 adds `analytics` resource to the role permissions table
+- Sidebar "Analytics" link visible to all authenticated users

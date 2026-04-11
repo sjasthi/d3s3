@@ -70,6 +70,10 @@
 			</p>
 		</form>
 	</div>
+
+	<div class="card-footer text-center text-muted small py-3">
+		Patient? <a href="patient_login.php">Sign in to the Patient Portal</a>
+	</div>
 </div>
 
 </body>

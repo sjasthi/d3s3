@@ -25,7 +25,8 @@ $isTasksPage        = (strpos($currentPage, 'tasks.php')        !== false);
 $isAppointmentsPage = (strpos($currentPage, 'appointments.php') !== false);
 $isPatientsPage     = (strpos($currentPage, 'patients.php')     !== false);
 $isLabResultsPage   = (strpos($currentPage, 'lab_results.php')  !== false);
-$isAnalyticsPage    = (strpos($currentPage, 'analytics.php')    !== false);
+$isAnalyticsPage        = (strpos($currentPage, 'analytics.php')        !== false);
+$isPortalMessagesPage   = (strpos($currentPage, 'portal_messages.php')  !== false);
 
 // ── Permission flags (computed once, used throughout) ───────────────────────
 // Each flag is derived entirely from the can() function so it automatically
@@ -42,7 +43,9 @@ $_navCanTasks           = can($_userRole, 'tasks');            // Tasks
 $_navCanAssets          = can($_userRole, 'assets');           // Assets
 $_navCanUsers           = can($_userRole, 'users');            // Admin Panel
 $_navCanLabwork         = can($_userRole, 'labwork');          // Labwork
-$_navCanAnalytics       = can($_userRole, 'analytics');        // Analytics
+// Analytics is available to all authenticated users; AnalyticsController::buildScope()
+// gates what each role can see within the page.
+$_navCanAnalytics       = true;
 
 // ── Sidebar appointment badge (today's count) ───────────────────────────────
 // Gate matches the appointments page access requirement (case_sheets read).
@@ -66,7 +69,7 @@ if ($_navCanCaseSheetsRead && !$isAppointmentsPage) {
 	} catch (Throwable $e) { /* silently skip if table doesn't exist yet */ }
 }
 
-// \u2500\u2500 Sidebar unread message badge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ── Sidebar unread message badge ────────────────────────────────────────────
 $_msgUnreadCount = 0;
 if ($_navCanMessages && !$isMessagesPage) {
 	try {
@@ -77,6 +80,18 @@ if ($_navCanMessages && !$isMessagesPage) {
 		$_msgStmt->execute([$_SESSION['user_id']]);
 		$_msgUnreadCount = (int)$_msgStmt->fetchColumn();
 	} catch (Throwable $e) { /* silently skip */ }
+}
+
+// ── Sidebar unread patient portal message badge ──────────────────────────────
+$_portalMsgUnreadCount = 0;
+if ($_navCanPatientData && !$isPortalMessagesPage) {
+	try {
+		$_portalMsgPdo  = getDBConnection();
+		$_portalMsgStmt = $_portalMsgPdo->query(
+			'SELECT COUNT(*) FROM portal_message_threads WHERE staff_unread = 1'
+		);
+		$_portalMsgUnreadCount = (int)$_portalMsgStmt->fetchColumn();
+	} catch (Throwable $e) { /* table not yet created */ }
 }
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-3">
@@ -206,6 +221,19 @@ if ($_navCanMessages && !$isMessagesPage) {
 				</li>
 				<?php endif; ?>
 
+				<!-- Patient Messages – requires patient_data read -->
+				<?php if ($_navCanPatientData): ?>
+				<li class="nav-item">
+					<a href="portal_messages.php" class="nav-link <?= $isPortalMessagesPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-comments"></i>
+						<p><?= __('nav_patient_messages') ?></p>
+						<?php if ($_portalMsgUnreadCount > 0): ?>
+						<span class="right badge badge-warning"><?= $_portalMsgUnreadCount ?></span>
+						<?php endif; ?>
+					</a>
+				</li>
+				<?php endif; ?>
+
 				<!-- Tasks – requires tasks read -->
 				<?php if ($_navCanTasks): ?>
 				<li class="nav-item">
@@ -220,7 +248,7 @@ if ($_navCanMessages && !$isMessagesPage) {
 				<li class="nav-item">
 					<a href="analytics.php" class="nav-link <?= $isAnalyticsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-chart-bar"></i>
-						<p>Analytics</p>
+						<p><?= __('nav_analytics') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>

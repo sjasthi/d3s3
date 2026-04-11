@@ -249,6 +249,8 @@ nav_calendar,Calendar
 nav_feedback,Feedback
 nav_messages,Messages
 nav_tasks,Tasks
+nav_analytics,Analytics
+nav_patient_messages,Patient Messages
 nav_profile,Profile
 nav_settings,Settings
 nav_admin_panel,Admin Panel

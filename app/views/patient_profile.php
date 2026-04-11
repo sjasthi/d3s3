@@ -316,11 +316,189 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 					</div>
 				</div>
 
+				<!-- Flash messages from portal account actions -->
+				<?php if (!empty($flashSuccess)): ?>
+				<div class="alert alert-success alert-dismissible fade show">
+					<?= htmlspecialchars($flashSuccess) ?>
+					<button type="button" class="close" data-dismiss="alert">&times;</button>
+				</div>
+				<?php endif; ?>
+				<?php if (!empty($flashError)): ?>
+				<div class="alert alert-danger alert-dismissible fade show">
+					<?= htmlspecialchars($flashError) ?>
+					<button type="button" class="close" data-dismiss="alert">&times;</button>
+				</div>
+				<?php endif; ?>
+
 				<!-- Allergies alert -->
 				<?php if (!empty($patient['allergies'])): ?>
 				<div class="alert alert-danger mb-3" role="alert">
 					<i class="fas fa-exclamation-triangle mr-2"></i>
 					<strong>Allergies:</strong> <?= htmlspecialchars($patient['allergies']) ?>
+				</div>
+				<?php endif; ?>
+
+				<!-- Patient Portal Account -->
+				<?php if ($canManagePortal || $portalAccount): ?>
+				<div class="card card-outline card-info mb-3">
+					<div class="card-header">
+						<h3 class="card-title">
+							<i class="fas fa-user-circle mr-2"></i>Patient Portal Account
+						</h3>
+					</div>
+					<div class="card-body">
+						<?php if ($portalAccount): ?>
+						<div class="row align-items-center">
+							<div class="col-md-8">
+								<dl class="row mb-0">
+									<dt class="col-sm-3 text-muted small">Email</dt>
+									<dd class="col-sm-9"><?= htmlspecialchars($portalAccount['email'] ?? '—') ?></dd>
+									<?php if ($portalAccount['username']): ?>
+									<dt class="col-sm-3 text-muted small">Username</dt>
+									<dd class="col-sm-9"><?= htmlspecialchars($portalAccount['username']) ?></dd>
+									<?php endif; ?>
+									<dt class="col-sm-3 text-muted small">Status</dt>
+									<dd class="col-sm-9">
+										<?php if ($portalAccount['is_active']): ?>
+										<span class="badge badge-success">Active</span>
+										<?php else: ?>
+										<span class="badge badge-danger">Deactivated</span>
+										<?php endif; ?>
+									</dd>
+									<?php if ($portalAccount['last_login_at']): ?>
+									<dt class="col-sm-3 text-muted small">Last Login</dt>
+									<dd class="col-sm-9"><?= htmlspecialchars(date('d M Y, g:i A', strtotime($portalAccount['last_login_at']))) ?></dd>
+									<?php endif; ?>
+									<?php if ($portalAccount['created_by_first']): ?>
+									<dt class="col-sm-3 text-muted small">Created By</dt>
+									<dd class="col-sm-9"><?= htmlspecialchars($portalAccount['created_by_first'] . ' ' . $portalAccount['created_by_last']) ?></dd>
+									<?php endif; ?>
+								</dl>
+							</div>
+							<?php if ($canManagePortal): ?>
+							<div class="col-md-4 text-md-right mt-3 mt-md-0">
+								<!-- Reset password -->
+								<button type="button" class="btn btn-sm btn-outline-warning mb-1"
+								        data-toggle="modal" data-target="#modalResetPassword">
+									<i class="fas fa-key mr-1"></i>Reset Password
+								</button>
+								<!-- Toggle active -->
+								<form method="POST" action="patients.php?action=view&id=<?= (int)$patient['patient_id'] ?>" class="d-inline">
+									<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
+									<input type="hidden" name="portal_action" value="toggle_active" />
+									<input type="hidden" name="patient_id" value="<?= (int)$patient['patient_id'] ?>" />
+									<input type="hidden" name="account_id" value="<?= (int)$portalAccount['patient_account_id'] ?>" />
+									<input type="hidden" name="activate" value="<?= $portalAccount['is_active'] ? '0' : '1' ?>" />
+									<button type="submit" class="btn btn-sm <?= $portalAccount['is_active'] ? 'btn-outline-danger' : 'btn-outline-success' ?> mb-1">
+										<i class="fas fa-<?= $portalAccount['is_active'] ? 'ban' : 'check' ?> mr-1"></i>
+										<?= $portalAccount['is_active'] ? 'Deactivate' : 'Activate' ?>
+									</button>
+								</form>
+							</div>
+							<?php endif; ?>
+						</div>
+						<?php else: ?>
+						<p class="text-muted mb-0">This patient does not have a portal account yet.</p>
+						<?php if ($canManagePortal): ?>
+						<button type="button" class="btn btn-sm btn-primary mt-2"
+						        data-toggle="modal" data-target="#modalCreatePortal">
+							<i class="fas fa-plus mr-1"></i>Create Portal Account
+						</button>
+						<?php endif; ?>
+						<?php endif; ?>
+					</div>
+				</div>
+				<?php endif; ?>
+
+				<!-- Modal: Create portal account -->
+				<?php if ($canManagePortal && !$portalAccount): ?>
+				<div class="modal fade" id="modalCreatePortal" tabindex="-1">
+					<div class="modal-dialog">
+						<div class="modal-content">
+							<form method="POST" action="patients.php?action=view&id=<?= (int)$patient['patient_id'] ?>">
+								<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
+								<input type="hidden" name="portal_action" value="create_account" />
+								<input type="hidden" name="patient_id" value="<?= (int)$patient['patient_id'] ?>" />
+								<div class="modal-header">
+									<h5 class="modal-title"><i class="fas fa-user-circle mr-2"></i>Create Patient Portal Account</h5>
+									<button type="button" class="close" data-dismiss="modal">&times;</button>
+								</div>
+								<div class="modal-body">
+									<div class="form-group">
+										<label class="small font-weight-bold">Login Email <span class="text-danger">*</span></label>
+										<input type="email" name="portal_email" class="form-control"
+										       value="<?= htmlspecialchars($patient['email'] ?? '') ?>"
+										       placeholder="patient@email.com" required />
+										<small class="text-muted">The patient will use this to sign in.</small>
+									</div>
+									<div class="form-group">
+										<label class="small font-weight-bold">Username (optional)</label>
+										<input type="text" name="portal_username" class="form-control"
+										       placeholder="e.g. johndoe123" maxlength="60" />
+									</div>
+									<div class="form-group">
+										<label class="small font-weight-bold">Temporary Password <span class="text-danger">*</span></label>
+										<input type="password" name="portal_password" class="form-control"
+										       placeholder="Min 8 characters" minlength="8" required />
+									</div>
+									<div class="form-group">
+										<label class="small font-weight-bold">Confirm Password <span class="text-danger">*</span></label>
+										<input type="password" name="portal_password_confirm" class="form-control"
+										       placeholder="Repeat password" required />
+									</div>
+									<div class="alert alert-info small mb-0">
+										<i class="fas fa-info-circle mr-1"></i>
+										Give the patient their login email and temporary password.
+										The portal is at <strong>patient_login.php</strong>.
+									</div>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+									<button type="submit" class="btn btn-primary btn-sm">
+										<i class="fas fa-plus mr-1"></i>Create Account
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+				<?php endif; ?>
+
+				<!-- Modal: Reset portal password -->
+				<?php if ($canManagePortal && $portalAccount): ?>
+				<div class="modal fade" id="modalResetPassword" tabindex="-1">
+					<div class="modal-dialog">
+						<div class="modal-content">
+							<form method="POST" action="patients.php?action=view&id=<?= (int)$patient['patient_id'] ?>">
+								<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
+								<input type="hidden" name="portal_action" value="reset_password" />
+								<input type="hidden" name="patient_id" value="<?= (int)$patient['patient_id'] ?>" />
+								<input type="hidden" name="account_id" value="<?= (int)$portalAccount['patient_account_id'] ?>" />
+								<div class="modal-header">
+									<h5 class="modal-title"><i class="fas fa-key mr-2"></i>Reset Portal Password</h5>
+									<button type="button" class="close" data-dismiss="modal">&times;</button>
+								</div>
+								<div class="modal-body">
+									<div class="form-group">
+										<label class="small font-weight-bold">New Password <span class="text-danger">*</span></label>
+										<input type="password" name="new_password" class="form-control"
+										       placeholder="Min 8 characters" minlength="8" required />
+									</div>
+									<div class="form-group mb-0">
+										<label class="small font-weight-bold">Confirm New Password <span class="text-danger">*</span></label>
+										<input type="password" name="new_password_confirm" class="form-control"
+										       placeholder="Repeat password" required />
+									</div>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+									<button type="submit" class="btn btn-warning btn-sm">
+										<i class="fas fa-key mr-1"></i>Reset Password
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
 				</div>
 				<?php endif; ?>
 

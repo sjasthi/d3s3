@@ -680,6 +680,34 @@ class ClinicalController
 					$newId,
 				]);
 			}
+		} else {
+			// First-ever case sheet for this patient.
+			// If the patient has self-reported allergies via the portal, convert
+			// the plain-text summary into the structured allergies_json so the
+			// nurse sees it pre-populated in the intake History tab.
+			$_allocStmt = $pdo->prepare('SELECT allergies FROM patients WHERE patient_id = ?');
+			$_allocStmt->execute([$patientId]);
+			$_patAllergies = trim((string)($_allocStmt->fetchColumn() ?: ''));
+
+			if ($_patAllergies !== '' && strtolower($_patAllergies) !== 'no known allergies') {
+				// Split on commas or newlines into individual allergy entries
+				$_allergyItems = array_values(array_filter(
+					array_map('trim', preg_split('/[\r\n,]+/', $_patAllergies)),
+					fn($s) => $s !== ''
+				));
+				$_allergyRows = array_map(
+					fn($name) => ['allergy' => $name, 'reaction' => ''],
+					$_allergyItems
+				);
+				$_initHistory = ['allergies_json' => json_encode($_allergyRows)];
+				$pdo->prepare(
+					'UPDATE case_sheets SET assessment = ?, updated_at = NOW() WHERE case_sheet_id = ?'
+				)->execute([json_encode($_initHistory), $newId]);
+			} elseif ($_patAllergies !== '' && strtolower($_patAllergies) === 'no known allergies') {
+				$pdo->prepare(
+					'UPDATE case_sheets SET assessment = ?, updated_at = NOW() WHERE case_sheet_id = ?'
+				)->execute([json_encode(['no_known_allergies' => '1']), $newId]);
+			}
 		}
 
 		header('Location: intake.php?case_sheet_id=' . $newId);

@@ -45,7 +45,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'RW',
 			'labwork'       => 'RW',
-			'analytics'     => 'R',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'ADMIN' => [
 			'assets'        => 'RW',
@@ -84,7 +84,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'RW',
 			'labwork'       => 'RW',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'NURSE' => [
 			'assets'        => 'R',
@@ -97,7 +97,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'RW',
 			'labwork'       => 'RW',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'PARAMEDIC' => [
 			'assets'        => 'R',
@@ -110,7 +110,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'R',
 			'labwork'       => 'R',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'GRIEVANCE_OFFICER' => [
 			'assets'        => 'N',
@@ -123,7 +123,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'N',
 			'labwork'       => 'N',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'EDUCATION_TEAM' => [
 			'assets'        => 'RW',
@@ -136,7 +136,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'N',
 			'labwork'       => 'N',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 		'DATA_ENTRY_OPERATOR' => [
 			'assets'        => 'R',
@@ -149,7 +149,7 @@ function _load_permissions(): array
 			'tasks'         => 'RW',
 			'appointments'  => 'N',
 			'labwork'       => 'N',
-			'analytics'     => 'N',
+			'analytics'     => 'R', // scope enforced by AnalyticsController::buildScope()
 		],
 	];
 

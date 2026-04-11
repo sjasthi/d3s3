@@ -5,13 +5,11 @@
 -- the Permissions Management UI.
 --
 -- Default access:
---   SUPER_ADMIN, ADMIN   -> R   (full clinic-wide analytics)
---   DOCTOR               -> R   (scoped to own cases via buildScope())
---   TRIAGE_NURSE, NURSE,
---   PARAMEDIC,
---   GRIEVANCE_OFFICER,
---   EDUCATION_TEAM,
---   DATA_ENTRY_OPERATOR  -> N   (no access)
+--   ALL roles -> R
+--   What each role actually sees is controlled by
+--   AnalyticsController::buildScope(), not by this permission entry.
+--   The R row simply ensures the sidebar link and entry point are
+--   reachable by every authenticated user.
 --
 -- Run AFTER migration 024.
 
@@ -19,9 +17,9 @@ INSERT IGNORE INTO role_permissions (role, resource, permission) VALUES
   ('SUPER_ADMIN',          'analytics', 'R'),
   ('ADMIN',                'analytics', 'R'),
   ('DOCTOR',               'analytics', 'R'),
-  ('TRIAGE_NURSE',         'analytics', 'N'),
-  ('NURSE',                'analytics', 'N'),
-  ('PARAMEDIC',            'analytics', 'N'),
-  ('GRIEVANCE_OFFICER',    'analytics', 'N'),
-  ('EDUCATION_TEAM',       'analytics', 'N'),
-  ('DATA_ENTRY_OPERATOR',  'analytics', 'N');
+  ('TRIAGE_NURSE',         'analytics', 'R'),
+  ('NURSE',                'analytics', 'R'),
+  ('PARAMEDIC',            'analytics', 'R'),
+  ('GRIEVANCE_OFFICER',    'analytics', 'R'),
+  ('EDUCATION_TEAM',       'analytics', 'R'),
+  ('DATA_ENTRY_OPERATOR',  'analytics', 'R');

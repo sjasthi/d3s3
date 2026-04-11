@@ -47,6 +47,18 @@ class PatientController
 		$pdo  = getDBConnection();
 		$role = $_SESSION['user_role'] ?? '';
 
+		// Flash messages from portal account actions
+		$flashSuccess = null;
+		if (isset($_SESSION['patients_success'])) {
+			$flashSuccess = $_SESSION['patients_success'];
+			unset($_SESSION['patients_success']);
+		}
+		$flashError = null;
+		if (isset($_SESSION['patients_error'])) {
+			$flashError = $_SESSION['patients_error'];
+			unset($_SESSION['patients_error']);
+		}
+
 		// Load patient record
 		$stmt = $pdo->prepare('SELECT * FROM patients WHERE patient_id = ?');
 		$stmt->execute([$patientId]);
@@ -57,6 +69,23 @@ class PatientController
 			header('Location: patients.php');
 			exit;
 		}
+
+		// Load portal account (if any)
+		$portalAccount = null;
+		try {
+			$stmt = $pdo->prepare(
+				'SELECT pa.*, u.first_name AS created_by_first, u.last_name AS created_by_last
+				   FROM patient_accounts pa
+				   LEFT JOIN users u ON u.user_id = pa.created_by_user_id
+				  WHERE pa.patient_id = ?'
+			);
+			$stmt->execute([$patientId]);
+			$portalAccount = $stmt->fetch() ?: null;
+		} catch (Throwable $e) {
+			$portalAccount = null; // table not yet created
+		}
+
+		$canManagePortal = can($role, 'users', 'W');
 
 		// Load all case sheets for this patient (most recent first),
 		// joining to get the names of the intake nurse and assigned doctor.
