@@ -142,15 +142,54 @@ Sign in at: `http://localhost/d3s3/login.php`
 
 ### Patient portal accounts
 
-All portal test accounts (created by `test_data_phase3.sql`) use the password **`Portal@1234`**.
+> **Prerequisite:** You must have loaded **`sql/test_data_phase3.sql`** (Step 6 above) before these accounts will exist in the database. If you skipped that file, run it now from phpMyAdmin → SQL tab, then come back here.
 
-| Patient | Username | Email |
-|---------|----------|-------|
-| Rahul Sharma (ID 1) | `patient_priya` | `priya.patient@example.com` |
-| Test Patient1 (ID 2) | `patient_rahul` | `rahul.patient@example.com` |
-| Test Patient2 (ID 3) | `patient_ananya` | `ananya.patient@example.com` |
+All three portal test accounts use the password **`Portal@1234`**.
 
-Sign in at: `http://localhost/d3s3/patient_login.php`
+You can log in with either the **username** or the **email** — both are accepted.
+
+| Account | Username | Email | Password |
+|---------|----------|-------|----------|
+| Portal account 1 | `patient_priya` | `priya.patient@example.com` | `Portal@1234` |
+| Portal account 2 | `patient_rahul` | `rahul.patient@example.com` | `Portal@1234` |
+| Portal account 3 | `patient_ananya` | `ananya.patient@example.com` | `Portal@1234` |
+
+**To log in:**
+
+1. Go to `http://localhost/d3s3/patient_login.php`
+2. Enter a username (e.g. `patient_priya`) **or** email (e.g. `priya.patient@example.com`)
+3. Enter the password: `Portal@1234`
+4. Click **Sign In** — you will land on the patient portal dashboard
+
+**What you can do once logged in:**
+
+- **Dashboard** — overview of upcoming appointments, unread messages, and recent resources
+- **Appointments** — view upcoming and past clinic visits (read-only)
+- **Health Record** — view closed case sheets including diagnosis and treatment plan (read-only)
+- **Lab Results** — view completed test results and pending orders (read-only)
+- **Messages** — send a message to the clinic and receive replies from staff
+- **Feedback** — submit a complaint, suggestion, or positive review
+- **Resources** — view educational materials sent by staff or available in the public library
+- **Profile** — view personal details; the **Allergies** field is the only editable field
+
+**To see the staff ↔ patient message flow:**
+
+1. Log in as a patient → go to **Messages** → compose a new message
+2. Open a new browser tab → log in as a staff member at `http://localhost/d3s3/login.php`
+   - Use Anita Gupta (`a.gupta@d3s3.com` / `Test1234!`) or any clinical role
+3. Click **Patient Messages** in the sidebar (yellow badge shows unread count)
+4. Select the thread → type a reply → **Send**
+5. Switch back to the patient tab → refresh Messages → the reply appears with a **New** badge
+
+**Troubleshooting:**
+
+- *"Incorrect email/username or password"* — confirm you loaded `test_data_phase3.sql`. If the accounts exist but login still fails, run this fix query in phpMyAdmin:
+  ```sql
+  UPDATE patient_accounts
+  SET password_hash = '$2y$10$iEbnZFWXi/SriBcbT7FDEepvsVRu9NzL3VYOB5SwT8nHT7jMk930e'
+  WHERE patient_id IN (1, 2, 3);
+  ```
+- *Portal accounts show no appointments or health records* — accounts 1–3 are early test patients with minimal seed data. For richer data, create a portal account for a patient from the Phase 2 or 3 batch (IDs 15–30) via the staff UI: log in as ADMIN → Patients → open a patient profile → Patient Portal Account card → Create Portal Account.
 
 ---
 
