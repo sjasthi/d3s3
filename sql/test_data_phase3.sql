@@ -963,11 +963,11 @@ INSERT IGNORE INTO patient_accounts
     (patient_id, username, email, password_hash, is_active, created_by_user_id)
 VALUES
     (1, 'patient_priya',  'priya.patient@example.com',
-     '$2y$12$Y5J3zL0P4lXr1Q2bN8MvNOoJmMGfQtM0Y1N3KGSA5cWoS0gJ.4GTi', 1, 1),
+     '$2y$10$iEbnZFWXi/SriBcbT7FDEepvsVRu9NzL3VYOB5SwT8nHT7jMk930e', 1, 1),
     (2, 'patient_rahul',  'rahul.patient@example.com',
-     '$2y$12$Y5J3zL0P4lXr1Q2bN8MvNOoJmMGfQtM0Y1N3KGSA5cWoS0gJ.4GTi', 1, 1),
+     '$2y$10$iEbnZFWXi/SriBcbT7FDEepvsVRu9NzL3VYOB5SwT8nHT7jMk930e', 1, 1),
     (3, 'patient_ananya', 'ananya.patient@example.com',
-     '$2y$12$Y5J3zL0P4lXr1Q2bN8MvNOoJmMGfQtM0Y1N3KGSA5cWoS0gJ.4GTi', 1, 1);
+     '$2y$10$iEbnZFWXi/SriBcbT7FDEepvsVRu9NzL3VYOB5SwT8nHT7jMk930e', 1, 1);
 
 -- portal_message_threads (patient 1 sent a question)
 INSERT IGNORE INTO portal_message_threads
