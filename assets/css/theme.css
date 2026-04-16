@@ -350,3 +350,14 @@ body.dark-mode #settingsPanel {
 	color: #f8f9fa;
 }
 body.dark-mode #settingsPanel .panel-label { color: #adb5bd; }
+
+/* Case tab bar – dark mode */
+body.dark-mode .case-tab-bar {
+	background: var(--surface-card, #151f2a);
+	border-bottom-color: var(--border-soft, #233244);
+	box-shadow: 0 2px 4px rgba(0,0,0,.25);
+}
+body.dark-mode .case-tab-bar::-webkit-scrollbar-thumb { background: #233244; }
+body.dark-mode .case-tab-bar .nav-link { color: var(--text-muted, #9fb0bf); }
+body.dark-mode .case-tab-bar .nav-link:hover { color: #58a6ff; background-color: rgba(255,255,255,.05); }
+body.dark-mode .case-tab-bar .nav-link.active { color: #58a6ff; border-bottom-color: #58a6ff; background-color: transparent; }

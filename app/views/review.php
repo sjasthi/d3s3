@@ -13,13 +13,38 @@ load_language($_SESSION['language'] ?? 'en');
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
 	<style>
-		#reviewTabs.nav-pills .nav-link {
-			color: #495057; background-color: transparent;
-			border-radius: 0.25rem; font-size: 0.9rem; border: 1px solid transparent;
+		/* Scrollable sticky tab bar */
+		.case-tab-bar {
+			position: sticky;
+			top: 0;
+			z-index: 100;
+			background: #fff;
+			border-bottom: 2px solid #dee2e6;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			scrollbar-color: #ced4da transparent;
+			box-shadow: 0 2px 4px rgba(0,0,0,.05);
 		}
-		#reviewTabs.nav-pills .nav-link:hover { background-color: #f8f9fa; border-color: #dee2e6; }
-		#reviewTabs.nav-pills .nav-link.active {
-			color: #007bff; background-color: #e7f3ff; border-color: #007bff; font-weight: 600;
+		.case-tab-bar::-webkit-scrollbar { height: 3px; }
+		.case-tab-bar::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 2px; }
+		.case-tab-bar .nav { flex-wrap: nowrap; padding: 0 16px; min-width: max-content; }
+		.case-tab-bar .nav-link {
+			color: #495057;
+			background-color: transparent;
+			border-radius: 0;
+			font-size: 0.82rem;
+			padding: 8px 14px;
+			white-space: nowrap;
+			border-bottom: 3px solid transparent;
+			transition: color .15s, border-color .15s, background-color .15s;
+		}
+		.case-tab-bar .nav-link:hover { color: #007bff; background-color: #f8f9fa; }
+		.case-tab-bar .nav-link.active {
+			color: #007bff;
+			background-color: transparent;
+			border-bottom-color: #007bff;
+			font-weight: 600;
 		}
 		.tab-navigation { margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; }
 		.auto-save-indicator {
@@ -29,8 +54,6 @@ load_language($_SESSION['language'] ?? 'en');
 		}
 		.auto-save-indicator.saving { background-color: #ffc107; color: #000; }
 		.auto-save-indicator.error { background-color: #dc3545; }
-		/* Extra top padding for taller navbar with tabs */
-		.content-wrapper { padding-top: 30px; }
 		.intake-summary-label { font-size: 0.75rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
 		.intake-summary-value { font-size: 0.95rem; color: #212529; margin-bottom: 0; }
 		.intake-summary-empty { color: #adb5bd; font-style: italic; }
@@ -69,19 +92,6 @@ load_language($_SESSION['language'] ?? 'en');
 			</li>
 		</ul>
 
-		<!-- Tab bar in navbar -->
-		<ul class="nav nav-pills ml-4 d-none d-lg-flex" id="reviewTabs" role="tablist">
-			<li class="nav-item"><a class="nav-link active px-2" data-toggle="tab" href="#tab-patient"><?= __('tab_patient') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-medical-history"><?= __('tab_history_records') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-general"><?= __('tab_general') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-examinations"><?= __('tab_examinations') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-labs"><?= __('tab_labs') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-assessment"><?= __('tab_assessment') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-plan"><?= __('tab_plan') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-followup"><?= __('tab_followup') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-2" data-toggle="tab" href="#tab-audit"><?= __('tab_audit') ?></a></li>
-		</ul>
-
 		<ul class="navbar-nav ml-auto">
 			<li class="nav-item d-flex align-items-center">
 				<button id="gearBtn" aria-label="<?= __('display_settings') ?>" title="<?= __('display_settings') ?>">
@@ -116,6 +126,19 @@ load_language($_SESSION['language'] ?? 'en');
 	<?php require __DIR__ . '/_sidebar.php'; ?>
 
 	<div class="content-wrapper">
+		<div class="case-tab-bar">
+			<ul class="nav nav-pills" id="reviewTabs" role="tablist">
+				<li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tab-patient"><?= __('tab_patient') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-medical-history"><?= __('tab_history_records') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-general"><?= __('tab_general') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-examinations"><?= __('tab_examinations') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-labs"><?= __('tab_labs') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-assessment"><?= __('tab_assessment') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-plan"><?= __('tab_plan') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-followup"><?= __('tab_followup') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-audit"><?= __('tab_audit') ?></a></li>
+			</ul>
+		</div>
 		<?php
 			$cs         = $caseSheet;
 			$p          = $patient;

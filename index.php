@@ -10,7 +10,9 @@
 require_once __DIR__ . '/app/config/session.php';
 
 if (isset($_SESSION['user_id'])) {
-	header('Location: dashboard.php');
+	$adminRoles = ['SUPER_ADMIN', 'ADMIN'];
+	$dest = in_array($_SESSION['user_role'] ?? '', $adminRoles) ? 'admin.php' : 'dashboard.php';
+	header('Location: ' . $dest);
 	exit;
 }
 if (isset($_SESSION['patient_account_id'])) {

@@ -250,6 +250,19 @@
 - "Analytics" and "Patient Messages" sidebar links were the last two hard-coded English strings in `_sidebar.php`; both now run through `__()`
 - `nav_analytics` and `nav_patient_messages` keys added to `lang/labels_en.csv` and `lang/labels_te.csv`
 
+### Access Control Hardening *(2026-04-15)*
+- `admin.php` — added `session.php` include, CSRF token setup, and a `can('users')` role guard; previously any authenticated user could reach the admin dashboard and admin panel by navigating directly to the URL
+- `emp_register.php` — added auth middleware and `can('users')` role guard; page was previously unauthenticated and open to any visitor (registration code only blocked account creation, not page access)
+- `AdminController::dashboard()` and `AdminController::adminPanel()` — added matching role guards as defence-in-depth so the entry-point check is enforced even if the controller is called from another path
+
+### Intake & Review — Sticky Scrollable Tab Bar *(2026-04-15)*
+- Tab navigation on the intake form (`intake.php`) and doctor review page (`review.php`) moved from the fixed top navbar into a dedicated sticky bar pinned just below it; tabs are now horizontally scrollable on small screens instead of being hidden below `d-lg-flex`
+- Active tab indicated by a bottom-border underline (replaces the filled pill background) for cleaner visual separation from the page content
+- Full dark-mode support for the new tab bar via `assets/css/theme.css`
+
+### Landing Page — Admin Redirect Fix *(2026-04-15)*
+- Authenticated admins visiting `index.php` are now redirected to `admin.php` instead of `dashboard.php`, consistent with the post-login redirect in `UserController::processLogin()`
+
 ### Labwork — Text-Based Lab Order Entry *(2026-04-13)*
 - Replaced the 50+ categorised checkbox picker in the "Order Lab Test" modal (intake and doctor review) with a free-text entry system
 - Each order row has a **Test** field (required) and a **Notes** field (optional); users can add as many rows as needed via **Add Another Test**, and remove any row with the × button

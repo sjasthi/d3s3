@@ -12,6 +12,12 @@ class AdminController
 {
     public function dashboard(): void
     {
+        if (!can($_SESSION['user_role'] ?? '', 'users')) {
+            $_SESSION['dashboard_notice'] = 'You do not have permission to access that page.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
         $pdo = getDBConnection();
         $events = $pdo->query(
             'SELECT event_id, title, description, event_type, start_datetime, end_datetime, status, location_name
@@ -52,6 +58,12 @@ class AdminController
 
     public function adminPanel(): void
     {
+        if (!can($_SESSION['user_role'] ?? '', 'users')) {
+            $_SESSION['dashboard_notice'] = 'You do not have permission to access that page.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
         $flashSuccess = null;
         if (isset($_SESSION['permissions_success'])) {
             $flashSuccess = $_SESSION['permissions_success'];

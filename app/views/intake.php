@@ -13,18 +13,37 @@ load_language($_SESSION['language'] ?? 'en');
 	<link rel="stylesheet" href="assets/css/adminlte.min.css" />
 	<link rel="stylesheet" href="assets/css/theme.css" />
 	<style>
-		#intakeTabs.nav-pills .nav-link {
+		/* Scrollable sticky tab bar (replaces in-navbar tabs) */
+		.case-tab-bar {
+			position: sticky;
+			top: 0;
+			z-index: 100;
+			background: #fff;
+			border-bottom: 2px solid #dee2e6;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			scrollbar-color: #ced4da transparent;
+			box-shadow: 0 2px 4px rgba(0,0,0,.05);
+		}
+		.case-tab-bar::-webkit-scrollbar { height: 3px; }
+		.case-tab-bar::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 2px; }
+		.case-tab-bar .nav { flex-wrap: nowrap; padding: 0 16px; min-width: max-content; }
+		.case-tab-bar .nav-link {
 			color: #495057;
 			background-color: transparent;
-			border-radius: 0.25rem;
-			font-size: 0.9rem;
-			border: 1px solid transparent;
+			border-radius: 0;
+			font-size: 0.82rem;
+			padding: 8px 14px;
+			white-space: nowrap;
+			border-bottom: 3px solid transparent;
+			transition: color .15s, border-color .15s, background-color .15s;
 		}
-		#intakeTabs.nav-pills .nav-link:hover { background-color: #f8f9fa; border-color: #dee2e6; }
-		#intakeTabs.nav-pills .nav-link.active {
+		.case-tab-bar .nav-link:hover { color: #007bff; background-color: #f8f9fa; }
+		.case-tab-bar .nav-link.active {
 			color: #007bff;
-			background-color: #e7f3ff;
-			border-color: #007bff;
+			background-color: transparent;
+			border-bottom-color: #007bff;
 			font-weight: 600;
 		}
 		.tab-navigation { margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; }
@@ -44,8 +63,8 @@ load_language($_SESSION['language'] ?? 'en');
 		}
 		#diagramCanvas { border: 1px solid #adb5bd; background: white; cursor: crosshair; touch-action: none; }
 		.modal-xl { max-width: 92%; }
-		/* Extra top padding when the navbar is taller due to intake tabs */
-		body.has-intake-tabs .content-wrapper { padding-top: 30px; }
+		/* Slight extra padding so first tab-section doesn't sit flush against tab bar */
+		body.has-intake-tabs .content-wrapper { padding-top: 0; }
 
 		/* Vitals / menstrual comparison panels */
 		.vitals-compare-prev { color: #6c757d; font-size: 0.9rem; }
@@ -74,18 +93,6 @@ load_language($_SESSION['language'] ?? 'en');
 			<?php endif; ?>
 		</ul>
 
-		<?php if (!empty($caseSheet)): ?>
-		<!-- Tabs shown when editing a case sheet -->
-		<ul class="nav nav-pills ml-4 d-none d-lg-flex" id="intakeTabs" role="tablist">
-			<li class="nav-item"><a class="nav-link active px-3" data-toggle="tab" href="#tab-verification"><?= __('tab_verification') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-personal"><?= __('tab_personal') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-history"><?= __('tab_history') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-general"><?= __('tab_general') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-examinations"><?= __('tab_examinations') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-labs"><?= __('tab_labs') ?></a></li>
-			<li class="nav-item"><a class="nav-link px-3" data-toggle="tab" href="#tab-summary"><?= __('tab_summary') ?></a></li>
-		</ul>
-		<?php endif; ?>
 
 		<ul class="navbar-nav ml-auto">
 			<li class="nav-item d-flex align-items-center">
@@ -121,6 +128,19 @@ load_language($_SESSION['language'] ?? 'en');
 	<?php require __DIR__ . '/_sidebar.php'; ?>
 
 	<div class="content-wrapper">
+		<?php if (!empty($caseSheet)): ?>
+		<div class="case-tab-bar">
+			<ul class="nav nav-pills" id="intakeTabs" role="tablist">
+				<li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tab-verification"><?= __('tab_verification') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-personal"><?= __('tab_personal') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-history"><?= __('tab_history') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-general"><?= __('tab_general') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-examinations"><?= __('tab_examinations') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-labs"><?= __('tab_labs') ?></a></li>
+				<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-summary"><?= __('tab_summary') ?></a></li>
+			</ul>
+		</div>
+		<?php endif; ?>
 		<div class="content-header">
 			<div class="container-fluid">
 				<div class="row mb-2">
