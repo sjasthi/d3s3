@@ -15,7 +15,28 @@ This document covers everything you need to get the test accounts working and ex
 
 ## Prerequisites
 
-Before the test accounts will exist in the database, you must have completed the full local setup:
+Before the test accounts will exist in the database, you must have a working local setup with the database fully loaded. There are two ways to do this — pick whichever is easier:
+
+---
+
+### Option A — One-file import (fastest)
+
+This is the recommended path. A complete database dump is included in the repo that contains the full schema, all migrations, and all test data (including the portal accounts) already applied.
+
+1. Start **XAMPP** — make sure both Apache and MySQL are running (green)
+2. Open **phpMyAdmin** at `http://localhost/phpmyadmin`
+3. Click **New** in the left panel and create a database named **`core_app`**
+4. Select `core_app`, click the **Import** tab
+5. Click **Choose File** and select **`sql/complete_setup.sql`** from the repo
+6. Click **Go**
+
+That's it — the database is fully set up. Skip ahead to [Test Account Credentials](#test-account-credentials).
+
+---
+
+### Option B — Step-by-step migration path
+
+Use this if you need to understand each step or want to apply only specific changes.
 
 1. XAMPP running (Apache + MySQL both green)
 2. Database `core_app` created and `sql/core_app.sql` imported
@@ -26,6 +47,8 @@ Before the test accounts will exist in the database, you must have completed the
    - `sql/test_data_phase3.sql` ← **this file creates the portal accounts**
 
 If you have not done this yet, follow the full setup guide in `README.md` first, then come back here.
+
+---
 
 ---
 
