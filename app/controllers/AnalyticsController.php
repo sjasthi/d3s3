@@ -833,118 +833,106 @@ class AnalyticsController
         $followDue    = $followRow ? (int)$followRow['total_due'] : 0;
         $followReturn = $followRow ? (int)$followRow['returned']  : 0;
 
-        // ── 10. Medicine sources (most recent case sheet per patient) ─────────
+        // ── 10-12. Assessment / vitals data (most recent case sheet per patient) ──
+        // Fetched as raw text and processed in PHP to avoid JSON_EXTRACT(),
+        // which requires MySQL 5.7.8+ and is not available on all hosts.
         $stmt = $pdo->prepare(
-            "SELECT JSON_UNQUOTE(JSON_EXTRACT(vitals_json, '$.medicine_sources')) AS med_source,"
-            . " COUNT(*) AS cnt"
-            . " FROM case_sheets"
-            . " WHERE case_sheet_id IN ("
-            . "   SELECT MAX(case_sheet_id) FROM case_sheets"
-            . "   WHERE DATE(visit_datetime) BETWEEN :from AND :to"
-            . "   GROUP BY patient_id"
-            . " )"
-            . " AND vitals_json IS NOT NULL AND vitals_json != '{}'"
-            . " AND JSON_EXTRACT(vitals_json, '$.medicine_sources') IS NOT NULL"
-            . " AND JSON_UNQUOTE(JSON_EXTRACT(vitals_json, '$.medicine_sources')) != ''"
-            . " GROUP BY med_source ORDER BY cnt DESC"
+            'SELECT assessment, vitals_json FROM case_sheets'
+            . ' WHERE case_sheet_id IN ('
+            . '   SELECT MAX(case_sheet_id) FROM case_sheets'
+            . '   WHERE DATE(visit_datetime) BETWEEN :from AND :to'
+            . '   GROUP BY patient_id'
+            . ' )'
         );
         $stmt->execute($dateParams);
-        $medSourceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $totalMedSource = array_sum(array_column($medSourceRows, 'cnt'));
+        $jsonRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // ── 11. Medical conditions (most recent case sheet per patient) ───────
-        $stmt = $pdo->prepare(
-            "SELECT"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_dm'))           = 'CURRENT') AS dm_current,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_dm'))           = 'PAST')    AS dm_past,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_htn'))          = 'CURRENT') AS htn_current,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_htn'))          = 'PAST')    AS htn_past,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_tsh'))          = 'CURRENT') AS tsh_current,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_tsh'))          = 'PAST')    AS tsh_past,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_heart_disease'))= 'CURRENT') AS heart_current,"
-            . " SUM(JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_heart_disease'))= 'PAST')    AS heart_past,"
-            . " COUNT(*) AS total_with_assessment"
-            . " FROM case_sheets"
-            . " WHERE case_sheet_id IN ("
-            . "   SELECT MAX(case_sheet_id) FROM case_sheets"
-            . "   WHERE DATE(visit_datetime) BETWEEN :from AND :to"
-            . "   GROUP BY patient_id"
-            . " )"
-            . " AND assessment IS NOT NULL AND assessment != '{}'"
-        );
-        $stmt->execute($dateParams);
-        $condRow2 = $stmt->fetch(PDO::FETCH_ASSOC);
-        $totalWithAssessment = $condRow2 ? (int)$condRow2['total_with_assessment'] : 0;
+        // Medicine sources
+        $medSourceCounts = array();
+        $totalMedSource  = 0;
+        foreach ($jsonRows as $_jr) {
+            if (empty($_jr['vitals_json']) || $_jr['vitals_json'] === '{}') continue;
+            $_vj = json_decode($_jr['vitals_json'], true);
+            if (!is_array($_vj)) continue;
+            $_src = isset($_vj['medicine_sources']) ? trim((string)$_vj['medicine_sources']) : '';
+            if ($_src === '') continue;
+            $medSourceCounts[$_src] = ($medSourceCounts[$_src] ?? 0) + 1;
+            $totalMedSource++;
+        }
+        arsort($medSourceCounts);
+        $medSourceRows = array();
+        foreach ($medSourceCounts as $_src => $_cnt) {
+            $medSourceRows[] = array('med_source' => $_src, 'cnt' => $_cnt);
+        }
+
+        // Medical conditions, other conditions, family history, other family history
         $medConditions = array(
-            'DM (Diabetes)'    => array('current' => (int)($condRow2['dm_current']    ?? 0), 'past' => (int)($condRow2['dm_past']    ?? 0)),
-            'HTN (Hypertension)'=> array('current' => (int)($condRow2['htn_current']   ?? 0), 'past' => (int)($condRow2['htn_past']   ?? 0)),
-            'TSH (Thyroid)'    => array('current' => (int)($condRow2['tsh_current']   ?? 0), 'past' => (int)($condRow2['tsh_past']   ?? 0)),
-            'Heart Disease'    => array('current' => (int)($condRow2['heart_current'] ?? 0), 'past' => (int)($condRow2['heart_past'] ?? 0)),
+            'DM (Diabetes)'      => array('current' => 0, 'past' => 0),
+            'HTN (Hypertension)' => array('current' => 0, 'past' => 0),
+            'TSH (Thyroid)'      => array('current' => 0, 'past' => 0),
+            'Heart Disease'      => array('current' => 0, 'past' => 0),
         );
-
-        // Other conditions — free text, top 15 entries (most recent case sheet per patient)
-        $stmt = $pdo->prepare(
-            "SELECT JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_others')) AS txt,"
-            . " COUNT(*) AS cnt"
-            . " FROM case_sheets"
-            . " WHERE case_sheet_id IN ("
-            . "   SELECT MAX(case_sheet_id) FROM case_sheets"
-            . "   WHERE DATE(visit_datetime) BETWEEN :from AND :to"
-            . "   GROUP BY patient_id"
-            . " )"
-            . " AND assessment IS NOT NULL"
-            . " AND JSON_EXTRACT(assessment, '$.condition_others') IS NOT NULL"
-            . " AND JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.condition_others')) != ''"
-            . " GROUP BY txt ORDER BY cnt DESC LIMIT 15"
+        $_condKeys = array(
+            'DM (Diabetes)'      => 'condition_dm',
+            'HTN (Hypertension)' => 'condition_htn',
+            'TSH (Thyroid)'      => 'condition_tsh',
+            'Heart Disease'      => 'condition_heart_disease',
         );
-        $stmt->execute($dateParams);
-        $otherConditions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // ── 12. Family history (most recent case sheet per patient) ──────────
-        $stmt = $pdo->prepare(
-            "SELECT"
-            . " SUM(JSON_EXTRACT(assessment, '$.family_history_cancer')       = '1' OR JSON_EXTRACT(assessment, '$.family_history_cancer')       = 1) AS cancer,"
-            . " SUM(JSON_EXTRACT(assessment, '$.family_history_tuberculosis')  = '1' OR JSON_EXTRACT(assessment, '$.family_history_tuberculosis')  = 1) AS tuberculosis,"
-            . " SUM(JSON_EXTRACT(assessment, '$.family_history_diabetes')      = '1' OR JSON_EXTRACT(assessment, '$.family_history_diabetes')      = 1) AS diabetes,"
-            . " SUM(JSON_EXTRACT(assessment, '$.family_history_bp')            = '1' OR JSON_EXTRACT(assessment, '$.family_history_bp')            = 1) AS bp,"
-            . " SUM(JSON_EXTRACT(assessment, '$.family_history_thyroid')       = '1' OR JSON_EXTRACT(assessment, '$.family_history_thyroid')       = 1) AS thyroid,"
-            . " COUNT(*) AS total_fh"
-            . " FROM case_sheets"
-            . " WHERE case_sheet_id IN ("
-            . "   SELECT MAX(case_sheet_id) FROM case_sheets"
-            . "   WHERE DATE(visit_datetime) BETWEEN :from AND :to"
-            . "   GROUP BY patient_id"
-            . " )"
-            . " AND assessment IS NOT NULL AND assessment != '{}'"
-        );
-        $stmt->execute($dateParams);
-        $fhRow = $stmt->fetch(PDO::FETCH_ASSOC);
-        $totalWithFH = $fhRow ? (int)$fhRow['total_fh'] : 0;
         $familyHistory = array(
-            'Cancer'         => (int)($fhRow['cancer']       ?? 0),
-            'Tuberculosis'   => (int)($fhRow['tuberculosis'] ?? 0),
-            'DM (Diabetes)'      => (int)($fhRow['diabetes']     ?? 0),
-            'HTN (Hypertension)' => (int)($fhRow['bp']        ?? 0),
-            'TSH (Thyroid)'      => (int)($fhRow['thyroid']      ?? 0),
+            'Cancer'             => 0,
+            'Tuberculosis'       => 0,
+            'DM (Diabetes)'      => 0,
+            'HTN (Hypertension)' => 0,
+            'TSH (Thyroid)'      => 0,
         );
+        $_fhKeys = array(
+            'Cancer'             => 'family_history_cancer',
+            'Tuberculosis'       => 'family_history_tuberculosis',
+            'DM (Diabetes)'      => 'family_history_diabetes',
+            'HTN (Hypertension)' => 'family_history_bp',
+            'TSH (Thyroid)'      => 'family_history_thyroid',
+        );
+        $_otherCondCounts = array();
+        $_otherFHCounts   = array();
+        $totalWithAssessment = 0;
 
-        // Other family history — free text, top 15 entries (most recent case sheet per patient)
-        $stmt = $pdo->prepare(
-            "SELECT JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.family_history_other')) AS txt,"
-            . " COUNT(*) AS cnt"
-            . " FROM case_sheets"
-            . " WHERE case_sheet_id IN ("
-            . "   SELECT MAX(case_sheet_id) FROM case_sheets"
-            . "   WHERE DATE(visit_datetime) BETWEEN :from AND :to"
-            . "   GROUP BY patient_id"
-            . " )"
-            . " AND assessment IS NOT NULL"
-            . " AND JSON_EXTRACT(assessment, '$.family_history_other') IS NOT NULL"
-            . " AND JSON_UNQUOTE(JSON_EXTRACT(assessment, '$.family_history_other')) != ''"
-            . " GROUP BY txt ORDER BY cnt DESC LIMIT 15"
-        );
-        $stmt->execute($dateParams);
-        $otherFamilyHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($jsonRows as $_jr) {
+            if (empty($_jr['assessment']) || $_jr['assessment'] === '{}') continue;
+            $_as = json_decode($_jr['assessment'], true);
+            if (!is_array($_as)) continue;
+            $totalWithAssessment++;
+
+            foreach ($_condKeys as $_label => $_key) {
+                $_val = isset($_as[$_key]) ? strtoupper(trim((string)$_as[$_key])) : '';
+                if ($_val === 'CURRENT')     $medConditions[$_label]['current']++;
+                elseif ($_val === 'PAST')    $medConditions[$_label]['past']++;
+            }
+
+            $_oc = isset($_as['condition_others']) ? trim((string)$_as['condition_others']) : '';
+            if ($_oc !== '') $_otherCondCounts[$_oc] = ($_otherCondCounts[$_oc] ?? 0) + 1;
+
+            foreach ($_fhKeys as $_label => $_key) {
+                $_val = isset($_as[$_key]) ? $_as[$_key] : null;
+                if ($_val == 1) $familyHistory[$_label]++;
+            }
+
+            $_ofh = isset($_as['family_history_other']) ? trim((string)$_as['family_history_other']) : '';
+            if ($_ofh !== '') $_otherFHCounts[$_ofh] = ($_otherFHCounts[$_ofh] ?? 0) + 1;
+        }
+
+        $totalWithFH = $totalWithAssessment;
+
+        arsort($_otherCondCounts);
+        $otherConditions = array();
+        foreach (array_slice($_otherCondCounts, 0, 15, true) as $_txt => $_cnt) {
+            $otherConditions[] = array('txt' => $_txt, 'cnt' => $_cnt);
+        }
+
+        arsort($_otherFHCounts);
+        $otherFamilyHistory = array();
+        foreach (array_slice($_otherFHCounts, 0, 15, true) as $_txt => $_cnt) {
+            $otherFamilyHistory[] = array('txt' => $_txt, 'cnt' => $_cnt);
+        }
 
         echo $this->trendsHTML(
             $from, $to,

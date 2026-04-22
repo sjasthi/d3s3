@@ -1,5 +1,15 @@
 # Changelog
 
+### Analytics — Patient Trends MySQL Compatibility Fix *(2026-04-21)*
+- `dataTrends()` in `AnalyticsController` was using `JSON_EXTRACT()` / `JSON_UNQUOTE()` SQL functions (requires MySQL 5.7.8+) which are unavailable on the BlueHost production MySQL version, causing the Patient Trends tab to return a 500 error on the live site while working fine locally (MariaDB)
+- All five affected queries (medicine sources, medical conditions, other conditions, family history, other family history) replaced with a single `SELECT assessment, vitals_json` fetch; JSON parsing and aggregation now performed in PHP using `json_decode()`, which is version-agnostic
+
+### Analytics — Admin Redirect Bug Fix *(2026-04-21)*
+- `index.php` redirect for authenticated admins was reading `$_SESSION['role']` (undefined) instead of `$_SESSION['user_role']`, so admins were always falling through to `dashboard.php` instead of `admin.php`
+
+### Analytics Test Data *(2026-04-21)*
+- Added `sql/test_data_analytics.sql` — 21 case sheets spread across April 2026 with varied visit types, chief complaints, closure types, assessment JSON (medical conditions, family history), and vitals JSON (medicine sources); 20 audit log entries for intake timing; 5 scheduled appointments; 10 patient feedback entries covering all feedback types and complaint pipeline statuses
+
 ## Phase 1 *(through 2026-02-09)*
 
 - User login / logout with secure session handling
