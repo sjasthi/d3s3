@@ -444,7 +444,7 @@ $roleLabels = [
 	</div><!-- /.content-wrapper -->
 
 	<footer class="main-footer">
-		<strong>D3S3 CareSystem</strong>
+		<strong>D3S3 CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span>
 	</footer>
 </div><!-- /.wrapper -->
 

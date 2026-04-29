@@ -184,7 +184,7 @@
 	</div>
 
 	<footer class="main-footer text-sm text-muted">
-		<strong>D3S3 CareSystem</strong> &mdash; Labwork
+		<strong>D3S3 CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span> &mdash; Labwork
 	</footer>
 </div>
 

@@ -1676,7 +1676,7 @@ load_language($_SESSION['language'] ?? 'en');
 		</section>
 	</div>
 
-	<footer class="main-footer text-sm"><strong>CareSystem</strong> &middot; <?= __('doctor_review') ?></footer>
+	<footer class="main-footer text-sm"><strong>CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span> &middot; <?= __('doctor_review') ?></footer>
 </div>
 
 <script src="assets/js/jquery.min.js"></script>
@@ -1890,100 +1890,6 @@ load_language($_SESSION['language'] ?? 'en');
 		loadLabOrders();
 	});
 
-	// ── Lab order modal ──────────────────────────────────────────────────
-	(function () {
-		var $modal     = $('#labOrderModal');
-		var $rows      = $('#labTestRows');
-		var $error     = $('#labOrderError');
-		var $submitBtn = $('#btnSubmitLabOrder');
-
-		var rowTemplate =
-			'<div class="lab-test-row mb-3">' +
-			'<div class="d-flex align-items-center mb-1">' +
-			'<span class="font-weight-bold small mr-2" style="min-width:3rem;">Test</span>' +
-			'<input type="text" class="form-control form-control-sm lab-test-name" placeholder="e.g. Complete Blood Count (CBC)" autocomplete="off" />' +
-			'<button type="button" class="btn btn-outline-danger btn-sm btn-remove-row ml-2" aria-label="Remove test"><i class="fas fa-times"></i></button>' +
-			'</div>' +
-			'<div class="d-flex align-items-center">' +
-			'<span class="text-muted small mr-2" style="min-width:3rem;">Notes</span>' +
-			'<input type="text" class="form-control form-control-sm lab-test-notes" placeholder="Optional notes for this test" />' +
-			'</div>' +
-			'</div>';
-
-		$('#btnAddLabRow').on('click', function () {
-			$rows.append(rowTemplate);
-			$rows.find('.btn-remove-row').show();
-			$rows.find('.lab-test-name').last().focus();
-		});
-
-		$rows.on('click', '.btn-remove-row', function () {
-			$(this).closest('.lab-test-row').remove();
-			if ($rows.find('.lab-test-row').length === 1) {
-				$rows.find('.btn-remove-row').hide();
-			}
-		});
-
-		$modal.on('hidden.bs.modal', function () {
-			$rows.html(
-				'<div class="lab-test-row mb-3">' +
-				'<div class="d-flex align-items-center mb-1">' +
-				'<span class="font-weight-bold small mr-2" style="min-width:3rem;">Test</span>' +
-				'<input type="text" class="form-control form-control-sm lab-test-name" placeholder="e.g. Complete Blood Count (CBC)" autocomplete="off" />' +
-				'<button type="button" class="btn btn-outline-danger btn-sm btn-remove-row ml-2" style="display:none;" aria-label="Remove test"><i class="fas fa-times"></i></button>' +
-				'</div>' +
-				'<div class="d-flex align-items-center">' +
-				'<span class="text-muted small mr-2" style="min-width:3rem;">Notes</span>' +
-				'<input type="text" class="form-control form-control-sm lab-test-notes" placeholder="Optional notes for this test" />' +
-				'</div>' +
-				'</div>'
-			);
-			$error.addClass('d-none').text('');
-			$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
-		});
-
-		$submitBtn.on('click', function () {
-			var tests = [];
-			$rows.find('.lab-test-row').each(function () {
-				var name  = $(this).find('.lab-test-name').val().trim();
-				var notes = $(this).find('.lab-test-notes').val().trim();
-				if (name !== '') {
-					tests.push({ test_name: name, notes: notes });
-				}
-			});
-			if (!tests.length) {
-				$error.text('Please enter at least one test name.').removeClass('d-none');
-				return;
-			}
-			$error.addClass('d-none');
-			$submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Submitting…');
-
-			$.ajax({
-				url: 'intake.php?action=order-lab-test',
-				method: 'POST',
-				contentType: 'application/json',
-				data: JSON.stringify({
-					csrf_token: csrfToken,
-					case_sheet_id: caseSheetId,
-					tests: tests
-				}),
-				dataType: 'json',
-				success: function (r) {
-					if (!r.success) {
-						$error.text(r.message || 'Failed to submit.').removeClass('d-none');
-						$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
-						return;
-					}
-					$modal.modal('hide');
-					loadLabOrders();
-				},
-				error: function () {
-					$error.text('Server error. Please try again.').removeClass('d-none');
-					$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
-				}
-			});
-		});
-	})();
-
 	function loadLabOrders() {
 		$.ajax({
 			url: 'intake.php?action=get-lab-orders&case_sheet_id=' + caseSheetId,
@@ -2020,6 +1926,7 @@ load_language($_SESSION['language'] ?? 'en');
 			}
 		});
 	}
+	window.loadLabOrders = loadLabOrders;
 
 	// ── Patient tab: lock / unlock toggle ────────────────────
 	var patientEditActive = false;
@@ -2550,6 +2457,103 @@ load_language($_SESSION['language'] ?? 'en');
 		</div>
 	</div>
 </div>
+<script>
+/* ── Lab order modal ──────────────────────────────────────────────────── */
+/* Placed after modal HTML so all IDs exist when this script runs.        */
+(function () {
+	var csrfToken   = <?= json_encode($_SESSION['csrf_token']) ?>;
+	var caseSheetId = <?= (int)$csId ?>;
+
+	function escHtml(s) {
+		return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+	}
+
+	var $modal     = $('#labOrderModal');
+	var $rows      = $('#labTestRows');
+	var $error     = $('#labOrderError');
+	var $submitBtn = $('#btnSubmitLabOrder');
+
+	var rowTemplate =
+		'<div class="lab-test-row mb-3">' +
+		'<div class="d-flex align-items-center mb-1">' +
+		'<span class="font-weight-bold small mr-2" style="min-width:3rem;">Test</span>' +
+		'<input type="text" class="form-control form-control-sm lab-test-name" placeholder="e.g. Complete Blood Count (CBC)" autocomplete="off" />' +
+		'<button type="button" class="btn btn-outline-danger btn-sm btn-remove-row ml-2" aria-label="Remove test"><i class="fas fa-times"></i></button>' +
+		'</div>' +
+		'<div class="d-flex align-items-center">' +
+		'<span class="text-muted small mr-2" style="min-width:3rem;">Notes</span>' +
+		'<input type="text" class="form-control form-control-sm lab-test-notes" placeholder="Optional notes for this test" />' +
+		'</div>' +
+		'</div>';
+
+	$('#btnAddLabRow').on('click', function () {
+		$rows.append(rowTemplate);
+		$rows.find('.btn-remove-row').show();
+		$rows.find('.lab-test-name').last().focus();
+	});
+
+	$rows.on('click', '.btn-remove-row', function () {
+		$(this).closest('.lab-test-row').remove();
+		if ($rows.find('.lab-test-row').length === 1) {
+			$rows.find('.btn-remove-row').hide();
+		}
+	});
+
+	$modal.on('hidden.bs.modal', function () {
+		$rows.html(
+			'<div class="lab-test-row mb-3">' +
+			'<div class="d-flex align-items-center mb-1">' +
+			'<span class="font-weight-bold small mr-2" style="min-width:3rem;">Test</span>' +
+			'<input type="text" class="form-control form-control-sm lab-test-name" placeholder="e.g. Complete Blood Count (CBC)" autocomplete="off" />' +
+			'<button type="button" class="btn btn-outline-danger btn-sm btn-remove-row ml-2" style="display:none;" aria-label="Remove test"><i class="fas fa-times"></i></button>' +
+			'</div>' +
+			'<div class="d-flex align-items-center">' +
+			'<span class="text-muted small mr-2" style="min-width:3rem;">Notes</span>' +
+			'<input type="text" class="form-control form-control-sm lab-test-notes" placeholder="Optional notes for this test" />' +
+			'</div>' +
+			'</div>'
+		);
+		$error.addClass('d-none').text('');
+		$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
+	});
+
+	$submitBtn.on('click', function () {
+		var tests = [];
+		$rows.find('.lab-test-row').each(function () {
+			var name  = $(this).find('.lab-test-name').val().trim();
+			var notes = $(this).find('.lab-test-notes').val().trim();
+			if (name !== '') tests.push({ test_name: name, notes: notes });
+		});
+		if (!tests.length) {
+			$error.text('Please enter at least one test name.').removeClass('d-none');
+			return;
+		}
+		$error.addClass('d-none');
+		$submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Submitting…');
+
+		$.ajax({
+			url: 'intake.php?action=order-lab-test',
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({ csrf_token: csrfToken, case_sheet_id: caseSheetId, tests: tests }),
+			dataType: 'json',
+			success: function (r) {
+				if (!r.success) {
+					$error.text(r.message || 'Failed to submit.').removeClass('d-none');
+					$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
+					return;
+				}
+				$modal.modal('hide');
+				window.loadLabOrders();
+			},
+			error: function () {
+				$error.text('Server error. Please try again.').removeClass('d-none');
+				$submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i><?= __('submit_order') ?>');
+			}
+		});
+	});
+})();
+</script>
 
 </body>
 </html>

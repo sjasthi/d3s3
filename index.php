@@ -1,6 +1,6 @@
 <?php
 /**
- * index.php – D3S3 CareSystem landing page (prototype).
+ * index.php – D3S3 CareSystem landing page (alpha).
  *
  * Already-authenticated staff go straight to the dashboard.
  * Already-authenticated patients go straight to the portal.
@@ -174,7 +174,7 @@ if (isset($_SESSION['patient_account_id'])) {
 </div>
 
 <div class="landing-footer">
-	&copy; <?= date('Y') ?> D3S3 CareSystem &mdash; Prototype
+	&copy; <?= date('Y') ?> D3S3 CareSystem &mdash; Alpha
 </div>
 
 </body>

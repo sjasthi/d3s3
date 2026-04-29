@@ -521,7 +521,7 @@
 	</div>
 
 	<footer class="main-footer text-sm">
-		<strong>CareSystem</strong> &middot; Case Sheet #<?= (int)$caseSheet['case_sheet_id'] ?> &middot; Read-only view
+		<strong>CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span> &middot; Case Sheet #<?= (int)$caseSheet['case_sheet_id'] ?> &middot; Read-only view
 	</footer>
 </div>
 

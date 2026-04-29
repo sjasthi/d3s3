@@ -333,7 +333,7 @@
 	</div>
 
 	<footer class="main-footer">
-		<div class="float-right d-none d-sm-inline">CareSystem</div>
+		<div class="float-right d-none d-sm-inline">CareSystem <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span></div>
 		<strong>Calendar</strong>
 	</footer>
 </div>

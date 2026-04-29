@@ -246,7 +246,7 @@
 	</div>
 
 	<footer class="main-footer text-sm">
-		<strong>CareSystem</strong> &middot; Personalize your experience.
+		<strong>CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span> &middot; Personalize your experience.
 	</footer>
 </div>
 

@@ -233,7 +233,7 @@
 	</div>
 
 	<footer class="main-footer text-sm">
-		<strong>CareSystem</strong> &middot; Manage your account details.
+		<strong>CareSystem</strong> <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span> &middot; Manage your account details.
 	</footer>
 </div>
 

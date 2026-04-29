@@ -13,7 +13,7 @@
 <div class="card login-card">
 	<div class="login-brand">
 		<i class="fas fa-heart-pulse"></i>
-		<h2>D3S3 CareSystem</h2>
+		<h2>D3S3 CareSystem <span class="badge badge-warning" style="font-size:.6rem;vertical-align:middle">Alpha</span></h2>
 		<p>Sign in to your workspace</p>
 	</div>
 

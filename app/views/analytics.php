@@ -376,7 +376,7 @@ load_language($_SESSION['language'] ?? 'en');
 	</div><!-- /content-wrapper -->
 
 	<footer class="main-footer">
-		<div class="float-right d-none d-sm-inline">CareSystem</div>
+		<div class="float-right d-none d-sm-inline">CareSystem <span class="badge badge-warning" style="font-size:.65rem;vertical-align:middle">Alpha</span></div>
 		<strong>Analytics &amp; Reporting</strong>
 	</footer>
 
