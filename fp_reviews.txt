@@ -1,0 +1,17 @@
+[FP1] 9/15/26
+Review the repo with the help of AI
+Deploy and Launch it as a visitor
+Launch it as a super-admin
+Play with the functionality
+
+[FP2] 9/22/26
+Review the "Issues" list
+Come up with Fix plan through AI
+
+[FP3] issues/enhancements
+
+[FP4]  issues/enhancements
+
+[FP5]  issues/enhancements
+
+[FP6] Security, RBAC - other enhancements
