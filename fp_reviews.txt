@@ -9,6 +9,11 @@ Review the "Issues" list
 Come up with Fix plan through AI
 
 [FP3] issues/enhancements
+For each in the issue list, take the help of AI and prepare a fix plan.
+And review the fix plan with me during FP3. We will figure out what to fix.
+I want Simon to fix just one issue
+I want Rebecca to fix just one issue
+
 
 [FP4]  issues/enhancements
 
