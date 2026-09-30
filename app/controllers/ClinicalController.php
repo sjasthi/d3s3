@@ -907,6 +907,16 @@ class ClinicalController
 			$stmt->execute([$patientId]);
 			$currentValues = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
+			// If the patient's phone number changes, require verification again.
+if (array_key_exists('phone_e164', $fieldsToUpdate)) {
+    $oldPhone = $currentValues['phone_e164'] ?? null;
+    $newPhone = $fieldsToUpdate['phone_e164'];
+
+    if ($oldPhone !== $newPhone) {
+        $fieldsToUpdate['phone_verified_at'] = null;
+    }
+}
+
 			// ── Perform the update ─────────────────────────────────────────
 			$setClauses = array_map(fn($f) => "`$f` = ?", array_keys($fieldsToUpdate));
 			$params     = array_values($fieldsToUpdate);
