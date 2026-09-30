@@ -4,8 +4,10 @@
  *
  * To-Do / Task list management.
  * All authenticated users have RW access (no additional role guard beyond auth).
- * Admins (SUPER_ADMIN, ADMIN) can view/update/delete any task.
- * Others can only manage tasks they created or tasks assigned to them.
+ * Admins (SUPER_ADMIN, ADMIN) can view, update, and delete any task.
+ * If a task is assigned, only the assignee and an admin may change its status.
+ * If it is unassigned, the creator and an admin may change its status.
+ * Delete stays with the creator and admins.
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -41,6 +43,12 @@ class TaskController
 		if (isset($_SESSION['tasks_success'])) {
 			$flashSuccess = $_SESSION['tasks_success'];
 			unset($_SESSION['tasks_success']);
+		}
+
+		$flashError = null;
+		if (isset($_SESSION['tasks_error'])) {
+			$flashError = $_SESSION['tasks_error'];
+			unset($_SESSION['tasks_error']);
 		}
 
 		$tab = $_GET['tab'] ?? 'mine';
@@ -190,11 +198,16 @@ class TaskController
 			exit;
 		}
 
-		// Only owner, assignee, or admin may update
-		if (!$isAdmin
-			&& (int)$task['created_by_user_id'] !== $userId
-			&& (int)($task['assigned_to_user_id'] ?? 0) !== $userId
-		) {
+		// Assigned tasks: only the assignee or an admin may change status.
+		// Unassigned tasks: the creator or an admin may change status.
+		$assigneeId = (int)($task['assigned_to_user_id'] ?? 0);
+		$canChangeStatus = $isAdmin
+			|| ($assigneeId > 0
+				? $assigneeId === $userId
+				: (int)$task['created_by_user_id'] === $userId);
+
+		if (!$canChangeStatus) {
+			$_SESSION['tasks_error'] = 'Only the assigned person or an admin can change this task\'s status.';
 			header('Location: tasks.php');
 			exit;
 		}

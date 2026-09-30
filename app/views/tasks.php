@@ -85,6 +85,13 @@
 				</div>
 				<?php endif; ?>
 
+				<?php if (isset($flashError) && $flashError !== null): ?>
+				<div class="alert alert-danger alert-dismissible fade show" role="alert">
+					<i class="fas fa-exclamation-circle mr-2"></i><?= htmlspecialchars($flashError) ?>
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<?php endif; ?>
+
 				<?php if (($view ?? 'list') === 'create'): ?>
 				<!-- ── Create form ───────────────────────────── -->
 				<div class="row justify-content-center">
@@ -210,12 +217,21 @@
 								</thead>
 								<tbody>
 									<?php foreach ($tasks as $task): ?>
-									<?php $canEdit = $isAdmin || (int)$task['created_by_user_id'] === $userId || (int)($task['assigned_to_user_id'] ?? 0) === $userId; ?>
+									<?php
+										$assigneeId = (int)($task['assigned_to_user_id'] ?? 0);
+										$isCreator  = (int)$task['created_by_user_id'] === $userId;
+										// Assigned: assignee and admin. Unassigned: creator and admin.
+										$canChangeStatus = $isAdmin || ($assigneeId > 0 ? $assigneeId === $userId : $isCreator);
+										$canDelete = $isAdmin || $isCreator;
+									?>
 									<tr class="<?= $task['status'] === 'DONE' ? 'text-muted' : '' ?>">
 										<td>
 											<?= htmlspecialchars($task['title']) ?>
 											<?php if (!empty($task['description'])): ?>
-											<br /><small class="text-muted"><?= htmlspecialchars(mb_strimwidth($task['description'], 0, 80, '…')) ?></small>
+											<details class="mt-1">
+												<summary class="small text-muted" style="cursor:pointer">View description</summary>
+												<small class="text-muted d-block mt-1" style="white-space:pre-wrap"><?= htmlspecialchars($task['description']) ?></small>
+											</details>
 											<?php endif; ?>
 										</td>
 										<td>
@@ -242,7 +258,7 @@
 												: '<span class="text-muted">—</span>' ?>
 										</td>
 										<td>
-											<?php if ($canEdit && $task['status'] !== 'DONE'): ?>
+											<?php if ($canChangeStatus && $task['status'] !== 'DONE'): ?>
 											<form method="post" action="tasks.php?action=update" class="d-inline">
 												<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 												<input type="hidden" name="task_id" value="<?= (int)$task['task_id'] ?>" />
@@ -259,7 +275,7 @@
 												<?php endif; ?>
 											</form>
 											<?php endif; ?>
-											<?php if ($canEdit && $task['status'] === 'DONE'): ?>
+											<?php if ($canChangeStatus && $task['status'] === 'DONE'): ?>
 											<form method="post" action="tasks.php?action=update" class="d-inline">
 												<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 												<input type="hidden" name="task_id" value="<?= (int)$task['task_id'] ?>" />
@@ -269,7 +285,7 @@
 												</button>
 											</form>
 											<?php endif; ?>
-											<?php if ($canEdit): ?>
+											<?php if ($canDelete): ?>
 											<form method="post" action="tasks.php?action=delete" class="d-inline"
 											      onsubmit="return confirm('Delete this task?')">
 												<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
