@@ -123,6 +123,7 @@ if ($_isClinicalRole) { try {
 		$_apptSql = "SELECT a.appointment_id, a.case_sheet_id, a.scheduled_time,
 		                    a.status AS appt_status,
 		                    cs.status AS cs_status, cs.chief_complaint,
+		                    cs.assigned_doctor_user_id,
 		                    p.patient_id, p.patient_code, p.first_name, p.last_name,
 		                    p.age_years, p.sex,
 		                    d.first_name AS doc_first, d.last_name AS doc_last,
@@ -453,6 +454,14 @@ $roleLabel = [
 			<div class="container-fluid">
 
 			<?php if ($_isClinicalRole): ?>
+
+			<?php if (!empty($_SESSION['dashboard_notice'])): ?>
+			<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+				<i class="fas fa-exclamation-circle mr-2"></i><?= htmlspecialchars($_SESSION['dashboard_notice']) ?>
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<?php unset($_SESSION['dashboard_notice']); ?>
+			<?php endif; ?>
 
 			<?php if (!empty($staleAppts)): ?>
 			<?php $staleApptCount = count($staleAppts); ?>
@@ -892,7 +901,7 @@ $roleLabel = [
 								<td class="small d-none d-lg-table-cell text-muted"><?= htmlspecialchars($_ta['chief_complaint'] ?? '—') ?></td>
 								<td><?= $_taStatusBadge ?></td>
 								<td class="text-right text-nowrap">
-									<?php if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE'): ?>
+									<?php if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE' && (int)($_ta['assigned_doctor_user_id'] ?? 0) === (int)$_SESSION['user_id']): ?>
 										<form method="post" action="intake.php?action=claim" style="display:inline">
 											<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 											<input type="hidden" name="case_sheet_id" value="<?= (int)$_ta['case_sheet_id'] ?>">
@@ -1470,6 +1479,7 @@ $('#aamReschedBtn').on('click', function () {
 
 /* ── Live patient queue ─────────────────────────────────────────── */
 var USER_ROLE  = <?= json_encode($_userRole) ?>;
+var USER_ID    = <?= (int)($_SESSION['user_id'] ?? 0) ?>;
 var POLL_MS    = 15000;
 var pollTimer  = null;
 var sortable   = null;
@@ -1483,7 +1493,7 @@ function statusBadge(status) {
 }
 
 function actionCell(row) {
-	if (USER_ROLE === 'DOCTOR' && row.status === 'INTAKE_COMPLETE') {
+	if (USER_ROLE === 'DOCTOR' && row.status === 'INTAKE_COMPLETE' && Number(row.assigned_doctor_user_id) === USER_ID) {
 		return '<form method="post" action="intake.php?action=claim" style="display:inline">' +
 			'<input type="hidden" name="csrf_token" value="' + CSRF_TOKEN + '">' +
 			'<input type="hidden" name="case_sheet_id" value="' + row.case_sheet_id + '">' +
