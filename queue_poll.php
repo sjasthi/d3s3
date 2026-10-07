@@ -4,7 +4,7 @@
  * Returns the current patient queue as JSON.
  *
  * Role access:
- *   DOCTOR        → sees INTAKE_COMPLETE and SCHEDULED cases assigned to them (DOCTOR_REVIEW shows in My Active Reviews)
+ *   DOCTOR        → sees INTAKE_COMPLETE cases already assigned to them (DOCTOR_REVIEW shows in My Active Reviews)
  *   NURSE / TRIAGE_NURSE → sees INTAKE_IN_PROGRESS + INTAKE_COMPLETE (any date)
  *   Any clinical  → all open, non-closed cases regardless of visit date
  *
@@ -45,11 +45,11 @@ if ($role === 'DOCTOR') {
 
 $placeholders = implode(',', array_fill(0, count($statuses), '?'));
 
-// Doctors only see cases assigned to them
+// Doctors only see cases already assigned to them.
 $doctorFilter       = '';
 $doctorFilterParams = [];
 if ($role === 'DOCTOR') {
-	$doctorFilter       = 'AND (cs.assigned_doctor_user_id = ? OR cs.assigned_doctor_user_id IS NULL)';
+	$doctorFilter       = 'AND cs.assigned_doctor_user_id = ?';
 	$doctorFilterParams = [(int)$_SESSION['user_id']];
 }
 
@@ -64,6 +64,7 @@ $stmt = $pdo->prepare(
 	        cs.visit_datetime,
 	        cs.queue_position,
 	        cs.assigned_doctor_name,
+	        cs.assigned_doctor_user_id,
 	        p.first_name,
 	        p.last_name,
 	        p.patient_code,
@@ -111,6 +112,7 @@ foreach ($rows as $r) {
 		'age_years'      => $r['age_years'] ? (int)$r['age_years'] : null,
 		'intake_by'      => $intakeBy,
 		'doctor_name'    => $doctorName,
+		'assigned_doctor_user_id' => $r['assigned_doctor_user_id'] !== null ? (int)$r['assigned_doctor_user_id'] : null,
 	];
 }
 
