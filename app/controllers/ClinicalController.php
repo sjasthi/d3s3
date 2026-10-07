@@ -311,16 +311,18 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
-		// Claim if INTAKE_COMPLETE or SCHEDULED (nurse may have pre-assigned a doctor)
+		// Only the doctor already assigned to this case may start the review.
 		$stmt = $pdo->prepare(
 			'UPDATE case_sheets
-			    SET status = ?, assigned_doctor_user_id = ?, assigned_doctor_name = ?, updated_at = NOW()
-			  WHERE case_sheet_id = ? AND status IN (?, ?)'
+			    SET status = ?, updated_at = NOW()
+			  WHERE case_sheet_id = ?
+			    AND assigned_doctor_user_id = ?
+			    AND status IN (?, ?)'
 		);
-		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], trim($_SESSION['user_name'] ?? ''), $caseSheetId, 'INTAKE_COMPLETE', 'SCHEDULED']);
+		$stmt->execute(['DOCTOR_REVIEW', $caseSheetId, (int)$_SESSION['user_id'], 'INTAKE_COMPLETE', 'SCHEDULED']);
 
 		if ($stmt->rowCount() === 0) {
-			$_SESSION['intake_error'] = 'This case sheet is no longer available for review.';
+			$_SESSION['dashboard_notice'] = 'This case is not assigned to you.';
 			header('Location: dashboard.php');
 			exit;
 		}
