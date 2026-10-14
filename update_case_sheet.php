@@ -54,6 +54,19 @@ if (!$caseSheetId || !$field) {
 	exit;
 }
 
+// Issue 24: a nurse cannot change a case sheet after the doctor has submitted it.
+$statusStmt = $pdo->prepare('SELECT status FROM case_sheets WHERE case_sheet_id = ?');
+$statusStmt->execute([$caseSheetId]);
+$caseStatus = $statusStmt->fetchColumn();
+if ($caseStatus === false) {
+	echo json_encode(['success' => false, 'message' => 'Case sheet not found']);
+	exit;
+}
+if ($caseStatus === 'CLOSED' && in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true)) {
+	echo json_encode(['success' => false, 'message' => 'This case was submitted by the doctor and can no longer be changed.']);
+	exit;
+}
+
 // ── Field whitelists ────────────────────────────────────────
 
 // Direct columns (stored as-is in their own column)
