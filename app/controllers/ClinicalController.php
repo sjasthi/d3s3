@@ -275,11 +275,20 @@ class ClinicalController
 		}
 
 		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare('SELECT status FROM case_sheets WHERE case_sheet_id = ?');
+		$stmt = $pdo->prepare('SELECT status, assigned_doctor_user_id FROM case_sheets WHERE case_sheet_id = ?');
 		$stmt->execute([$caseSheetId]);
 		$row = $stmt->fetch();
 
-		if (!$row || $row['status'] !== 'INTAKE_COMPLETE') {
+		$role = $_SESSION['user_role'] ?? '';
+		$status = is_array($row) ? (string)($row['status'] ?? '') : '';
+		$isAssignedDoctor = $role === 'DOCTOR'
+			&& is_array($row)
+			&& (int)($row['assigned_doctor_user_id'] ?? 0) === (int)($_SESSION['user_id'] ?? 0)
+			&& in_array($status, ['INTAKE_COMPLETE', 'DOCTOR_REVIEW'], true);
+		$canAmend = $isAssignedDoctor
+			|| ($role !== 'DOCTOR' && $status === 'INTAKE_COMPLETE' && can($role, 'case_sheets', 'W'));
+
+		if (!$row || !$canAmend) {
 			header('Location: intake.php?action=view&case_sheet_id=' . $caseSheetId);
 			exit;
 		}
