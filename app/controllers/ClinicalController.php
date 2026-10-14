@@ -49,6 +49,13 @@ class ClinicalController
 			$caseSheet = $stmt->fetch();
 
 			if ($caseSheet) {
+				// Issue 24: after the doctor submits the case, a nurse can view it but not edit it.
+				if (($caseSheet['status'] ?? '') === 'CLOSED'
+					&& in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true)) {
+					header('Location: intake.php?action=view&case_sheet_id=' . $caseSheetId);
+					exit;
+				}
+
 				$stmt = $pdo->prepare(
 					'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
 					        age_years, phone_e164, email, address_line1, city, state_province, postal_code,
