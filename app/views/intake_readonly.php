@@ -94,9 +94,14 @@
 					$doctorName  = $caseSheet['doctor_first'] ? htmlspecialchars('Dr. ' . $caseSheet['doctor_first'] . ' ' . $caseSheet['doctor_last']) : null;
 					$createdBy   = $caseSheet['created_first'] ? htmlspecialchars($caseSheet['created_first'] . ' ' . $caseSheet['created_last']) : null;
 
-					$canAmend = can($_SESSION['user_role'] ?? '', 'case_sheets', 'W')
-					         && ($_SESSION['user_role'] ?? '') !== 'DOCTOR'
-					         && $caseSheet['status'] === 'INTAKE_COMPLETE';
+					$role = $_SESSION['user_role'] ?? '';
+					$isAssignedDoctor = $role === 'DOCTOR'
+					    && (int)($caseSheet['assigned_doctor_user_id'] ?? 0) === (int)($_SESSION['user_id'] ?? 0)
+					    && in_array($caseSheet['status'], ['INTAKE_COMPLETE', 'DOCTOR_REVIEW'], true);
+					$canAmend = $isAssignedDoctor
+					    || (can($role, 'case_sheets', 'W')
+					        && $role !== 'DOCTOR'
+					        && $caseSheet['status'] === 'INTAKE_COMPLETE');
 				?>
 				<div class="row align-items-center mb-2">
 					<div class="col">

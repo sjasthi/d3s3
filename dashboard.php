@@ -1498,7 +1498,9 @@ function actionCell(row) {
 			'<input type="hidden" name="csrf_token" value="' + CSRF_TOKEN + '">' +
 			'<input type="hidden" name="case_sheet_id" value="' + row.case_sheet_id + '">' +
 			'<button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-stethoscope mr-1"></i>Review</button>' +
-			'</form>';
+			'</form>' +
+			'<a href="intake.php?action=view&case_sheet_id=' + row.case_sheet_id + '" class="btn btn-sm btn-outline-warning ml-1">' +
+			'<i class="fas fa-pencil-alt mr-1"></i>Edit intake</a>';
 	}
 	if ((USER_ROLE === 'NURSE' || USER_ROLE === 'TRIAGE_NURSE') && row.status === 'INTAKE_IN_PROGRESS') {
 		return '<a href="intake.php?case_sheet_id=' + row.case_sheet_id + '" class="btn btn-sm btn-warning">' +
