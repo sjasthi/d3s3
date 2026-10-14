@@ -88,10 +88,33 @@ if ($_isClinicalRole) { try {
 			        p.patient_id, p.first_name, p.last_name, p.patient_code, p.sex, p.age_years
 			   FROM case_sheets cs
 			   JOIN patients p ON p.patient_id = cs.patient_id
-			  WHERE cs.status = ? AND cs.assigned_doctor_user_id = ?
+			  WHERE cs.status = ?
+              AND (
+                  EXISTS (
+                      SELECT 1
+                      FROM case_doctor_assignments cda
+                      WHERE cda.case_sheet_id = cs.case_sheet_id
+                        AND cda.doctor_user_id = ?
+                        AND cda.status = \'ACTIVE\'
+                  )
+                  OR (
+                      cs.assigned_doctor_user_id = ?
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM case_doctor_assignments cda2
+                          WHERE cda2.case_sheet_id = cs.case_sheet_id
+                            AND cda2.doctor_user_id = ?
+                      )
+                  )
+              )
 			  ORDER BY cs.updated_at DESC'
 		);
-		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id']]);
+		$stmt->execute([
+            'DOCTOR_REVIEW',
+            $_SESSION['user_id'],
+            $_SESSION['user_id'],
+            $_SESSION['user_id']
+        ]);
 		$myActiveReviews = $stmt->fetchAll();
 	}
 
