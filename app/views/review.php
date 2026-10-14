@@ -265,6 +265,13 @@ load_language($_SESSION['language'] ?? 'en');
 								</div>
 								<?php endif; ?>
 								<div class="col-auto ml-auto">
+									<form method="post" action="intake.php?action=amend" class="d-inline mr-2">
+										<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+										<input type="hidden" name="case_sheet_id" value="<?= (int)$cs['case_sheet_id'] ?>">
+										<button type="submit" class="btn btn-sm btn-warning">
+											<i class="fas fa-pencil-alt mr-1"></i>Edit intake
+										</button>
+									</form>
 									<span class="text-muted small"><?= date('M j, Y g:i A', strtotime($cs['visit_datetime'])) ?></span>
 								</div>
 							</div>
