@@ -139,6 +139,13 @@
 		<section class="content">
 			<div class="container-fluid">
 
+				<?php if (in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true) && ($caseSheet['status'] ?? '') === 'CLOSED'): ?>
+				<div class="alert alert-warning">
+					<i class="fas fa-lock mr-1"></i>
+					This case was submitted by the doctor. You can view it, but you can no longer change it.
+				</div>
+				<?php endif; ?>
+
 				<!-- ── Visit Details ──────────────────────────────────────────── -->
 				<div class="card section-card mb-3">
 					<div class="card-header">
