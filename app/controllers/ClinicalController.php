@@ -916,6 +916,22 @@ class ClinicalController
 				'UPDATE patients SET ' . implode(', ', $setClauses) . ' WHERE patient_id = ?'
 			)->execute($params);
 
+			// Issue #27: Reset phone verification when the patient's number changes
+if (array_key_exists('phone_e164', $fieldsToUpdate)) {
+    $oldPhone = $currentValues['phone_e164'] ?? null;
+    $newPhone = $fieldsToUpdate['phone_e164'];
+
+    if ($oldPhone !== $newPhone) {
+        $stmt = $pdo->prepare(
+            'UPDATE patients
+             SET phone_verified = 0,
+                 phone_verified_at = NULL
+             WHERE patient_id = ?'
+        );
+        $stmt->execute([$patientId]);
+    }
+}
+
 			// ── Write audit log for each changed field ──────────────────────
 			// Only logs if a case_sheet_id was provided — backward compatible
 			// with existing intake.php calls that don't pass one.
