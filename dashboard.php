@@ -39,7 +39,9 @@ if ($_isClinicalRole) { try {
 		'total_today'  => (int)($rowToday['total_today']  ?? 0),
 		'closed_today' => (int)($rowToday['closed_today'] ?? 0),
 		'in_progress'  => (int)($rowStatus['in_progress'] ?? 0),
-		'ready'        => (int)($rowStatus['ready']        ?? 0),
+		'ready' => $_userRole === 'DOCTOR'
+    ? count($statPatients['ready'] ?? [])
+    : (int)($rowStatus['ready'] ?? 0),
 		'in_review'    => (int)($rowStatus['in_review']    ?? 0),
 	];
 
@@ -100,7 +102,9 @@ if ($_isClinicalRole) { try {
 	foreach ([
 		'total_today'  => "DATE(cs.visit_datetime) = CURDATE()",
 		'in_progress'  => "cs.status = 'INTAKE_IN_PROGRESS'",
-		'ready'        => "cs.status = 'INTAKE_COMPLETE'",
+		'ready' => $_userRole === 'DOCTOR'
+    ? "cs.status = 'INTAKE_COMPLETE' AND cs.assigned_doctor_user_id = " . (int)$_SESSION['user_id']
+    : "cs.status = 'INTAKE_COMPLETE'",
 		'in_review'    => "cs.status = 'DOCTOR_REVIEW'",
 		'closed_today' => "cs.status = 'CLOSED' AND DATE(cs.closed_at) = CURDATE()",
 	] as $_sk => $_sw) {
@@ -116,7 +120,9 @@ if ($_isClinicalRole) { try {
 		fn($r) => ['patient_id' => $r['patient_id'] ?? null, 'first_name' => $r['first_name'], 'last_name' => $r['last_name'], 'patient_code' => $r['patient_code'], 'case_sheet_id' => $r['case_sheet_id'] ?? null, 'cs_status' => 'DOCTOR_REVIEW'],
 		$myActiveReviews
 	);
-
+if ($_userRole === 'DOCTOR') {
+    $todayStats['ready'] = count($statPatients['ready']);
+}
 	// ── Today's scheduled appointments (for dashboard cards) ────────────────────
 	$todayScheduledAppts = []; // Today's appointments
 	if (can($_userRole, 'appointments')) {
