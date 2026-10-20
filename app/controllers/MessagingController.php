@@ -29,6 +29,12 @@ class MessagingController
 		    in_array($action, ['archive', 'unarchive'], true)) {
 			$this->processArchive($action === 'unarchive');
 		}
+		
+        // POST: delete message
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+            $action === 'delete') {
+            $this->processDelete();
+        }
 
 		// ── POST: send message (always runs before panel logic) ──────────
 		$formError = null;
@@ -78,7 +84,7 @@ class MessagingController
 						        MIN(m.sent_at)  AS sent_at
 						   FROM messages m
 						   JOIN users u ON m.recipient_user_id = u.user_id
-						  WHERE m.sender_user_id = ?
+						  WHERE m.sender_user_id = ? AND m.sender_deleted = 0
 						  GROUP BY m.thread_id
 						  ORDER BY sent_at DESC'
 					);
@@ -87,7 +93,7 @@ class MessagingController
 						'SELECT m.*, u.first_name AS sender_first, u.last_name AS sender_last
 						   FROM messages m
 						   JOIN users u ON m.sender_user_id = u.user_id
-						  WHERE m.recipient_user_id = ? AND m.recipient_archived = 1
+						  WHERE m.recipient_user_id = ? AND m.recipient_archived = 1 AND m.recipient_deleted = 0
 						  ORDER BY m.sent_at DESC'
 					);
 				} else {
@@ -95,7 +101,7 @@ class MessagingController
 						'SELECT m.*, u.first_name AS sender_first, u.last_name AS sender_last
 						   FROM messages m
 						   JOIN users u ON m.sender_user_id = u.user_id
-						  WHERE m.recipient_user_id = ? AND m.recipient_archived = 0
+						  WHERE m.recipient_user_id = ? AND m.recipient_archived = 0 AND m.recipient_deleted = 0
 						  ORDER BY m.sent_at DESC'
 					);
 				}
@@ -103,7 +109,9 @@ class MessagingController
 				$listMessages = $stmt->fetchAll();
 
 				$stmt = $pdo->prepare(
-					'SELECT COUNT(*) FROM messages WHERE recipient_user_id = ? AND is_read = 0 AND recipient_archived = 0'
+					
+                SELECT COUNT(*) FROM messages WHERE recipient_user_id = ? AND is_read = 0 AND recipient_archived = 0 AND recipient_deleted = 0
+
 				);
 				$stmt->execute([$userId]);
 				$unreadCount = (int)$stmt->fetchColumn();
@@ -137,9 +145,16 @@ class MessagingController
 				        s.first_name AS sender_first, s.last_name AS sender_last
 				   FROM messages m
 				   JOIN users s ON m.sender_user_id = s.user_id
-				  WHERE m.message_id = ?'
-			);
-			$stmt->execute([$msgId]);
+				 
+                  WHERE m.message_id = ?
+                    AND (
+                        (m.sender_user_id = ? AND m.sender_deleted = 0)
+                        OR
+                        (m.recipient_user_id = ? AND m.recipient_deleted = 0)
+                    )'
+            );
+            $stmt->execute([$msgId, $userId, $userId]);
+
 			$message = $stmt->fetch();
 
 			if (!$message ||
@@ -287,4 +302,77 @@ class MessagingController
 		}
 		exit;
 	}
+	
+    private function processDelete(): void
+    {
+        header('Content-Type: application/json');
+
+        if (!hash_equals(
+            $_SESSION['csrf_token'] ?? '',
+            $_POST['csrf_token'] ?? ''
+        )) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid request token.'
+            ]);
+            exit;
+        }
+
+        $msgId = (int)($_POST['message_id'] ?? 0);
+        $userId = (int)$_SESSION['user_id'];
+
+        if ($msgId < 1) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid message.'
+            ]);
+            exit;
+        }
+
+        try {
+            $pdo = getDBConnection();
+
+            $stmt = $pdo->prepare(
+    'UPDATE messages
+     SET sender_deleted = 1
+     WHERE sender_user_id = ?
+       AND thread_id = (
+           SELECT thread_id FROM (
+               SELECT thread_id
+               FROM messages
+               WHERE message_id = ?
+                 AND sender_user_id = ?
+           ) AS selected_message
+       )
+       AND sender_deleted = 0'
+);
+$stmt->execute([$userId, $msgId, $userId]);
+
+            $senderUpdated = $stmt->rowCount();
+
+            $stmt = $pdo->prepare(
+                'UPDATE messages
+                 SET recipient_deleted = 1
+                 WHERE message_id = ?
+                 AND recipient_user_id = ?'
+            );
+            $stmt->execute([$msgId, $userId]);
+            $recipientUpdated = $stmt->rowCount();
+
+            echo json_encode([
+                'success' => ($senderUpdated + $recipientUpdated) > 0,
+                'error' => ($senderUpdated + $recipientUpdated) > 0
+                    ? null
+                    : 'Message not found or already deleted.'
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Database error.'
+            ]);
+        }
+
+        exit;
+    }
+
 }
