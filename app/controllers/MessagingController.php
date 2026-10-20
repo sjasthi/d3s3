@@ -110,9 +110,14 @@ class MessagingController
 
 				$stmt = $pdo->prepare(
 					
-                SELECT COUNT(*) FROM messages WHERE recipient_user_id = ? AND is_read = 0 AND recipient_archived = 0 AND recipient_deleted = 0
+    'SELECT COUNT(*) FROM messages
+     WHERE recipient_user_id = ?
+       AND is_read = 0
+       AND recipient_archived = 0
+       AND recipient_deleted = 0'
+);
 
-				);
+
 				$stmt->execute([$userId]);
 				$unreadCount = (int)$stmt->fetchColumn();
 			} catch (Throwable $e) {
