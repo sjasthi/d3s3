@@ -346,6 +346,17 @@ $roleLabels = [
 			<hr class="mt-2 mb-3" />
 			<p class="mb-0" style="white-space:pre-wrap;word-break:break-word"><?= nl2br(htmlspecialchars($message['body'])) ?></p>
 		</div>
+		
+<div class="card-footer">
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            id="deleteBtn"
+		    data-is-sender="<?= (int)((int)$message['sender_user_id'] === (int)$_SESSION['user_id']) ?>"
+            data-message-id="<?= (int)$message['message_id'] ?>"
+            data-csrf="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+        <i class="fas fa-trash mr-1"></i>Delete
+    </button>
+</div>
 		<?php if ((int)$message['recipient_user_id'] === (int)$_SESSION['user_id']): ?>
 		<div class="card-footer d-flex justify-content-between align-items-center" style="gap:.5rem">
 			<button type="button" class="btn btn-outline-secondary btn-sm" id="archiveBtn"
@@ -570,6 +581,58 @@ function initPanelScripts() {
 			.catch(function () { archiveBtn.disabled = false; });
 		});
 	}
+
+    // Delete message button
+    var deleteBtn = contentPanel.querySelector('#deleteBtn');
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () {
+            if (!confirm('Are you sure you want to delete this message?')) {
+                return;
+            }
+
+            var msgId = deleteBtn.dataset.messageId;
+            deleteBtn.disabled = true;
+
+            var data = new FormData();
+            data.append('csrf_token', deleteBtn.dataset.csrf);
+            data.append('message_id', msgId);
+
+            fetch('messages.php?action=delete', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: data
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Delete request failed.');
+                }
+                return response.json();
+            })
+            .then(function (result) {
+                if (!result.success) {
+                    alert(result.error || 'Unable to delete message.');
+                    deleteBtn.disabled = false;
+                    return;
+                }
+
+                // Refresh the message list after deletion.
+                // Return to Sent if the deleted message was sent by this user.
+                var isSender = deleteBtn.dataset.isSender === '1';
+
+                window.location.href = isSender
+                    ? 'messages.php?action=sent'
+                    : 'messages.php';
+
+            })
+            .catch(function () {
+                alert('Unable to delete message. Please try again.');
+                deleteBtn.disabled = false;
+            });
+        });
+    }
 
 	// Init Tom Select if compose was loaded
 	initTomSelect(contentPanel);
