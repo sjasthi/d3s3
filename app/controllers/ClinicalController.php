@@ -636,6 +636,30 @@ class ClinicalController
 		$dob       = $_POST['date_of_birth'] ?? null;
 		$ageYears  = $_POST['age_years'] ?? null;
 		$phone     = trim($_POST['phone_e164'] ?? '');
+		// Issue #35: Additional patient contact information
+$primaryPhoneType = trim($_POST['primary_phone_type'] ?? '');
+$alternatePhone = trim($_POST['alternate_phone_e164'] ?? '');
+$alternatePhoneType = trim($_POST['alternate_phone_type'] ?? '');
+
+$validPhoneTypes = ['SMARTPHONE', 'BASIC_PHONE'];
+
+if ($primaryPhoneType !== '' &&
+    !in_array($primaryPhoneType, $validPhoneTypes, true)) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Invalid primary phone type.'
+    ]);
+    exit;
+}
+
+if ($alternatePhoneType !== '' &&
+    !in_array($alternatePhoneType, $validPhoneTypes, true)) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Invalid alternate phone type.'
+    ]);
+    exit;
+}
 
 		if ($firstName === '') {
 			echo json_encode(['success' => false, 'message' => 'First name is required.']);
@@ -656,11 +680,32 @@ class ClinicalController
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
 		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare(
-			'INSERT INTO patients (first_name, last_name, sex, date_of_birth, age_years, phone_e164, first_seen_date)
-			 VALUES (?, ?, ?, ?, ?, ?, CURDATE())'
-		);
-		$stmt->execute([$firstName, $lastName ?: null, $sex, $dob, $ageYears, $phone ?: null]);
+$stmt = $pdo->prepare(
+    "INSERT INTO patients (
+        first_name,
+        last_name,
+        sex,
+        date_of_birth,
+        age_years,
+        phone_e164,
+        primary_phone_type,
+        alternate_phone_e164,
+        alternate_phone_type,
+        first_seen_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())"
+);
+
+$stmt->execute([
+    $firstName,
+    $lastName ?: null,
+    $sex,
+    $dob,
+    $ageYears,
+    $phone ?: null,
+    $primaryPhoneType ?: null,
+    $alternatePhone ?: null,
+    $alternatePhoneType ?: null
+]);
 		$patientId = (int)$pdo->lastInsertId();
 
 		// Fetch the auto-generated patient_code (set by database trigger)

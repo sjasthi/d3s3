@@ -227,6 +227,39 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="col-md-4"><div class="form-group"><label><?= __('age_years') ?></label><input type="number" class="form-control" id="newAge" min="0" max="150" /></div></div>
 										<div class="col-md-4"><div class="form-group"><label><?= __('phone') ?></label><input type="text" class="form-control" id="newPhone" placeholder="+91..." /></div></div>
 									</div>
+									<!-- Issue #35: Additional Contact Information -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="newPrimaryPhoneType">Primary Phone Type</label>
+            <select class="form-control" id="newPrimaryPhoneType">
+                <option value="">-- Select --</option>
+                <option value="SMARTPHONE">Smartphone</option>
+                <option value="BASIC_PHONE">Basic Phone</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="newAlternatePhone">Alternate Phone Number</label>
+            <input type="tel" class="form-control"
+                   id="newAlternatePhone"
+                   placeholder="Alternate contact number" />
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="newAlternatePhoneType">Alternate Phone Type</label>
+            <select class="form-control" id="newAlternatePhoneType">
+                <option value="">-- Select --</option>
+                <option value="SMARTPHONE">Smartphone</option>
+                <option value="BASIC_PHONE">Basic Phone</option>
+            </select>
+        </div>
+    </div>
+</div>
 									<div id="registerError" class="alert alert-danger d-none"></div>
 									<button type="button" class="btn btn-primary" id="registerPatientBtn"><i class="fas fa-user-plus mr-1"></i><?= __('register_and_select') ?></button>
 								</div>
@@ -1563,7 +1596,11 @@ load_language($_SESSION['language'] ?? 'en');
 			var firstName = $.trim($('#newFirstName').val());
 			if (!firstName) { $err.text('First name is required.').removeClass('d-none'); return; }
 			$btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Registering...');
-			$.post('intake.php?action=register-patient', { csrf_token: csrfToken, first_name: firstName, last_name: $.trim($('#newLastName').val()), sex: $('#newSex').val(), date_of_birth: $('#newDob').val(), age_years: $('#newAge').val(), phone_e164: $.trim($('#newPhone').val()) }, function (data) {
+			$.post('intake.php?action=register-patient', { csrf_token: csrfToken, first_name: firstName, last_name: $.trim($('#newLastName').val()), sex: $('#newSex').val(), date_of_birth: $('#newDob').val(), age_years: $('#newAge').val(), phone_e164: $.trim($('#newPhone').val()),
+primary_phone_type: $('#newPrimaryPhoneType').val(),
+alternate_phone_e164: $.trim($('#newAlternatePhone').val()),
+alternate_phone_type: $('#newAlternatePhoneType').val()
+}, function (data) {
 				$btn.prop('disabled', false).html('<i class="fas fa-user-plus mr-1"></i>Register & Select');
 				if (data.success) { selectPatient({ patient_id: data.patient_id, patient_code: data.patient_code, first_name: data.first_name, last_name: data.last_name || '', sex: $('#newSex').val(), age_years: $('#newAge').val() || null, phone_e164: $.trim($('#newPhone').val()) || null }); $('#newFirstName, #newLastName, #newDob, #newAge, #newPhone').val(''); $('#newSex').val('UNKNOWN'); }
 				else { $err.text(data.message || 'Registration failed.').removeClass('d-none'); }
@@ -2211,10 +2248,22 @@ load_language($_SESSION['language'] ?? 'en');
 		document.getElementById('btnCancelEdit').style.display = '';
 	}
 
-	document.getElementById('btnEditPatient').addEventListener('click', switchToEdit);
-	document.getElementById('btnCancelEdit').addEventListener('click', switchToRead);
+	// Issue #35: Safely attach edit button listeners
+var editPatientBtn = document.getElementById('btnEditPatient');
+var cancelEditBtn = document.getElementById('btnCancelEdit');
 
-	document.getElementById('btnSavePatient').addEventListener('click', function () {
+if (editPatientBtn) {
+    editPatientBtn.addEventListener('click', switchToEdit);
+}
+
+if (cancelEditBtn) {
+    cancelEditBtn.addEventListener('click', switchToRead);
+}
+
+var savePatientBtn = document.getElementById('btnSavePatient');
+
+if (savePatientBtn) {
+    savePatientBtn.addEventListener('click', function () {
 		var btn = this;
 		var patientId = parseInt(document.getElementById('ve-patient_id').value, 10);
 		if (!patientId) { showAlert('Patient ID missing.', 'danger'); return; }
@@ -2284,8 +2333,9 @@ load_language($_SESSION['language'] ?? 'en');
 			btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Changes';
 			showAlert('Network error. Please try again.', 'danger');
 		});
-	});
-}());
+});
+}
+})();
 </script>
 </body>
 </html>
