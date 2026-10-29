@@ -1234,7 +1234,14 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="card-body">
 											<div class="form-group">
 												<label><?= __('risk_level') ?></label>
-												<textarea class="form-control" name="summary_risk_level" data-field="summary_risk_level" rows="3"><?= htmlspecialchars($summaryData['summary_risk_level'] ?? '') ?></textarea>
+												<?php $riskLevel = $summaryData['summary_risk_level'] ?? ''; ?>
+												<select class="form-control" name="summary_risk_level" data-field="summary_risk_level">
+													<option value="">Select risk level</option>
+													<option value="HIGH" <?= $riskLevel === 'HIGH' ? 'selected' : '' ?>>High</option>
+													<option value="MEDIUM" <?= $riskLevel === 'MEDIUM' ? 'selected' : '' ?>>Medium</option>
+													<option value="LOW" <?= $riskLevel === 'LOW' ? 'selected' : '' ?>>Low</option>
+												</select>
+												<small class="text-muted">High-risk patients are shown first in the queue.</small>
 											</div>
 											<div class="form-group">
 												<label><?= __('referral') ?></label>

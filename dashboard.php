@@ -1547,7 +1547,11 @@ function renderQueue(rows) {
 		html += '<tr class="queue-row" data-id="' + row.case_sheet_id + '">';
 		html += '<td class="queue-drag-handle"><i class="fas fa-grip-vertical"></i></td>';
 		html += '<td class="text-muted">' + (idx + 1) + '</td>';
-		html += '<td><a href="patients.php?action=view&id=' + row.patient_id + '" class="font-weight-bold text-primary">' + row.patient_name + '</a><br><small class="text-muted">' + meta + '</small></td>';
+		var riskBadge = '';
+		if (row.risk_level === 'HIGH') riskBadge = ' <span class="badge badge-danger">High risk</span>';
+		else if (row.risk_level === 'MEDIUM') riskBadge = ' <span class="badge badge-warning">Medium risk</span>';
+		else if (row.risk_level === 'LOW') riskBadge = ' <span class="badge badge-success">Low risk</span>';
+		html += '<td><a href="patients.php?action=view&id=' + row.patient_id + '" class="font-weight-bold text-primary">' + row.patient_name + '</a>' + riskBadge + '<br><small class="text-muted">' + meta + '</small></td>';
 		html += '<td>' + statusBadge(row.status) + '</td>';
 		html += '<td><span class="badge badge-info">' + (row.visit_type || '') + '</span></td>';
 		html += '<td>' + (row.chief_complaint || '') + '</td>';

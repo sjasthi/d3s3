@@ -70,6 +70,7 @@ $stmt = $pdo->prepare(
 	        p.patient_code,
 	        p.sex,
 	        p.age_years,
+	        cs.plan_notes,
 	        cs.created_by_name AS intake_by_name,
 	        u.first_name  AS intake_first,
 	        u.last_name   AS intake_last,
@@ -98,6 +99,12 @@ foreach ($rows as $r) {
 		? $r['assigned_doctor_name']
 		: ($r['doctor_first'] ? trim($r['doctor_first'] . ' ' . $r['doctor_last']) : null);
 
+	$plan = json_decode($r['plan_notes'] ?? '', true);
+	$riskLevel = is_array($plan) ? (string)($plan['summary_risk_level'] ?? '') : '';
+	if (!in_array($riskLevel, ['HIGH', 'MEDIUM', 'LOW'], true)) {
+		$riskLevel = '';
+	}
+
 	$out[] = [
 		'case_sheet_id'  => (int)$r['case_sheet_id'],
 		'patient_id'     => (int)$r['patient_id'],
@@ -113,7 +120,18 @@ foreach ($rows as $r) {
 		'intake_by'      => $intakeBy,
 		'doctor_name'    => $doctorName,
 		'assigned_doctor_user_id' => $r['assigned_doctor_user_id'] !== null ? (int)$r['assigned_doctor_user_id'] : null,
+		'risk_level'     => $riskLevel,
 	];
 }
+
+$riskRank = ['HIGH' => 0, 'MEDIUM' => 1, 'LOW' => 2];
+usort($out, function ($a, $b) use ($riskRank) {
+	$rankA = $riskRank[$a['risk_level']] ?? 3;
+	$rankB = $riskRank[$b['risk_level']] ?? 3;
+	if ($rankA !== $rankB) {
+		return $rankA <=> $rankB;
+	}
+	return ($a['queue_position'] ?? 999999) <=> ($b['queue_position'] ?? 999999);
+});
 
 echo json_encode(['success' => true, 'rows' => $out, 'updated_at' => time()]);
