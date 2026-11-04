@@ -260,6 +260,27 @@ load_language($_SESSION['language'] ?? 'en');
         </div>
     </div>
 </div>
+									
+<!-- Issue #25: Source of Patient Intake -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="newIntakeSource">
+                Source of Patient Intake
+                <span class="text-danger">*</span>
+            </label>
+            <select class="form-control" id="newIntakeSource">
+                <option value="">-- Select Intake Source --</option>
+                <option value="PHONE_CALL">Phone Call</option>
+                <option value="MEDICAL_CAMP">Medical Camp</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="GOOGLE_SEARCH">Google Search</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+    </div>
+</div>
+
 									<div id="registerError" class="alert alert-danger d-none"></div>
 									<button type="button" class="btn btn-primary" id="registerPatientBtn"><i class="fas fa-user-plus mr-1"></i><?= __('register_and_select') ?></button>
 								</div>
@@ -1606,7 +1627,9 @@ load_language($_SESSION['language'] ?? 'en');
 			$.post('intake.php?action=register-patient', { csrf_token: csrfToken, first_name: firstName, last_name: $.trim($('#newLastName').val()), sex: $('#newSex').val(), date_of_birth: $('#newDob').val(), age_years: $('#newAge').val(), phone_e164: $.trim($('#newPhone').val()),
 primary_phone_type: $('#newPrimaryPhoneType').val(),
 alternate_phone_e164: $.trim($('#newAlternatePhone').val()),
-alternate_phone_type: $('#newAlternatePhoneType').val()
+alternate_phone_type: $('#newAlternatePhoneType').val(),			
+intake_source: $('#newIntakeSource').val()
+											  
 }, function (data) {
 				$btn.prop('disabled', false).html('<i class="fas fa-user-plus mr-1"></i>Register & Select');
 				if (data.success) { selectPatient({ patient_id: data.patient_id, patient_code: data.patient_code, first_name: data.first_name, last_name: data.last_name || '', sex: $('#newSex').val(), age_years: $('#newAge').val() || null, phone_e164: $.trim($('#newPhone').val()) || null }); $('#newFirstName, #newLastName, #newDob, #newAge, #newPhone').val(''); $('#newSex').val('UNKNOWN'); }
