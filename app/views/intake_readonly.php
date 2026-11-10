@@ -383,7 +383,7 @@
 						'exam_gynae_pv'     => 'Gynaecology (PV)',
 						'exam_gynae_via'    => 'Gynaecology (VIA)',
 					];
-					$hasExam = array_filter(array_keys($examFields), fn($k) => !empty($exam[$k]));
+					$hasExam = array_filter(array_keys($examFields), fn($k) => !empty($exam[$k])) || !empty($exam['exam_head_neck_note']);
 				?>
 				<?php if ($hasExam): ?>
 				<div class="card section-card mb-3">
@@ -396,10 +396,18 @@
 								<?php if (!empty($exam[$key])): ?>
 								<div class="col-sm-6 col-md-4 mb-3">
 									<div class="ro-label"><?= htmlspecialchars($label) ?></div>
-									<div class="ro-value"><?= htmlspecialchars($exam[$key]) ?></div>
+									<div class="ro-value"><?= htmlspecialchars($exam[$key] === 'NORMAL' ? 'Normal' : ($exam[$key] === 'ABNORMAL' ? 'Abnormal' : $exam[$key])) ?></div>
 								</div>
 								<?php endif; ?>
 							<?php endforeach; ?>
+							<?php if (!empty($exam['exam_head_neck_note'])):
+								$noteColor = ($exam['exam_head_neck_note_color'] ?? '') === 'HIGH' ? '#dc3545' : ((($exam['exam_head_neck_note_color'] ?? '') === 'MEDIUM') ? '#6f42c1' : 'inherit');
+							?>
+							<div class="col-12 mb-3">
+								<div class="ro-label">Head and neck note</div>
+								<div class="ro-value" style="color:<?= $noteColor ?>;font-weight:600;white-space:pre-wrap"><?= htmlspecialchars($exam['exam_head_neck_note']) ?></div>
+							</div>
+							<?php endif; ?>
 						</div>
 					</div>
 				</div>

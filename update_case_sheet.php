@@ -115,6 +115,7 @@ $exam_fields = [
 	'exam_teeth', 'exam_tongue', 'exam_oropharynx',
 	'exam_hypo', 'exam_naso_pharynx', 'exam_larynx',
 	'exam_nose', 'exam_ears', 'exam_neck',
+	'exam_head_neck_note', 'exam_head_neck_note_color',
 	'exam_bones_joints', 'exam_abdomen_genital',
 	'exam_breast_left', 'exam_breast_right', 'exam_breast_axillary_nodes',
 	'exam_pelvic_cervix', 'exam_pelvic_uterus', 'exam_pelvic_ovaries', 'exam_pelvic_adnexa',
