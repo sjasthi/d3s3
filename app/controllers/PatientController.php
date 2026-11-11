@@ -171,6 +171,95 @@ class PatientController
 		require __DIR__ . '/../views/patient_profile.php';
 	}
 
+    // Issue #34: Secure consent document viewing
+    public function viewConsent(int $consentId): void
+    {
+        $this->requireRead();
+
+        if ($consentId <= 0) {
+            http_response_code(404);
+            exit('Document not found.');
+        }
+
+        $pdo = getDBConnection();
+
+        $stmt = $pdo->prepare(
+            'SELECT cf.consent_id, cf.patient_id,
+                    cf.stored_filename, cf.file_type
+             FROM patient_consent_forms cf
+             LEFT JOIN case_sheets cs
+               ON cs.case_sheet_id = cf.case_sheet_id
+             WHERE cf.consent_id = ?
+               AND (
+                   cf.case_sheet_id IS NULL
+                   OR cs.patient_id = cf.patient_id
+               )'
+        );
+        $stmt->execute([$consentId]);
+        $document = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$document) {
+            http_response_code(404);
+            exit('Document not found.');
+        }
+
+        $allowedTypes = [
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png'
+        ];
+
+        $mime = $document['file_type'];
+
+        if (!isset($allowedTypes[$mime])) {
+            http_response_code(404);
+            exit('Invalid document type.');
+        }
+
+        $filename = $document['stored_filename'];
+        $extension = $allowedTypes[$mime];
+
+        if (!preg_match(
+            '/^[a-f0-9]{32}\.' . $extension . '$/',
+            $filename
+        )) {
+            http_response_code(404);
+            exit('Invalid document.');
+        }
+
+        $storageDir = getenv('CONSENT_STORAGE_DIR');
+        $baseDir = $storageDir ? realpath($storageDir) : false;
+
+        $file = $baseDir
+            ? realpath($baseDir . DIRECTORY_SEPARATOR . $filename)
+            : false;
+
+        if (!$file ||
+            dirname($file) !== $baseDir ||
+            !is_file($file) ||
+            !is_readable($file)) {
+            http_response_code(404);
+            exit('Document unavailable.');
+        }
+
+        // Log document access using the existing audit mechanism.
+        $this->logAccess(
+            $pdo,
+            (int)$document['patient_id'],
+            'VIEW_PROFILE'
+        );
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="consent-' .
+            $consentId . '.' . $extension . '"');
+        header('Content-Length: ' . filesize($file));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+
+        readfile($file);
+        exit;
+    }
+
 	// ── AJAX patient search ───────────────────────────────────
 	// Accepts GET params: name (string), dob (YYYY-MM-DD).
 	// At least one must be supplied; name alone requires ≥2 chars.
