@@ -15,6 +15,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/case_access.php';
 
 class ClinicalController
 {
@@ -288,60 +289,152 @@ class ClinicalController
 
 	// ── Doctor claims case sheet for review ──────────────────
 
-	public function claimForReview(): void
-	{
-		$this->requireDoctorRole();
 
-		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-			header('Location: dashboard.php');
-			exit;
-		}
+public function claimForReview(): void
+{
+    $this->requireDoctorRole();
 
-		if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
-			$_SESSION['intake_error'] = 'Invalid request token.';
-			header('Location: dashboard.php');
-			exit;
-		}
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		$caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
-		if ($caseSheetId <= 0) {
-			header('Location: dashboard.php');
-			exit;
-		}
+    if (!hash_equals(
+        $_SESSION['csrf_token'] ?? '',
+        $_POST['csrf_token'] ?? ''
+    )) {
+        $_SESSION['intake_error'] = 'Invalid request token.';
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		$pdo = getDBConnection();
+    $caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
 
-		// Claim if INTAKE_COMPLETE or SCHEDULED (nurse may have pre-assigned a doctor)
-		$stmt = $pdo->prepare(
-			'UPDATE case_sheets
-			    SET status = ?, assigned_doctor_user_id = ?, assigned_doctor_name = ?, updated_at = NOW()
-			  WHERE case_sheet_id = ? AND status IN (?, ?)'
-		);
-		$stmt->execute(['DOCTOR_REVIEW', $_SESSION['user_id'], trim($_SESSION['user_name'] ?? ''), $caseSheetId, 'INTAKE_COMPLETE', 'SCHEDULED']);
+    if ($caseSheetId <= 0) {
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		if ($stmt->rowCount() === 0) {
-			$_SESSION['intake_error'] = 'This case sheet is no longer available for review.';
-			header('Location: dashboard.php');
-			exit;
-		}
+    $doctorId = (int)$_SESSION['user_id'];
+    $doctorName = trim($_SESSION['user_name'] ?? '');
+    $pdo = getDBConnection();
 
-		$this->writeAuditLog(
-			$pdo, $caseSheetId, $_SESSION['user_id'],
-			'status', 'INTAKE_COMPLETE', 'DOCTOR_REVIEW'
-		);
+    try {
+        $pdo->beginTransaction();
 
-		// Advance linked appointment to IN_PROGRESS so it reflects active review
-		$pdo->prepare(
-			"UPDATE appointments SET status = 'IN_PROGRESS', updated_at = NOW()
-			  WHERE case_sheet_id = ? AND status IN ('SCHEDULED','CONFIRMED')"
-		)->execute([$caseSheetId]);
+        // Lock the case before claiming it.
+        $stmt = $pdo->prepare(
+            'SELECT status
+             FROM case_sheets
+             WHERE case_sheet_id = ?
+             FOR UPDATE'
+        );
+        $stmt->execute([$caseSheetId]);
+        $oldStatus = $stmt->fetchColumn();
 
-		header('Location: review.php?case_sheet_id=' . $caseSheetId);
-		exit;
-	}
+        if (!in_array(
+            $oldStatus,
+            ['INTAKE_COMPLETE', 'SCHEDULED'],
+            true
+        )) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] =
+                'This case is no longer available.';
+            header('Location: dashboard.php');
+            exit;
+        }
 
-	// ── Doctor review form ───────────────────────────────────
+        // Prevent discontinued doctors from reclaiming cases.
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM case_doctor_assignments
+             WHERE case_sheet_id = ?
+               AND doctor_user_id = ?
+               AND status = 'INACTIVE'"
+        );
 
+        $stmt->execute([$caseSheetId, $doctorId]);
+
+        if ((int)$stmt->fetchColumn() > 0) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] =
+                'You are not authorized to claim this case.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+        // Update the case.
+        $stmt = $pdo->prepare(
+            "UPDATE case_sheets
+             SET status = 'DOCTOR_REVIEW',
+                 assigned_doctor_user_id = ?,
+                 assigned_doctor_name = ?,
+                 updated_at = NOW()
+             WHERE case_sheet_id = ?
+               AND status IN ('INTAKE_COMPLETE', 'SCHEDULED')"
+        );
+
+        $stmt->execute([
+            $doctorId,
+            $doctorName,
+            $caseSheetId
+        ]);
+
+        if ($stmt->rowCount() !== 1) {
+            throw new RuntimeException('Case claim failed.');
+        }
+
+        // Create an active assignment.
+        $stmt = $pdo->prepare(
+            "INSERT INTO case_doctor_assignments
+                (case_sheet_id, doctor_user_id, status)
+             VALUES (?, ?, 'ACTIVE')"
+        );
+
+        $stmt->execute([$caseSheetId, $doctorId]);
+
+        // Record the status change.
+        $this->writeAuditLog(
+            $pdo,
+            $caseSheetId,
+            $doctorId,
+            'status',
+            $oldStatus,
+            'DOCTOR_REVIEW'
+        );
+
+        // Update the linked appointment.
+        $stmt = $pdo->prepare(
+            "UPDATE appointments
+             SET status = 'IN_PROGRESS',
+                 updated_at = NOW()
+             WHERE case_sheet_id = ?
+               AND status IN ('SCHEDULED', 'CONFIRMED')"
+        );
+
+        $stmt->execute([$caseSheetId]);
+
+        $pdo->commit();
+
+        header(
+            'Location: review.php?case_sheet_id=' . $caseSheetId
+        );
+        exit;
+
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        error_log('Case claim failed: ' . $e->getMessage());
+
+        $_SESSION['intake_error'] =
+            'Unable to claim this case. Please try again.';
+
+        header('Location: dashboard.php');
+        exit;
+    }
+}
 	public function doctorReview(): void
 	{
 		$this->requireDoctorRole();
@@ -360,14 +453,26 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
+        // Issue #37: Enforce active specialist access.
+        if (!doctorCanAccessCase(
+            $pdo,
+            $caseSheetId,
+            (int) $_SESSION['user_id']
+        )) {
+            $_SESSION['dashboard_notice'] =
+                'Case sheet not found or not assigned to you.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+
 		// Must be assigned to this doctor and status = DOCTOR_REVIEW
 		$stmt = $pdo->prepare(
 			'SELECT * FROM case_sheets
 			  WHERE case_sheet_id = ?
-			    AND assigned_doctor_user_id = ?
-			    AND status = ?'
+						AND status = ?'
 		);
-		$stmt->execute([$caseSheetId, $_SESSION['user_id'], 'DOCTOR_REVIEW']);
+		$stmt->execute([$caseSheetId, 'DOCTOR_REVIEW']);
 		$caseSheet = $stmt->fetch();
 
 		if (!$caseSheet) {
@@ -523,6 +628,20 @@ class ClinicalController
 		}
 
 		$pdo = getDBConnection();
+
+        // Issue #37: Deny discontinued or unauthorized doctors.
+        if (!doctorCanAccessCase(
+            $pdo,
+            $caseSheetId,
+            (int) $_SESSION['user_id']
+        )) {
+            $_SESSION['review_error'] =
+                'You are not authorized to close this case.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+
 
 		// Fetch current values for audit trail
 		$stmt = $pdo->prepare(
