@@ -272,6 +272,25 @@ load_language($_SESSION['language'] ?? 'en');
     <small class="form-text text-muted">
         Accepted formats: PDF, JPG, PNG. Maximum size: 5 MB.
     </small>
+</div>									
+<!-- Issue #25: Source of Patient Intake -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="newIntakeSource">
+                Source of Patient Intake
+                <span class="text-danger">*</span>
+            </label>
+            <select class="form-control" id="newIntakeSource">
+                <option value="">-- Select Intake Source --</option>
+                <option value="PHONE_CALL">Phone Call</option>
+                <option value="MEDICAL_CAMP">Medical Camp</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="GOOGLE_SEARCH">Google Search</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+    </div>
 </div>
 
 									<div id="registerError" class="alert alert-danger d-none"></div>
@@ -1629,7 +1648,7 @@ $('#registerPatientBtn').on('click', function () {
     formData.append('primary_phone_type', $('#newPrimaryPhoneType').val());
     formData.append('alternate_phone_e164', $.trim($('#newAlternatePhone').val()));
     formData.append('alternate_phone_type', $('#newAlternatePhoneType').val());
-
+    formData.append('intake_source', $('#newIntakeSource').val());
     // Issue #34: Attach optional consent document
     var consentInput = document.getElementById('newConsentForm');
 

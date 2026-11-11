@@ -12,6 +12,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/case_access.php';
 
 class AppointmentController
 {
@@ -671,6 +672,17 @@ class AppointmentController
 
 		$cases = [];
 		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
+if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
+    $doctorUserId = (int)($_SESSION['user_id'] ?? 0);
+
+    if (!doctorCanAccessCase(
+        $pdo,
+        (int)$c['case_sheet_id'],
+        $doctorUserId
+    )) {
+        continue;
+    }
+}
 			$cases[] = [
 				'case_sheet_id'           => (int)$c['case_sheet_id'],
 				'status'                  => $c['status'],
