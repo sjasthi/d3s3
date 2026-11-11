@@ -755,6 +755,26 @@ public function claimForReview(): void
 		$dob       = $_POST['date_of_birth'] ?? null;
 		$ageYears  = $_POST['age_years'] ?? null;
 		$phone     = trim($_POST['phone_e164'] ?? '');
+		
+        // Issue #25: Source of Patient Intake
+        $intakeSource = trim($_POST['intake_source'] ?? '');
+
+        $validIntakeSources = [
+            'PHONE_CALL',
+            'MEDICAL_CAMP',
+            'REFERRAL',
+            'GOOGLE_SEARCH',
+            'OTHER'
+        ];
+
+        if (!in_array($intakeSource, $validIntakeSources, true)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Please select a valid patient intake source.'
+            ]);
+            exit;
+        }
+
 		// Issue #35: Additional patient contact information
 $primaryPhoneType = trim($_POST['primary_phone_type'] ?? '');
 $alternatePhone = trim($_POST['alternate_phone_e164'] ?? '');
@@ -799,6 +819,7 @@ if ($alternatePhoneType !== '' &&
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
 		$pdo  = getDBConnection();
+
 $stmt = $pdo->prepare(
     "INSERT INTO patients (
         first_name,
@@ -810,8 +831,9 @@ $stmt = $pdo->prepare(
         primary_phone_type,
         alternate_phone_e164,
         alternate_phone_type,
+        intake_source,
         first_seen_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())"
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())"
 );
 
 $stmt->execute([
@@ -823,8 +845,10 @@ $stmt->execute([
     $phone ?: null,
     $primaryPhoneType ?: null,
     $alternatePhone ?: null,
-    $alternatePhoneType ?: null
+    $alternatePhoneType ?: null,
+    $intakeSource
 ]);
+
 		$patientId = (int)$pdo->lastInsertId();
 
 		// Fetch the auto-generated patient_code (set by database trigger)
