@@ -749,6 +749,56 @@ public function claimForReview(): void
 			exit;
 		}
 
+		
+    // Issue #34: Validate optional consent form upload
+    $consentFile = $_FILES['consent_form'] ?? null;
+    $consentMime = null;
+
+    if ($consentFile !== null &&
+        $consentFile['error'] !== UPLOAD_ERR_NO_FILE) {
+
+        if ($consentFile['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form upload failed.'
+            ]);
+            exit;
+        }
+
+        if ($consentFile['size'] > 5 * 1024 * 1024) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form must be 5 MB or smaller.'
+            ]);
+            exit;
+        }
+
+        if (!is_uploaded_file($consentFile['tmp_name'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid uploaded file.'
+            ]);
+            exit;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $consentMime = $finfo->file($consentFile['tmp_name']);
+
+        $allowedTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png'
+        ];
+
+        if (!in_array($consentMime, $allowedTypes, true)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Only PDF, JPG, and PNG files are allowed.'
+            ]);
+            exit;
+        }
+    }
+
 		$firstName = trim($_POST['first_name'] ?? '');
 		$lastName  = trim($_POST['last_name'] ?? '');
 		$sex       = $_POST['sex'] ?? 'UNKNOWN';
@@ -819,6 +869,15 @@ if ($alternatePhoneType !== '' &&
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
 		$pdo  = getDBConnection();
+		
+    // Issue #34: Begin transaction for patient registration
+    // and optional consent form upload.
+    $pdo->beginTransaction();
+		
+    // Issue #34: Handle unexpected registration errors
+    $destination = null;
+
+    try {
 
 $stmt = $pdo->prepare(
     "INSERT INTO patients (
@@ -850,11 +909,101 @@ $stmt->execute([
 ]);
 
 		$patientId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Save uploaded consent form
+        if ($consentFile !== null &&
+            $consentFile['error'] === UPLOAD_ERR_OK) {
+
+            $storageDir = getenv('CONSENT_STORAGE_DIR');
+
+            if (!$storageDir ||
+                !is_dir($storageDir) ||
+                !is_writable($storageDir)) {
+                error_log('Consent storage directory unavailable.');
+				
+            // Issue #34: Undo patient registration if storage fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Consent storage is not configured.'
+                ]);
+                exit;
+            }
+
+            $extensions = [
+                'application/pdf' => 'pdf',
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png'
+            ];
+
+            $storedFilename = bin2hex(random_bytes(16))
+                . '.' . $extensions[$consentMime];
+
+            $destination = rtrim($storageDir, DIRECTORY_SEPARATOR)
+                . DIRECTORY_SEPARATOR . $storedFilename;
+
+            if (!move_uploaded_file(
+                $consentFile['tmp_name'],
+                $destination
+            )) {
+				
+            // Issue #34: Roll back registration if upload fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to save consent form.'
+                ]);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO patient_consent_forms
+                     (patient_id, original_filename,
+                      stored_filename, file_type, file_size,
+                      uploaded_by_user_id)
+                     VALUES (?, ?, ?, ?, ?, ?)'
+                );
+
+                $stmt->execute([
+                    $patientId,
+                    basename($consentFile['name']),
+                    $storedFilename,
+                    $consentMime,
+                    $consentFile['size'],
+                    $_SESSION['user_id']
+                ]);
+
+            } catch (Throwable $e) {
+                @unlink($destination);
+                error_log('Consent record save failed: ' . $e->getMessage());
+				
+            // Issue #34: Roll back registration if database save fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to record consent form.'
+                ]);
+                exit;
+            }
+        }
+
 
 		// Fetch the auto-generated patient_code (set by database trigger)
 		$row = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ?');
 		$row->execute([$patientId]);
 		$patientCode = $row->fetchColumn();
+		
+        // Issue #34: Commit successful registration and consent upload
+        $pdo->commit();
 
 		echo json_encode([
 			'success'      => true,
@@ -864,7 +1013,28 @@ $stmt->execute([
 			'last_name'    => $lastName,
 		]);
 		exit;
-	}
+	
+        } catch (Throwable $e) {
+            // Issue #34: Clean up uploaded file on failure
+            if ($destination !== null && is_file($destination)) {
+                @unlink($destination);
+            }
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            error_log('Patient registration failed: ' . $e->getMessage());
+
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unable to complete patient registration.'
+            ]);
+            exit;
+        }
+    }
+
 
 	// ── Create case sheet (Step 1 POST) ─────────────────────
 
@@ -913,6 +1083,24 @@ $stmt->execute([
 		]);
 
 		$newId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Link initial registration consent to first case
+        $priorCases = $pdo->prepare(
+            'SELECT COUNT(*) FROM case_sheets
+             WHERE patient_id = ? AND case_sheet_id != ?'
+        );
+        $priorCases->execute([$patientId, $newId]);
+
+        if ((int)$priorCases->fetchColumn() === 0) {
+            $linkConsent = $pdo->prepare(
+                'UPDATE patient_consent_forms
+                 SET case_sheet_id = ?
+                 WHERE patient_id = ?
+                   AND case_sheet_id IS NULL'
+            );
+            $linkConsent->execute([$newId, $patientId]);
+        }
+
 
 		$this->writeAuditLog(
 			$pdo, $newId, $_SESSION['user_id'],

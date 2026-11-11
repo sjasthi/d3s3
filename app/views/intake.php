@@ -260,7 +260,19 @@ load_language($_SESSION['language'] ?? 'en');
         </div>
     </div>
 </div>
-									
+
+<!-- Issue #34: Consent Form Upload -->
+<div class="form-group mt-3">
+    <label for="newConsentForm">Upload Consent Form (Optional)</label>
+    <input type="file"
+           class="form-control-file"
+           id="newConsentForm"
+           name="consent_form"
+           accept=".pdf,.jpg,.jpeg,.png">
+    <small class="form-text text-muted">
+        Accepted formats: PDF, JPG, PNG. Maximum size: 5 MB.
+    </small>
+</div>									
 <!-- Issue #25: Source of Patient Intake -->
 <div class="row">
     <div class="col-md-6">
@@ -1612,23 +1624,84 @@ load_language($_SESSION['language'] ?? 'en');
 		$(document).on('click', function (e) { if (!$(e.target).closest('#patientSearch, #searchResults').length) $results.hide(); });
 		$('#toggleNewPatient').on('click', function () { $('#newPatientSection').toggleClass('d-none'); });
 
-		$('#registerPatientBtn').on('click', function () {
-			var $btn = $(this), $err = $('#registerError'); $err.addClass('d-none');
-			var firstName = $.trim($('#newFirstName').val());
-			if (!firstName) { $err.text('First name is required.').removeClass('d-none'); return; }
-			$btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Registering...');
-			$.post('intake.php?action=register-patient', { csrf_token: csrfToken, first_name: firstName, last_name: $.trim($('#newLastName').val()), sex: $('#newSex').val(), date_of_birth: $('#newDob').val(), age_years: $('#newAge').val(), phone_e164: $.trim($('#newPhone').val()),
-primary_phone_type: $('#newPrimaryPhoneType').val(),
-alternate_phone_e164: $.trim($('#newAlternatePhone').val()),
-alternate_phone_type: $('#newAlternatePhoneType').val(),			
-intake_source: $('#newIntakeSource').val()
-											  
-}, function (data) {
-				$btn.prop('disabled', false).html('<i class="fas fa-user-plus mr-1"></i>Register & Select');
-				if (data.success) { selectPatient({ patient_id: data.patient_id, patient_code: data.patient_code, first_name: data.first_name, last_name: data.last_name || '', sex: $('#newSex').val(), age_years: $('#newAge').val() || null, phone_e164: $.trim($('#newPhone').val()) || null }); $('#newFirstName, #newLastName, #newDob, #newAge, #newPhone').val(''); $('#newSex').val('UNKNOWN'); }
-				else { $err.text(data.message || 'Registration failed.').removeClass('d-none'); }
-			}, 'json').fail(function () { $btn.prop('disabled', false).html('<i class="fas fa-user-plus mr-1"></i>Register & Select'); $err.text('Server error.').removeClass('d-none'); });
-		});
+		
+$('#registerPatientBtn').on('click', function () {
+    var $btn = $(this);
+    var $err = $('#registerError');
+    $err.addClass('d-none');
+
+    var firstName = $.trim($('#newFirstName').val());
+
+    if (!firstName) {
+        $err.text('First name is required.').removeClass('d-none');
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('first_name', firstName);
+    formData.append('last_name', $.trim($('#newLastName').val()));
+    formData.append('sex', $('#newSex').val());
+    formData.append('date_of_birth', $('#newDob').val());
+    formData.append('age_years', $('#newAge').val());
+    formData.append('phone_e164', $.trim($('#newPhone').val()));
+    formData.append('primary_phone_type', $('#newPrimaryPhoneType').val());
+    formData.append('alternate_phone_e164', $.trim($('#newAlternatePhone').val()));
+    formData.append('alternate_phone_type', $('#newAlternatePhoneType').val());
+    formData.append('intake_source', $('#newIntakeSource').val());
+    // Issue #34: Attach optional consent document
+    var consentInput = document.getElementById('newConsentForm');
+
+    if (consentInput && consentInput.files.length > 0) {
+        var file = consentInput.files[0];
+
+        if (file.size > 5 * 1024 * 1024) {
+            $err.text('Consent form must be 5 MB or smaller.')
+                .removeClass('d-none');
+            return;
+        }
+
+        formData.append('consent_form', file);
+    }
+
+    $btn.prop('disabled', true).text('Registering...');
+
+    $.ajax({
+        url: 'intake.php?action=register-patient',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function (data) {
+            if (data.success) {
+                selectPatient({
+                    patient_id: data.patient_id,
+                    patient_code: data.patient_code,
+                    first_name: data.first_name,
+                    last_name: data.last_name || '',
+                    sex: $('#newSex').val(),
+                    age_years: $('#newAge').val() || null,
+                    phone_e164: $.trim($('#newPhone').val()) || null
+                });
+
+                $('#newConsentForm').val('');
+            } else {
+                $err.text(data.message || 'Registration failed.')
+                    .removeClass('d-none');
+            }
+        },
+        error: function () {
+            $err.text('Server error. Please try again.')
+                .removeClass('d-none');
+        },
+        complete: function () {
+            $btn.prop('disabled', false)
+                .html('<i class="fas fa-user-plus mr-1"></i>Register & Select');
+        }
+    });
+});
+
 
 		$('#intakeCreateForm').on('submit', function (e) { if (!$patientId.val()) { e.preventDefault(); alert('Please select or register a patient first.'); } });
 	}
