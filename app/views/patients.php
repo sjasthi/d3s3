@@ -142,7 +142,6 @@
 							Patient Lookup
 						</h5>
 						<small class="text-muted">Search by name and / or D.O.B.</small>
-						<div><a href="case_export.php">Export case sheets to Excel</a></div>
 					</div>
 
 					<!-- Search form -->

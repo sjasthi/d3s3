@@ -27,9 +27,6 @@ switch ($action) {
 	case 'patient-search':
 		$controller->patientSearch();
 		break;
-	case 'prior-cases':
-		$controller->priorCases();
-		break;
 	case 'register-patient':
 		$controller->registerPatient();
 		break;

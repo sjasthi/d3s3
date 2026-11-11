@@ -1403,7 +1403,7 @@ var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
 var currentApptId = null;
 
 $(document).on('click', '.taReschedBtn, .taCancelBtn', function () {
-	currentApptId = parseInt($(this).attr('data-appt-id'), 10);
+	currentApptId = parseInt($(this).data('appt-id'));
 	var caseSheetId = parseInt($(this).data('case-sheet-id'));
 	var patientName = $(this).data('patient-name');
 	var patientCode = $(this).data('patient-code');
@@ -1638,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	var noShowApptId = null;
 
 	$(document).on('click', '.no-show-btn', function () {
-		noShowApptId = $(this).attr('data-appointment-id');
+		noShowApptId = $(this).data('appointment-id');
 		$('#noShowPatientName').text($(this).data('patient-name'));
 		$('#noShowAlert').addClass('d-none').text('');
 		$('#noShowChoicePanel').removeClass('d-none');

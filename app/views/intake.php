@@ -307,13 +307,6 @@ load_language($_SESSION['language'] ?? 'en');
 									</div>
 								</div>
 								<div class="col-md-8">
-									<div class="form-group d-none" id="priorCaseWrap">
-										<label for="priorCaseSheet">Prior case sheet</label>
-										<select class="form-control" id="priorCaseSheet" name="prior_case_sheet_id">
-											<option value="">Most recent case sheet</option>
-										</select>
-										<small class="text-muted">A follow-up opens a new case sheet and keeps a link to the earlier one.</small>
-									</div>
 									<div class="form-group">
 										<label for="consentForm">Consent form</label>
 										<input type="file" class="form-control-file" id="consentForm" name="consent_form" accept=".pdf,image/*" />
@@ -355,12 +348,6 @@ load_language($_SESSION['language'] ?? 'en');
 				?>
 				<div class="card shadow-sm">
 					<div class="card-body">
-						<?php if (!empty($cs['prior_case_sheet_id'])): ?>
-						<div class="alert alert-info">
-							This is a follow-up. It is linked to prior case sheet
-							<a href="intake.php?action=view&amp;case_sheet_id=<?= (int)$cs['prior_case_sheet_id'] ?>">#<?= (int)$cs['prior_case_sheet_id'] ?></a>.
-						</div>
-						<?php endif; ?>
 						<div class="tab-content" id="intakeTabContent">
 
 							<!-- ── Verification Tab ────────────────── -->
@@ -1725,20 +1712,6 @@ intake_source: $('#newIntakeSource').val()
 		});
 
 		$('#intakeCreateForm').on('submit', function (e) { if (!$patientId.val()) { e.preventDefault(); alert('Please select or register a patient first.'); } });
-		function loadPriorCases() {
-			var patientId = $patientId.val();
-			var isFollowUp = $('#visitType').val() === 'FOLLOW_UP';
-			$('#priorCaseWrap').toggleClass('d-none', !isFollowUp);
-			if (!isFollowUp || !patientId) return;
-			$.getJSON('intake.php?action=prior-cases&patient_id=' + encodeURIComponent(patientId), function (data) {
-				var $sel = $('#priorCaseSheet').empty().append('<option value="">Most recent case sheet</option>');
-				(data.cases || []).forEach(function (c) {
-					var label = (c.visit_datetime || '') + ' · ' + (c.chief_complaint || c.status || ('Case ' + c.case_sheet_id));
-					$sel.append($('<option>').val(c.case_sheet_id).text(label));
-				});
-			});
-		}
-		$('#visitType').on('change', loadPriorCases);
 	}
 })();
 </script>

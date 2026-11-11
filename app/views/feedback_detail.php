@@ -104,13 +104,6 @@
 							</div>
 							<div class="card-body">
 								<p class="mb-0"><?= nl2br(htmlspecialchars($feedback['description'])) ?></p>
-								<?php if (!empty($feedback['audio_stored_name'])): ?>
-								<div class="mt-3">
-									<label class="d-block font-weight-bold">Audio</label>
-									<audio controls preload="none" src="feedback.php?action=audio&amp;id=<?= (int)$feedback['feedback_id'] ?>"></audio>
-									<p class="text-muted small mb-0">Kept with this record. Deleted one year after the feedback is closed.</p>
-								</div>
-								<?php endif; ?>
 							</div>
 							<div class="card-footer text-muted small">
 								Submitted by <?= htmlspecialchars($feedback['submitter_first'] . ' ' . $feedback['submitter_last']) ?>

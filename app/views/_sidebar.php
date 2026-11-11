@@ -287,12 +287,6 @@ if ($_navCanPatientData && !$isPortalMessagesPage) {
 						<p><?= __('nav_assets') ?></p>
 					</a>
 				</li>
-				<li class="nav-item">
-					<a href="press.php" class="nav-link <?= (strpos($currentPage, 'press.php') !== false) ? 'active' : '' ?>">
-						<i class="nav-icon fas fa-newspaper"></i>
-						<p>Photos and press</p>
-					</a>
-				</li>
 				<?php endif; ?>
 
 				<!-- Log Out – always visible -->
