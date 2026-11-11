@@ -167,7 +167,11 @@
 											<br><small class="text-muted"><?= htmlspecialchars($o['patient_code']) ?></small>
 										</td>
 										<td><?= htmlspecialchars($o['test_name']) ?></td>
-										<td><?= $o['result_notes'] ? nl2br(htmlspecialchars($o['result_notes'])) : '<em class="text-muted">No notes</em>' ?></td>
+										<td><?= $o['result_notes'] ? nl2br(htmlspecialchars($o['result_notes'])) : '<em class="text-muted">No notes</em>' ?>
+											<?php if (!empty($o['image_id'])): ?>
+											<div><a href="case_file.php?action=view&amp;id=<?= (int)$o['image_id'] ?>" target="_blank" rel="noopener">View report image</a></div>
+											<?php endif; ?>
+										</td>
 										<td><?= htmlspecialchars(trim(($o['completed_by_first'] ?? '') . ' ' . ($o['completed_by_last'] ?? ''))) ?></td>
 										<td><small><?= htmlspecialchars(date('M j, Y g:i A', strtotime($o['completed_at']))) ?></small></td>
 									</tr>
@@ -208,6 +212,10 @@
 				<div class="form-group mb-1">
 					<label class="font-weight-bold" for="resultNotes">Result Notes <small class="font-weight-normal text-muted">(findings, values, observations)</small></label>
 					<textarea class="form-control" id="resultNotes" rows="4" placeholder="Enter results, values, or any relevant observations&#8230;"></textarea>
+				</div>
+				<div class="form-group mb-1">
+					<label class="font-weight-bold" for="reportImage">Report image <small class="font-weight-normal text-muted">(optional scan or photo)</small></label>
+					<input type="file" class="form-control-file" id="reportImage" accept="image/*,.pdf" />
 				</div>
 				<div class="alert alert-danger d-none mt-2 mb-0" id="completeOrderError"></div>
 			</div>
@@ -273,15 +281,18 @@
 		$error.addClass('d-none');
 		$confirmBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving&hellip;');
 
+		var payload = new FormData();
+		payload.append('csrf_token', csrfToken);
+		payload.append('order_id', activeOrder.id);
+		payload.append('result_notes', $resultNotes.val().trim());
+		var image = document.getElementById('reportImage').files[0];
+		if (image) payload.append('report_image', image);
 		$.ajax({
 			url: 'lab_results.php?action=complete',
 			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify({
-				csrf_token:   csrfToken,
-				order_id:     activeOrder.id,
-				result_notes: $resultNotes.val().trim()
-			}),
+			data: payload,
+			processData: false,
+			contentType: false,
 			dataType: 'json',
 			success: function (r) {
 				if (!r.success) {

@@ -51,6 +51,9 @@ $doctorFilterParams = [];
 if ($role === 'DOCTOR') {
 	$doctorFilter       = 'AND cs.assigned_doctor_user_id = ?';
 	$doctorFilterParams = [(int)$_SESSION['user_id']];
+} elseif ($role === 'TRIAGE_NURSE') {
+	$doctorFilter       = 'AND cs.created_by_user_id = ?';
+	$doctorFilterParams = [(int)$_SESSION['user_id']];
 }
 
 $params = array_merge($statuses, $doctorFilterParams);

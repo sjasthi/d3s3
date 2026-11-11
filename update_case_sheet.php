@@ -55,11 +55,17 @@ if (!$caseSheetId || !$field) {
 }
 
 // Issue 24: a nurse cannot change a case sheet after the doctor has submitted it.
-$statusStmt = $pdo->prepare('SELECT status FROM case_sheets WHERE case_sheet_id = ?');
+$statusStmt = $pdo->prepare('SELECT status, created_by_user_id FROM case_sheets WHERE case_sheet_id = ?');
 $statusStmt->execute([$caseSheetId]);
-$caseStatus = $statusStmt->fetchColumn();
-if ($caseStatus === false) {
+$caseRow = $statusStmt->fetch(PDO::FETCH_ASSOC);
+if (!$caseRow) {
 	echo json_encode(['success' => false, 'message' => 'Case sheet not found']);
+	exit;
+}
+$caseStatus = $caseRow['status'];
+if (($_SESSION['user_role'] ?? '') === 'TRIAGE_NURSE'
+	&& (int)$caseRow['created_by_user_id'] !== (int)$_SESSION['user_id']) {
+	echo json_encode(['success' => false, 'message' => 'You can only change case sheets you created.']);
 	exit;
 }
 if ($caseStatus === 'CLOSED' && in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true)) {

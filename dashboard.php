@@ -17,12 +17,15 @@ $nextEvent       = null;
 $staleSheets     = [];
 
 if ($_isClinicalRole) { try {
+	$_scopeUser = (int)($_SESSION['user_id'] ?? 0);
+	$_triageAnd = ($_userRole === 'TRIAGE_NURSE') ? ' AND created_by_user_id = ' . $_scopeUser : '';
+	$_triageAndCs = ($_userRole === 'TRIAGE_NURSE') ? ' AND cs.created_by_user_id = ' . $_scopeUser : '';
 	// ── Today's visit count (patients who came in today) ─────────────────
 	$rowToday = $pdo->query(
 		"SELECT COUNT(*) AS total_today,
 		        SUM(status = 'CLOSED' AND DATE(closed_at) = CURDATE()) AS closed_today
 		   FROM case_sheets
-		  WHERE DATE(visit_datetime) = CURDATE()"
+		  WHERE DATE(visit_datetime) = CURDATE() $_triageAnd"
 	)->fetch(PDO::FETCH_ASSOC);
 
 	// ── Status counts across ALL open sheets (not date-filtered) ─────────
@@ -32,7 +35,7 @@ if ($_isClinicalRole) { try {
 		        SUM(status = 'INTAKE_COMPLETE')    AS ready,
 		        SUM(status = 'DOCTOR_REVIEW')      AS in_review
 		   FROM case_sheets
-		  WHERE status IN ('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW')"
+		  WHERE status IN ('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW') $_triageAnd"
 	)->fetch(PDO::FETCH_ASSOC);
 
 	$todayStats = [
@@ -108,7 +111,7 @@ if ($_isClinicalRole) { try {
 			"SELECT p.patient_id, p.first_name, p.last_name, p.patient_code, cs.case_sheet_id, cs.status AS cs_status
 			   FROM case_sheets cs
 			   JOIN patients p ON p.patient_id = cs.patient_id
-			  WHERE {$_sw}
+			  WHERE {$_sw} {$_triageAndCs}
 			  ORDER BY cs.visit_datetime ASC"
 		)->fetchAll(PDO::FETCH_ASSOC);
 	}
@@ -141,6 +144,9 @@ if ($_isClinicalRole) { try {
 		$_apptSql .= " AND cs.status IN ('SCHEDULED','INTAKE_IN_PROGRESS')";
 		if ($_userRole === 'DOCTOR') {
 			$_apptSql .= ' AND a.doctor_user_id = ?';
+			$_apptParams[] = (int)$_SESSION['user_id'];
+		} elseif ($_userRole === 'TRIAGE_NURSE') {
+			$_apptSql .= ' AND cs.created_by_user_id = ?';
 			$_apptParams[] = (int)$_SESSION['user_id'];
 		}
 		$_apptSql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -1397,7 +1403,7 @@ var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
 var currentApptId = null;
 
 $(document).on('click', '.taReschedBtn, .taCancelBtn', function () {
-	currentApptId = parseInt($(this).data('appt-id'));
+	currentApptId = parseInt($(this).attr('data-appt-id'), 10);
 	var caseSheetId = parseInt($(this).data('case-sheet-id'));
 	var patientName = $(this).data('patient-name');
 	var patientCode = $(this).data('patient-code');
@@ -1632,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	var noShowApptId = null;
 
 	$(document).on('click', '.no-show-btn', function () {
-		noShowApptId = $(this).data('appointment-id');
+		noShowApptId = $(this).attr('data-appointment-id');
 		$('#noShowPatientName').text($(this).data('patient-name'));
 		$('#noShowAlert').addClass('d-none').text('');
 		$('#noShowChoicePanel').removeClass('d-none');

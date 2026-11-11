@@ -85,7 +85,7 @@
 								<h3 class="card-title"><i class="fas fa-comment-dots mr-2"></i>New Feedback</h3>
 							</div>
 							<div class="card-body">
-								<form method="post" action="feedback.php?action=submit">
+								<form method="post" action="feedback.php?action=submit" enctype="multipart/form-data">
 									<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 
 									<div class="form-group">
@@ -99,6 +99,12 @@
 										<label for="description">Description <span class="text-danger">*</span></label>
 										<textarea name="description" id="description" class="form-control" rows="6"
 										          required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+									</div>
+
+									<div class="form-group">
+										<label for="audio">Audio <span class="text-muted">(optional)</span></label>
+										<input type="file" name="audio" id="audio" class="form-control-file" accept="audio/*,.webm,.mp3,.wav,.m4a,.ogg" />
+										<small class="form-text text-muted">Audio is stored with this feedback record, outside the public web folder. It is deleted one year after the feedback is closed.</small>
 									</div>
 
 									<div class="d-flex justify-content-end">

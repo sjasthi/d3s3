@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/private_storage.php';
 
 class LabResultsController
 {
@@ -40,6 +41,9 @@ class LabResultsController
 			$stmt = $pdo->prepare(
 				'SELECT lo.order_id, lo.test_name, lo.order_notes, lo.result_notes,
 				        lo.ordered_at, lo.completed_at, lo.case_sheet_id,
+				        (SELECT ca.attachment_id FROM case_attachments ca
+				          WHERE ca.lab_order_id = lo.order_id AND ca.kind = \'lab_image\'
+				          ORDER BY ca.attachment_id DESC LIMIT 1) AS image_id,
 				        p.first_name, p.last_name, p.patient_code,
 				        u.first_name  AS ordered_by_first,  u.last_name  AS ordered_by_last,
 				        uc.first_name AS completed_by_first, uc.last_name AS completed_by_last
@@ -75,7 +79,9 @@ class LabResultsController
 			exit;
 		}
 
-		$input = json_decode(file_get_contents('php://input'), true);
+		$input = !empty($_POST['order_id']) || !empty($_FILES['report_image']['name'])
+			? $_POST
+			: (json_decode(file_get_contents('php://input'), true) ?: []);
 
 		if (!hash_equals($_SESSION['csrf_token'] ?? '', $input['csrf_token'] ?? '')) {
 			echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
@@ -111,6 +117,33 @@ class LabResultsController
 		if ($stmt->rowCount() === 0) {
 			echo json_encode(['success' => false, 'message' => 'Order not found or already completed.']);
 			exit;
+		}
+
+		if (!empty($_FILES['report_image']['name'])) {
+			try {
+				$saved = storePrivateFile($_FILES['report_image'], 'case-files', ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 8 * 1024 * 1024);
+				$order = $pdo->prepare('SELECT case_sheet_id, patient_id FROM lab_orders WHERE order_id = ?');
+				$order->execute([$orderId]);
+				$orderRow = $order->fetch(PDO::FETCH_ASSOC) ?: ['case_sheet_id' => null, 'patient_id' => 0];
+				$pdo->prepare(
+					'INSERT INTO case_attachments
+					    (case_sheet_id, patient_id, lab_order_id, kind, stored_name, original_name, mime_type, file_size, locked, uploaded_by_user_id)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'
+				)->execute([
+					$orderRow['case_sheet_id'] ?: null,
+					(int)$orderRow['patient_id'],
+					$orderId,
+					'lab_image',
+					$saved['stored_name'],
+					$saved['original_name'],
+					$saved['mime'],
+					$saved['size'],
+					(int)$_SESSION['user_id'],
+				]);
+			} catch (RuntimeException $e) {
+				echo json_encode(['success' => false, 'message' => 'The result was saved, but the image was not: ' . $e->getMessage()]);
+				exit;
+			}
 		}
 
 		echo json_encode(['success' => true]);

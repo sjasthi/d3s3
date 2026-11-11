@@ -39,6 +39,18 @@ require __DIR__ . '/_nav.php';
 </div>
 <?php endif; ?>
 
+<?php
+	$caseFileKind = 'voice';
+	$caseFileCaseId = 0;
+	$caseFilePatientId = (int)($patient['patient_id'] ?? 0);
+	$caseFileTitle = 'Confidential voice recording';
+	$caseFileMode = 'record';
+	$caseFileNote = 'Record a message for your care team. After you save it, it cannot be edited.';
+	if ($caseFilePatientId > 0) {
+		require dirname(__DIR__) . '/_case_files.php';
+	}
+?>
+
 <h5 class="mb-3">Visit History</h5>
 
 <?php if (empty($caseSheets)): ?>

@@ -185,7 +185,7 @@ load_language($_SESSION['language'] ?? 'en');
 				<!-- ============================================================ -->
 				<!-- STEP 1: Patient Selection / Case Sheet Creation              -->
 				<!-- ============================================================ -->
-				<form method="post" action="intake.php" id="intakeCreateForm">
+				<form method="post" action="intake.php" id="intakeCreateForm" enctype="multipart/form-data">
 					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 					<input type="hidden" name="patient_id" id="patientIdField" value="" />
 
@@ -307,6 +307,18 @@ load_language($_SESSION['language'] ?? 'en');
 									</div>
 								</div>
 								<div class="col-md-8">
+									<div class="form-group d-none" id="priorCaseWrap">
+										<label for="priorCaseSheet">Prior case sheet</label>
+										<select class="form-control" id="priorCaseSheet" name="prior_case_sheet_id">
+											<option value="">Most recent case sheet</option>
+										</select>
+										<small class="text-muted">A follow-up opens a new case sheet and keeps a link to the earlier one.</small>
+									</div>
+									<div class="form-group">
+										<label for="consentForm">Consent form</label>
+										<input type="file" class="form-control-file" id="consentForm" name="consent_form" accept=".pdf,image/*" />
+										<small class="text-muted">Upload the consent document for this visit. It is stored with the case record.</small>
+									</div>
 									<div class="form-group">
 										<label for="chiefComplaint"><?= __('chief_complaint') ?> <span class="text-danger">*</span></label>
 										<input type="text" class="form-control" id="chiefComplaint" name="chief_complaint" maxlength="255" required placeholder="<?= __('chief_complaint_placeholder') ?>" />
@@ -343,10 +355,25 @@ load_language($_SESSION['language'] ?? 'en');
 				?>
 				<div class="card shadow-sm">
 					<div class="card-body">
+						<?php if (!empty($cs['prior_case_sheet_id'])): ?>
+						<div class="alert alert-info">
+							This is a follow-up. It is linked to prior case sheet
+							<a href="intake.php?action=view&amp;case_sheet_id=<?= (int)$cs['prior_case_sheet_id'] ?>">#<?= (int)$cs['prior_case_sheet_id'] ?></a>.
+						</div>
+						<?php endif; ?>
 						<div class="tab-content" id="intakeTabContent">
 
 							<!-- ── Verification Tab ────────────────── -->
 							<div class="tab-pane fade show active" id="tab-verification" role="tabpanel">
+								<?php
+									$caseFileKind = 'consent';
+									$caseFileCaseId = $csId;
+									$caseFilePatientId = (int)$p['patient_id'];
+									$caseFileTitle = 'Consent form';
+									$caseFileMode = 'file';
+									$caseFileNote = 'The consent document for this visit stays with the case record.';
+									require __DIR__ . '/_case_files.php';
+								?>
 								<div class="d-flex align-items-center justify-content-between mb-4">
 									<h4 class="mb-0"><?= __('patient_verification') ?></h4>
 									<div>
@@ -1069,8 +1096,26 @@ load_language($_SESSION['language'] ?? 'en');
 													<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
 												</div>
 											</div>
+											<?php
+												$caseFileKind = 'ultrasound';
+												$caseFileCaseId = $csId;
+												$caseFilePatientId = (int)$p['patient_id'];
+												$caseFileTitle = 'Ultrasound';
+												$caseFileMode = 'image';
+												$caseFileNote = 'Upload the ultrasound image for this pelvic examination.';
+												require __DIR__ . '/_case_files.php';
+											?>
 										</div>
 									</div>
+									<?php
+										$caseFileKind = 'voice';
+										$caseFileCaseId = $csId;
+										$caseFilePatientId = (int)$p['patient_id'];
+										$caseFileTitle = 'Confidential voice recording';
+										$caseFileMode = 'record';
+										$caseFileNote = 'A saved recording is locked so it cannot be edited later.';
+										require __DIR__ . '/_case_files.php';
+									?>
 									<div class="card card-outline card-secondary mb-3">
 										<div class="card-header">
 											<h5 class="card-title mb-0"><i class="fas fa-notes-medical mr-2"></i><?= __('rectal_examination') ?></h5>
@@ -1680,6 +1725,20 @@ intake_source: $('#newIntakeSource').val()
 		});
 
 		$('#intakeCreateForm').on('submit', function (e) { if (!$patientId.val()) { e.preventDefault(); alert('Please select or register a patient first.'); } });
+		function loadPriorCases() {
+			var patientId = $patientId.val();
+			var isFollowUp = $('#visitType').val() === 'FOLLOW_UP';
+			$('#priorCaseWrap').toggleClass('d-none', !isFollowUp);
+			if (!isFollowUp || !patientId) return;
+			$.getJSON('intake.php?action=prior-cases&patient_id=' + encodeURIComponent(patientId), function (data) {
+				var $sel = $('#priorCaseSheet').empty().append('<option value="">Most recent case sheet</option>');
+				(data.cases || []).forEach(function (c) {
+					var label = (c.visit_datetime || '') + ' · ' + (c.chief_complaint || c.status || ('Case ' + c.case_sheet_id));
+					$sel.append($('<option>').val(c.case_sheet_id).text(label));
+				});
+			});
+		}
+		$('#visitType').on('change', loadPriorCases);
 	}
 })();
 </script>

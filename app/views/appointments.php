@@ -895,14 +895,14 @@ function closeApptDrawer() {
 
 function drawerDataFromBtn($b) {
 	return {
-		apptId:        parseInt($b.data('appt-id'), 10),
-		caseSheetId:   parseInt($b.data('case-sheet-id'), 10) || 0,
-		status:        $b.data('status'),
-		patientName:   $b.data('patient-name') || '',
-		patientCode:   $b.data('patient-code') || '',
-		doctorName:    $b.data('doctor-name')  || '',
-		scheduledTime: $b.data('scheduled-time') || '',
-		isNurseAdmin:  $b.data('is-nurse-admin') == '1'
+		apptId:        parseInt($b.attr('data-appt-id'), 10),
+		caseSheetId:   parseInt($b.attr('data-case-sheet-id'), 10) || 0,
+		status:        $b.attr('data-status'),
+		patientName:   $b.attr('data-patient-name') || '',
+		patientCode:   $b.attr('data-patient-code') || '',
+		doctorName:    $b.attr('data-doctor-name')  || '',
+		scheduledTime: $b.attr('data-scheduled-time') || '',
+		isNurseAdmin:  $b.attr('data-is-nurse-admin') === '1'
 	};
 }
 

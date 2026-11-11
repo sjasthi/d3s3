@@ -15,6 +15,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/record_scope.php';
 
 class PatientController
 {
@@ -69,6 +70,7 @@ class PatientController
 			header('Location: patients.php');
 			exit;
 		}
+		denyPatientUnlessNurseOwns($patient);
 
 		// Load portal account (if any)
 		$portalAccount = null;
@@ -96,10 +98,14 @@ class PatientController
 			   FROM case_sheets cs
 			   LEFT JOIN users u1 ON u1.user_id = cs.created_by_user_id
 			   LEFT JOIN users u2 ON u2.user_id = cs.assigned_doctor_user_id
-			  WHERE cs.patient_id = ?
+			  WHERE cs.patient_id = ?' . (scopeRole() === 'TRIAGE_NURSE' ? ' AND cs.created_by_user_id = ?' : '') . '
 			  ORDER BY cs.visit_datetime DESC'
 		);
-		$stmt->execute([$patientId]);
+		$caseParams = [$patientId];
+		if (scopeRole() === 'TRIAGE_NURSE') {
+			$caseParams[] = (int)$_SESSION['user_id'];
+		}
+		$stmt->execute($caseParams);
 		$caseSheets = $stmt->fetchAll();
 
 		// Load patient-portal grievances / feedback (only for roles that can
@@ -202,6 +208,11 @@ class PatientController
 		if (empty($conditions)) {
 			echo json_encode([]);
 			exit;
+		}
+
+		if (scopeRole() === 'NURSE') {
+			$conditions[] = 'p.created_by_user_id = ?';
+			$params[] = (int)$_SESSION['user_id'];
 		}
 
 		$where = implode(' AND ', $conditions);

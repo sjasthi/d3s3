@@ -236,6 +236,15 @@ load_language($_SESSION['language'] ?? 'en');
 
 		<section class="content">
 			<div class="container-fluid">
+				<?php
+					$caseFileKind = 'voice';
+					$caseFileCaseId = (int)$cs['case_sheet_id'];
+					$caseFilePatientId = (int)$p['patient_id'];
+					$caseFileTitle = 'Confidential voice recording';
+					$caseFileMode = 'record';
+					$caseFileNote = 'A saved recording is locked so it cannot be edited later.';
+					require __DIR__ . '/_case_files.php';
+				?>
 				<div class="card shadow-sm">
 					<div class="card-body">
 						<!-- ── This Visit (persistent, shown above all tabs) ── -->
