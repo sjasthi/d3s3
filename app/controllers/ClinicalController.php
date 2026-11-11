@@ -941,6 +941,24 @@ $stmt->execute([
 		]);
 
 		$newId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Link initial registration consent to first case
+        $priorCases = $pdo->prepare(
+            'SELECT COUNT(*) FROM case_sheets
+             WHERE patient_id = ? AND case_sheet_id != ?'
+        );
+        $priorCases->execute([$patientId, $newId]);
+
+        if ((int)$priorCases->fetchColumn() === 0) {
+            $linkConsent = $pdo->prepare(
+                'UPDATE patient_consent_forms
+                 SET case_sheet_id = ?
+                 WHERE patient_id = ?
+                   AND case_sheet_id IS NULL'
+            );
+            $linkConsent->execute([$newId, $patientId]);
+        }
+
 
 		$this->writeAuditLog(
 			$pdo, $newId, $_SESSION['user_id'],
