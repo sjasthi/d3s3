@@ -254,7 +254,7 @@ class PatientController
         $this->logAccess(
             $pdo,
             (int)$document['patient_id'],
-            'VIEW_PROFILE'
+            'VIEW_CONSENT'
         );
 
         header('Content-Type: ' . $mime);
