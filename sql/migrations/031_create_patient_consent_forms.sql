@@ -3,13 +3,13 @@
 
 CREATE TABLE IF NOT EXISTS patient_consent_forms (
     consent_id INT AUTO_INCREMENT PRIMARY KEY,
-    patient_id INT NOT NULL,
-    case_sheet_id INT NULL,
+    patient_id INT UNSIGNED NOT NULL,
+    case_sheet_id BIGINT UNSIGNED NULL,
     original_filename VARCHAR(255) NOT NULL,
     stored_filename VARCHAR(255) NOT NULL,
     file_type VARCHAR(100) NOT NULL,
     file_size INT UNSIGNED NOT NULL,
-    uploaded_by_user_id INT NOT NULL,
+    uploaded_by_user_id INT UNSIGNED NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     INDEX idx_consent_patient (patient_id),
