@@ -730,6 +730,16 @@ if ($alternatePhoneType !== '' &&
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
 		$pdo  = getDBConnection();
+		
+    // Issue #34: Begin transaction for patient registration
+    // and optional consent form upload.
+    $pdo->beginTransaction();
+		
+    // Issue #34: Handle unexpected registration errors
+    $destination = null;
+
+    try {
+
 $stmt = $pdo->prepare(
     "INSERT INTO patients (
         first_name,
@@ -768,6 +778,12 @@ $stmt->execute([
                 !is_dir($storageDir) ||
                 !is_writable($storageDir)) {
                 error_log('Consent storage directory unavailable.');
+				
+            // Issue #34: Undo patient registration if storage fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
                 echo json_encode([
                     'success' => false,
                     'message' => 'Consent storage is not configured.'
@@ -791,6 +807,11 @@ $stmt->execute([
                 $consentFile['tmp_name'],
                 $destination
             )) {
+				
+            // Issue #34: Roll back registration if upload fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
                 echo json_encode([
                     'success' => false,
                     'message' => 'Unable to save consent form.'
@@ -819,6 +840,11 @@ $stmt->execute([
             } catch (Throwable $e) {
                 @unlink($destination);
                 error_log('Consent record save failed: ' . $e->getMessage());
+				
+            // Issue #34: Roll back registration if database save fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
                 echo json_encode([
                     'success' => false,
@@ -833,6 +859,9 @@ $stmt->execute([
 		$row = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ?');
 		$row->execute([$patientId]);
 		$patientCode = $row->fetchColumn();
+		
+        // Issue #34: Commit successful registration and consent upload
+        $pdo->commit();
 
 		echo json_encode([
 			'success'      => true,
@@ -842,7 +871,28 @@ $stmt->execute([
 			'last_name'    => $lastName,
 		]);
 		exit;
-	}
+	
+        } catch (Throwable $e) {
+            // Issue #34: Clean up uploaded file on failure
+            if ($destination !== null && is_file($destination)) {
+                @unlink($destination);
+            }
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            error_log('Patient registration failed: ' . $e->getMessage());
+
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unable to complete patient registration.'
+            ]);
+            exit;
+        }
+    }
+
 
 	// ── Create case sheet (Step 1 POST) ─────────────────────
 
