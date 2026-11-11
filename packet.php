@@ -45,7 +45,7 @@ $lines = [
 if ($case) {
 	$lines[] = 'Visit: ' . ($case['visit_datetime'] ?? '') . ' ' . ($case['visit_type'] ?? '');
 	$lines[] = 'Chief complaint: ' . ($case['chief_complaint'] ?? '');
-	$lines[] = 'Plan: ' . trim(strip_tags((string)($case['doctor_plan_notes'] ?: $case['plan_notes'] ?? '')));
+	$lines[] = 'Plan: ' . packetPlainText((string)($case['doctor_plan_notes'] ?: $case['plan_notes'] ?? ''));
 	$lines[] = 'Medicines: ' . trim((string)($case['prescriptions'] ?? ''));
 	$lines[] = 'Advice: ' . trim((string)($case['advice'] ?? ''));
 	$lines[] = 'Follow-up date: ' . ($case['follow_up_date'] ?? '');
@@ -58,7 +58,35 @@ $lines = array_map(static function ($line) {
 }, $lines);
 $message = implode("\n", array_filter($lines, static fn($l) => $l !== ''));
 
-$digits = preg_replace('/\D+/', '', (string)($patient['phone_e164'] ?? ''));
+$phone = (string)($patient['phone_e164'] ?? '');
+if ($phone === '' && !empty($patient['alternate_phone_e164'])) {
+	$phone = (string)$patient['alternate_phone_e164'];
+}
+$digits = preg_replace('/\D+/', '', $phone);
 $waUrl = $digits !== '' ? 'https://wa.me/' . $digits . '?text=' . rawurlencode($message) : '';
 
 require __DIR__ . '/app/views/packet.php';
+
+function packetPlainText(string $value): string
+{
+	$value = trim($value);
+	if ($value === '') {
+		return '';
+	}
+	$decoded = json_decode($value, true);
+	if (!is_array($decoded)) {
+		return trim(strip_tags($value));
+	}
+	$parts = [];
+	foreach ($decoded as $key => $item) {
+		if (!is_scalar($item)) {
+			continue;
+		}
+		$text = trim((string)$item);
+		if ($text === '') {
+			continue;
+		}
+		$parts[] = ucfirst(str_replace('_', ' ', (string)$key)) . ': ' . $text;
+	}
+	return implode('; ', $parts);
+}

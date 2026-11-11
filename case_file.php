@@ -123,6 +123,24 @@ function uploadCaseFile(PDO $pdo): void
 		}
 	}
 
+	if ($kind === 'voice') {
+		$voiceSql = 'SELECT attachment_id FROM case_attachments WHERE kind = ? AND locked = 1';
+		$voiceParams = ['voice'];
+		if ($caseSheetId > 0) {
+			$voiceSql .= ' AND case_sheet_id = ?';
+			$voiceParams[] = $caseSheetId;
+		} else {
+			$voiceSql .= ' AND patient_id = ? AND case_sheet_id IS NULL';
+			$voiceParams[] = $patientId;
+		}
+		$voiceStmt = $pdo->prepare($voiceSql);
+		$voiceStmt->execute($voiceParams);
+		if ($voiceStmt->fetchColumn()) {
+			echo json_encode(['success' => false, 'message' => 'A voice recording is already locked for this record.']);
+			exit;
+		}
+	}
+
 	if ($patientId <= 0 || empty($_FILES['file'])) {
 		echo json_encode(['success' => false, 'message' => 'A file and a patient are required.']);
 		exit;

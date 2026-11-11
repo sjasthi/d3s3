@@ -25,6 +25,13 @@ try {
 } catch (Throwable $e) {
 	$caseFileRows = [];
 }
+$caseFileLocked = false;
+foreach ($caseFileRows as $cfLocked) {
+	if ((int)$cfLocked['locked'] === 1) {
+		$caseFileLocked = true;
+		break;
+	}
+}
 $panelId = 'cf_' . preg_replace('/[^a-z0-9_]/', '', $caseFileKind) . '_' . $caseFileCaseId;
 ?>
 <div class="card card-outline card-secondary mb-3" id="<?= htmlspecialchars($panelId) ?>">
@@ -57,7 +64,9 @@ $panelId = 'cf_' . preg_replace('/[^a-z0-9_]/', '', $caseFileKind) . '_' . $case
 			<?php endforeach; ?>
 		</div>
 		<div class="case-file-alert alert alert-danger d-none py-2"></div>
-		<?php if ($caseFileMode === 'record'): ?>
+		<?php if ($caseFileMode === 'record' && $caseFileLocked): ?>
+		<p class="text-muted small mb-0">This recording is locked and cannot be replaced.</p>
+		<?php elseif ($caseFileMode === 'record'): ?>
 		<button type="button" class="btn btn-sm btn-outline-danger case-file-record">
 			<i class="fas fa-microphone mr-1"></i>Record
 		</button>
