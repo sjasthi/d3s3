@@ -260,6 +260,20 @@ load_language($_SESSION['language'] ?? 'en');
         </div>
     </div>
 </div>
+
+<!-- Issue #34: Consent Form Upload -->
+<div class="form-group mt-3">
+    <label for="newConsentForm">Upload Consent Form (Optional)</label>
+    <input type="file"
+           class="form-control-file"
+           id="newConsentForm"
+           name="consent_form"
+           accept=".pdf,.jpg,.jpeg,.png">
+    <small class="form-text text-muted">
+        Accepted formats: PDF, JPG, PNG. Maximum size: 5 MB.
+    </small>
+</div>
+
 									<div id="registerError" class="alert alert-danger d-none"></div>
 									<button type="button" class="btn btn-primary" id="registerPatientBtn"><i class="fas fa-user-plus mr-1"></i><?= __('register_and_select') ?></button>
 								</div>
