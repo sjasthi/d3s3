@@ -101,6 +101,22 @@ class PatientController
 		);
 		$stmt->execute([$patientId]);
 		$caseSheets = $stmt->fetchAll();
+		
+        // Issue #34: Load consent documents for this patient
+        $consentForms = [];
+
+        $stmt = $pdo->prepare(
+            'SELECT consent_id, patient_id, case_sheet_id,
+                    original_filename, file_type, file_size,
+                    uploaded_at
+             FROM patient_consent_forms
+             WHERE patient_id = ?
+             ORDER BY uploaded_at DESC'
+        );
+
+        $stmt->execute([$patientId]);
+        $consentForms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 
 		// Load patient-portal grievances / feedback (only for roles that can
 		// read the feedback resource — same gate as the Feedback menu item).
