@@ -176,6 +176,14 @@ class PatientController
     {
         $this->requireRead();
 
+        // Issue #34: Require clinical record read access
+        $role = $_SESSION['user_role'] ?? '';
+
+        if (!can($role, 'case_sheets', 'R')) {
+            http_response_code(403);
+            exit('Access denied.');
+        }
+
         if ($consentId <= 0) {
             http_response_code(404);
             exit('Document not found.');
