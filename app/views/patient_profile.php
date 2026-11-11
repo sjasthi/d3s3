@@ -1024,6 +1024,46 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 												</div>
 												<?php endif; ?>
 
+												
+<!-- Issue #34: Consent Documents -->
+<?php
+$caseConsentForms = array_filter(
+    $consentForms ?? [],
+    static function ($consent) use ($_csId) {
+        return (int)($consent['case_sheet_id'] ?? 0) === $_csId;
+    }
+);
+?>
+
+<?php if (!empty($caseConsentForms)): ?>
+<div class="cs-modal-section-title">
+    <i class="fas fa-file-pdf mr-1"></i>Consent Documents
+</div>
+
+<div class="list-group mb-3">
+    <?php foreach ($caseConsentForms as $consent): ?>
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-file-alt text-primary mr-2"></i>
+            <?= htmlspecialchars($consent['original_filename']) ?>
+
+            <small class="text-muted d-block">
+                Uploaded:
+                <?= htmlspecialchars(
+                    date('d M Y, H:i', strtotime($consent['uploaded_at']))
+                ) ?>
+            </small>
+        </div>
+
+        <a class="btn btn-sm btn-outline-primary"
+           href="patients.php?action=view-consent&amp;consent_id=<?= (int)$consent['consent_id'] ?>">
+            <i class="fas fa-download mr-1"></i>Download
+        </a>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 												<!-- Record metadata -->
 												<div class="cs-modal-section-title">
 													<i class="fas fa-info-circle mr-1"></i>Record Information
