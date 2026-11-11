@@ -38,14 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 }
 
+	
 switch ($action) {
-	case 'view':
-		$controller->view((int)($_GET['id'] ?? 0));
-		break;
-	case 'search':
-		$controller->searchAjax();
-		break;
-	default:
-		$controller->index();
-		break;
+    case 'view':
+        $controller->view((int)($_GET['id'] ?? 0));
+        break;
+
+    // Issue #34: Protected consent document viewing
+    case 'view-consent':
+        $controller->viewConsent(
+            (int)($_GET['consent_id'] ?? 0)
+        );
+        break;
+
+    case 'search':
+        $controller->searchAjax();
+        break;
+
+    default:
+        $controller->index();
+        break;
 }
