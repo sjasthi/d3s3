@@ -607,6 +607,40 @@ class ClinicalController
 
 	// ── Patient search (AJAX) ───────────────────────────────
 
+	public function priorCases(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		$patientId = (int)($_GET['patient_id'] ?? 0);
+		if ($patientId <= 0) {
+			echo json_encode(['success' => true, 'cases' => []]);
+			exit;
+		}
+
+		$pdo = getDBConnection();
+		$patient = $pdo->prepare('SELECT * FROM patients WHERE patient_id = ?');
+		$patient->execute([$patientId]);
+		if (!nurseOwnsPatient($patient->fetch(PDO::FETCH_ASSOC) ?: null)) {
+			echo json_encode(['success' => false, 'cases' => []]);
+			exit;
+		}
+
+		$sql = 'SELECT case_sheet_id, visit_datetime, visit_type, status, chief_complaint
+		          FROM case_sheets
+		         WHERE patient_id = ?';
+		$params = [$patientId];
+		if (scopeRole() === 'TRIAGE_NURSE') {
+			$sql .= ' AND created_by_user_id = ?';
+			$params[] = (int)$_SESSION['user_id'];
+		}
+		$sql .= ' ORDER BY visit_datetime DESC, case_sheet_id DESC LIMIT 20';
+		$stmt = $pdo->prepare($sql);
+		$stmt->execute($params);
+		echo json_encode(['success' => true, 'cases' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+		exit;
+	}
+
 	public function patientSearch(): void
 	{
 		$this->requireClinicalRole();
@@ -812,13 +846,40 @@ $stmt->execute([
 			return 'Patient not found.';
 		}
 
+		$priorId = null;
+		if ($visitType === 'FOLLOW_UP') {
+			$requested = (int)($_POST['prior_case_sheet_id'] ?? 0);
+			$scope = '';
+			$scopeParams = [];
+			if (scopeRole() === 'TRIAGE_NURSE') {
+				$scope = ' AND created_by_user_id = ?';
+				$scopeParams[] = (int)$_SESSION['user_id'];
+			}
+			if ($requested > 0) {
+				$chk = $pdo->prepare('SELECT case_sheet_id FROM case_sheets WHERE case_sheet_id = ? AND patient_id = ?' . $scope);
+				$chk->execute(array_merge([$requested, $patientId], $scopeParams));
+				if ($chk->fetchColumn()) {
+					$priorId = $requested;
+				}
+			}
+			if ($priorId === null) {
+				$chk = $pdo->prepare(
+					'SELECT case_sheet_id FROM case_sheets WHERE patient_id = ?' . $scope . ' ORDER BY visit_datetime DESC, case_sheet_id DESC LIMIT 1'
+				);
+				$chk->execute(array_merge([$patientId], $scopeParams));
+				$found = (int)$chk->fetchColumn();
+				$priorId = $found > 0 ? $found : null;
+			}
+		}
+
 		$stmt = $pdo->prepare(
 			'INSERT INTO case_sheets
-			    (patient_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
-			 VALUES (?, ?, ?, ?, ?, ?)'
+			    (patient_id, prior_case_sheet_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)'
 		);
 		$stmt->execute([
 			$patientId,
+			$priorId,
 			$visitType,
 			'INTAKE_IN_PROGRESS',
 			$_SESSION['user_id'],

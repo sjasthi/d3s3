@@ -161,6 +161,12 @@
 							<div class="col-sm-4 mb-3">
 								<div class="ro-label">Visit Type</div>
 								<div class="ro-value"><?= htmlspecialchars($caseSheet['visit_type'] ?? '') ?: '<span class="ro-empty">—</span>' ?></div>
+								<?php if (!empty($caseSheet['prior_case_sheet_id'])): ?>
+								<div class="small mt-1">
+									Follow-up of
+									<a href="intake.php?action=view&amp;case_sheet_id=<?= (int)$caseSheet['prior_case_sheet_id'] ?>">case #<?= (int)$caseSheet['prior_case_sheet_id'] ?></a>
+								</div>
+								<?php endif; ?>
 							</div>
 							<div class="col-sm-4 mb-3">
 								<div class="ro-label">Assigned Doctor</div>
