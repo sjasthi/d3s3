@@ -757,6 +757,77 @@ $stmt->execute([
     $alternatePhoneType ?: null
 ]);
 		$patientId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Save uploaded consent form
+        if ($consentFile !== null &&
+            $consentFile['error'] === UPLOAD_ERR_OK) {
+
+            $storageDir = getenv('CONSENT_STORAGE_DIR');
+
+            if (!$storageDir ||
+                !is_dir($storageDir) ||
+                !is_writable($storageDir)) {
+                error_log('Consent storage directory unavailable.');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Consent storage is not configured.'
+                ]);
+                exit;
+            }
+
+            $extensions = [
+                'application/pdf' => 'pdf',
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png'
+            ];
+
+            $storedFilename = bin2hex(random_bytes(16))
+                . '.' . $extensions[$consentMime];
+
+            $destination = rtrim($storageDir, DIRECTORY_SEPARATOR)
+                . DIRECTORY_SEPARATOR . $storedFilename;
+
+            if (!move_uploaded_file(
+                $consentFile['tmp_name'],
+                $destination
+            )) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to save consent form.'
+                ]);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO patient_consent_forms
+                     (patient_id, original_filename,
+                      stored_filename, file_type, file_size,
+                      uploaded_by_user_id)
+                     VALUES (?, ?, ?, ?, ?, ?)'
+                );
+
+                $stmt->execute([
+                    $patientId,
+                    basename($consentFile['name']),
+                    $storedFilename,
+                    $consentMime,
+                    $consentFile['size'],
+                    $_SESSION['user_id']
+                ]);
+
+            } catch (Throwable $e) {
+                @unlink($destination);
+                error_log('Consent record save failed: ' . $e->getMessage());
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to record consent form.'
+                ]);
+                exit;
+            }
+        }
+
 
 		// Fetch the auto-generated patient_code (set by database trigger)
 		$row = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ?');
