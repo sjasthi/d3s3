@@ -630,6 +630,56 @@ class ClinicalController
 			exit;
 		}
 
+		
+    // Issue #34: Validate optional consent form upload
+    $consentFile = $_FILES['consent_form'] ?? null;
+    $consentMime = null;
+
+    if ($consentFile !== null &&
+        $consentFile['error'] !== UPLOAD_ERR_NO_FILE) {
+
+        if ($consentFile['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form upload failed.'
+            ]);
+            exit;
+        }
+
+        if ($consentFile['size'] > 5 * 1024 * 1024) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form must be 5 MB or smaller.'
+            ]);
+            exit;
+        }
+
+        if (!is_uploaded_file($consentFile['tmp_name'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid uploaded file.'
+            ]);
+            exit;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $consentMime = $finfo->file($consentFile['tmp_name']);
+
+        $allowedTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png'
+        ];
+
+        if (!in_array($consentMime, $allowedTypes, true)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Only PDF, JPG, and PNG files are allowed.'
+            ]);
+            exit;
+        }
+    }
+
 		$firstName = trim($_POST['first_name'] ?? '');
 		$lastName  = trim($_POST['last_name'] ?? '');
 		$sex       = $_POST['sex'] ?? 'UNKNOWN';
