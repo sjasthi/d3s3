@@ -49,7 +49,7 @@ $placeholders = implode(',', array_fill(0, count($statuses), '?'));
 $doctorFilter       = '';
 $doctorFilterParams = [];
 if ($role === 'DOCTOR') {
-	$doctorFilter       = 'AND (cs.assigned_doctor_user_id = ? OR cs.assigned_doctor_user_id IS NULL)';
+	$doctorFilter       = 'AND cs.assigned_doctor_user_id = ?';
 	$doctorFilterParams = [(int)$_SESSION['user_id']];
 }
 
