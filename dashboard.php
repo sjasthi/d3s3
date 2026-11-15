@@ -171,7 +171,8 @@ if ($_userRole === 'DOCTOR') {
 			$_apptSql .= ' AND a.doctor_user_id = ?';
 			$_apptParams[] = (int)$_SESSION['user_id'];
 		} elseif ($_userRole === 'TRIAGE_NURSE') {
-			$_apptSql .= ' AND cs.created_by_user_id = ?';
+			// Scope by appointment creator (not case-sheet creator).
+			$_apptSql .= ' AND a.created_by_user_id = ?';
 			$_apptParams[] = (int)$_SESSION['user_id'];
 		}
 		$_apptSql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";

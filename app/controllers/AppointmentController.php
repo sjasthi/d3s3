@@ -65,7 +65,8 @@ class AppointmentController
 			$todaySql .= ' AND a.doctor_user_id = ?';
 			$todayParams[] = (int)$_SESSION['user_id'];
 		} elseif ($role === 'TRIAGE_NURSE') {
-			$todaySql .= ' AND cs.created_by_user_id = ?';
+			// Scope by appointment creator (not case-sheet creator).
+			$todaySql .= ' AND a.created_by_user_id = ?';
 			$todayParams[] = (int)$_SESSION['user_id'];
 		}
 		$todaySql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -109,7 +110,8 @@ class AppointmentController
 			$upcomingSql .= ' AND a.doctor_user_id = ?';
 			$upcomingParams[] = (int)$_SESSION['user_id'];
 		} elseif ($role === 'TRIAGE_NURSE') {
-			$upcomingSql .= ' AND cs.created_by_user_id = ?';
+			// Scope by appointment creator (not case-sheet creator).
+			$upcomingSql .= ' AND a.created_by_user_id = ?';
 			$upcomingParams[] = (int)$_SESSION['user_id'];
 		}
 		$upcomingSql .= " ORDER BY a.scheduled_date ASC, COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -947,7 +949,10 @@ if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
 		}
 
 		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare('SELECT appointment_id, case_sheet_id, doctor_user_id, status FROM appointments WHERE appointment_id = ?');
+		$stmt = $pdo->prepare(
+			'SELECT appointment_id, case_sheet_id, doctor_user_id, status, created_by_user_id
+			   FROM appointments WHERE appointment_id = ?'
+		);
 		$stmt->execute([$appointmentId]);
 		$appt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -966,11 +971,9 @@ if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
 			echo json_encode(['success' => false, 'message' => 'Permission denied.']);
 			exit;
 		} elseif ($role === 'TRIAGE_NURSE') {
-			// Triage nurses may reschedule only case sheets they created.
-			$own = $pdo->prepare('SELECT created_by_user_id FROM case_sheets WHERE case_sheet_id = ?');
-			$own->execute([(int)$appt['case_sheet_id']]);
-			if ((int)$own->fetchColumn() !== (int)$_SESSION['user_id']) {
-				echo json_encode(['success' => false, 'message' => 'You can only reschedule case sheets you created.']);
+			// Triage nurses may reschedule only appointments they created.
+			if ((int)($appt['created_by_user_id'] ?? 0) !== (int)$_SESSION['user_id']) {
+				echo json_encode(['success' => false, 'message' => 'You can only reschedule appointments you created.']);
 				exit;
 			}
 		}
