@@ -255,6 +255,7 @@ nav_profile,Profile
 nav_settings,Settings
 nav_admin_panel,Admin Panel
 nav_assets,Assets
+nav_case_export,Export Excel
 nav_log_out,Log Out
 role_super_admin,Super Admin
 role_admin,Admin
