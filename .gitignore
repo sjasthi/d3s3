@@ -120,3 +120,12 @@ presentation-notes.md
 *_backup
 *_old
 *.orig
+
+# ──────────────────────────────────────────────────────────────────
+# Private uploaded files (keep .htaccess / placeholders)
+# ──────────────────────────────────────────────────────────────────
+/storage/*
+!/storage/.htaccess
+!/storage/feedback-audio/
+/storage/feedback-audio/*
+!/storage/feedback-audio/.gitkeep
