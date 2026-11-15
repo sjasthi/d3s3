@@ -186,10 +186,15 @@
 	<div class="content-wrapper">
 		<div class="content-header">
 			<div class="container-fluid">
-				<div class="row mb-2">
-					<div class="col-sm-12">
+				<div class="row mb-2 align-items-center">
+					<div class="col-sm-8">
 						<h1 class="m-0 text-dark"><i class="fas fa-calendar-alt mr-2"></i>Calendar</h1>
 						<p class="text-muted mb-0">View upcoming events and activities.</p>
+					</div>
+					<div class="col-sm-4 text-sm-right mt-2 mt-sm-0">
+						<a href="press.php" class="btn btn-outline-secondary btn-sm">
+							<i class="fas fa-newspaper mr-1"></i>Photos and press
+						</a>
 					</div>
 				</div>
 			</div>

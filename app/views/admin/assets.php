@@ -194,9 +194,16 @@
 												<input type="text" name="category" id="category" class="form-control"
 												       list="categoryList"
 												       value="<?= htmlspecialchars($editAsset['category'] ?? '') ?>"
-												       placeholder="e.g. Patient Education" />
+												       placeholder="e.g. Patient Education, Press Coverage, Photos" />
 												<datalist id="categoryList">
-													<?php foreach ($categories as $cat): ?>
+													<?php
+													$suggestedCategories = ['Press Coverage', 'Photos', 'Testimonials'];
+													$categoryOptions = array_values(array_unique(array_merge(
+														$suggestedCategories,
+														$categories ?? []
+													)));
+													foreach ($categoryOptions as $cat):
+													?>
 													<option value="<?= htmlspecialchars($cat) ?>">
 													<?php endforeach; ?>
 												</datalist>
