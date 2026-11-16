@@ -73,6 +73,16 @@ files/
 !uploads/.gitkeep
 !files/.gitkeep
 
+# Private case / feedback files (keep placeholders)
+/storage/*
+!/storage/.htaccess
+!/storage/case-files/
+/storage/case-files/*
+!/storage/case-files/.gitkeep
+!/storage/feedback-audio/
+/storage/feedback-audio/*
+!/storage/feedback-audio/.gitkeep
+
 # ──────────────────────────────────────────────────────────────────
 # Database
 # ──────────────────────────────────────────────────────────────────
