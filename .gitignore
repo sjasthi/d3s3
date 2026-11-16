@@ -71,6 +71,9 @@ uploads/
 user_uploads/
 files/
 !uploads/.gitkeep
+!uploads/.htaccess
+!uploads/assets/
+!uploads/assets/.gitkeep
 !files/.gitkeep
 
 # ──────────────────────────────────────────────────────────────────
