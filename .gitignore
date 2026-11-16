@@ -70,6 +70,8 @@ sessions/
 uploads/
 user_uploads/
 files/
+storage/case-files/
+storage/feedback-audio/
 !uploads/.gitkeep
 !files/.gitkeep
 

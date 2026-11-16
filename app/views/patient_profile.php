@@ -261,6 +261,7 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 						</h1>
 						<p class="text-muted mb-0">
 							<span class="text-monospace"><?= htmlspecialchars($patient['patient_code']) ?></span>
+							<a class="btn btn-sm btn-success ml-2" href="packet.php?patient_id=<?= (int)$patient['patient_id'] ?>">Patient packet / WhatsApp</a>
 							<?php if (!$patient['is_active']): ?>
 							&nbsp;<span class="badge badge-secondary">Inactive</span>
 							<?php endif; ?>
@@ -1252,6 +1253,7 @@ $caseConsentForms = array_filter(
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
+<script src="assets/js/password-toggle.js"></script>
 <script>
 $(function () {
 

@@ -17,12 +17,15 @@ $nextEvent       = null;
 $staleSheets     = [];
 
 if ($_isClinicalRole) { try {
+	$_scopeUser = (int)($_SESSION['user_id'] ?? 0);
+	$_triageAnd = ($_userRole === 'TRIAGE_NURSE') ? ' AND created_by_user_id = ' . $_scopeUser : '';
+	$_triageAndCs = ($_userRole === 'TRIAGE_NURSE') ? ' AND cs.created_by_user_id = ' . $_scopeUser : '';
 	// ── Today's visit count (patients who came in today) ─────────────────
 	$rowToday = $pdo->query(
 		"SELECT COUNT(*) AS total_today,
 		        SUM(status = 'CLOSED' AND DATE(closed_at) = CURDATE()) AS closed_today
 		   FROM case_sheets
-		  WHERE DATE(visit_datetime) = CURDATE()"
+		  WHERE DATE(visit_datetime) = CURDATE() $_triageAnd"
 	)->fetch(PDO::FETCH_ASSOC);
 
 	// ── Status counts across ALL open sheets (not date-filtered) ─────────
@@ -32,7 +35,7 @@ if ($_isClinicalRole) { try {
 		        SUM(status = 'INTAKE_COMPLETE')    AS ready,
 		        SUM(status = 'DOCTOR_REVIEW')      AS in_review
 		   FROM case_sheets
-		  WHERE status IN ('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW')"
+		  WHERE status IN ('INTAKE_IN_PROGRESS','INTAKE_COMPLETE','DOCTOR_REVIEW') $_triageAnd"
 	)->fetch(PDO::FETCH_ASSOC);
 
 	$todayStats = [
@@ -135,7 +138,7 @@ if ($_isClinicalRole) { try {
 			"SELECT p.patient_id, p.first_name, p.last_name, p.patient_code, cs.case_sheet_id, cs.status AS cs_status
 			   FROM case_sheets cs
 			   JOIN patients p ON p.patient_id = cs.patient_id
-			  WHERE {$_sw}
+			  WHERE {$_sw} {$_triageAndCs}
 			  ORDER BY cs.visit_datetime ASC"
 		)->fetchAll(PDO::FETCH_ASSOC);
 	}
@@ -152,6 +155,7 @@ if ($_userRole === 'DOCTOR') {
 		$_apptSql = "SELECT a.appointment_id, a.case_sheet_id, a.scheduled_time,
 		                    a.status AS appt_status,
 		                    cs.status AS cs_status, cs.chief_complaint,
+		                    cs.assigned_doctor_user_id,
 		                    p.patient_id, p.patient_code, p.first_name, p.last_name,
 		                    p.age_years, p.sex,
 		                    d.first_name AS doc_first, d.last_name AS doc_last,
@@ -169,6 +173,9 @@ if ($_userRole === 'DOCTOR') {
 		$_apptSql .= " AND cs.status IN ('SCHEDULED','INTAKE_IN_PROGRESS')";
 		if ($_userRole === 'DOCTOR') {
 			$_apptSql .= ' AND a.doctor_user_id = ?';
+			$_apptParams[] = (int)$_SESSION['user_id'];
+		} elseif ($_userRole === 'TRIAGE_NURSE') {
+			$_apptSql .= ' AND cs.created_by_user_id = ?';
 			$_apptParams[] = (int)$_SESSION['user_id'];
 		}
 		$_apptSql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -482,6 +489,14 @@ $roleLabel = [
 			<div class="container-fluid">
 
 			<?php if ($_isClinicalRole): ?>
+
+			<?php if (!empty($_SESSION['dashboard_notice'])): ?>
+			<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+				<i class="fas fa-exclamation-circle mr-2"></i><?= htmlspecialchars($_SESSION['dashboard_notice']) ?>
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<?php unset($_SESSION['dashboard_notice']); ?>
+			<?php endif; ?>
 
 			<?php if (!empty($staleAppts)): ?>
 			<?php $staleApptCount = count($staleAppts); ?>
@@ -921,7 +936,7 @@ $roleLabel = [
 								<td class="small d-none d-lg-table-cell text-muted"><?= htmlspecialchars($_ta['chief_complaint'] ?? '—') ?></td>
 								<td><?= $_taStatusBadge ?></td>
 								<td class="text-right text-nowrap">
-									<?php if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE'): ?>
+									<?php if ($_userRole === 'DOCTOR' && $_taCsStatus === 'INTAKE_COMPLETE' && (int)($_ta['assigned_doctor_user_id'] ?? 0) === (int)$_SESSION['user_id']): ?>
 										<form method="post" action="intake.php?action=claim" style="display:inline">
 											<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 											<input type="hidden" name="case_sheet_id" value="<?= (int)$_ta['case_sheet_id'] ?>">
@@ -1499,6 +1514,7 @@ $('#aamReschedBtn').on('click', function () {
 
 /* ── Live patient queue ─────────────────────────────────────────── */
 var USER_ROLE  = <?= json_encode($_userRole) ?>;
+var USER_ID    = <?= (int)($_SESSION['user_id'] ?? 0) ?>;
 var POLL_MS    = 15000;
 var pollTimer  = null;
 var sortable   = null;
@@ -1512,12 +1528,14 @@ function statusBadge(status) {
 }
 
 function actionCell(row) {
-	if (USER_ROLE === 'DOCTOR' && row.status === 'INTAKE_COMPLETE') {
+	if (USER_ROLE === 'DOCTOR' && row.status === 'INTAKE_COMPLETE' && Number(row.assigned_doctor_user_id) === USER_ID) {
 		return '<form method="post" action="intake.php?action=claim" style="display:inline">' +
 			'<input type="hidden" name="csrf_token" value="' + CSRF_TOKEN + '">' +
 			'<input type="hidden" name="case_sheet_id" value="' + row.case_sheet_id + '">' +
 			'<button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-stethoscope mr-1"></i>Review</button>' +
-			'</form>';
+			'</form>' +
+			'<a href="intake.php?action=view&case_sheet_id=' + row.case_sheet_id + '" class="btn btn-sm btn-outline-warning ml-1">' +
+			'<i class="fas fa-pencil-alt mr-1"></i>Edit intake</a>';
 	}
 	if ((USER_ROLE === 'NURSE' || USER_ROLE === 'TRIAGE_NURSE') && row.status === 'INTAKE_IN_PROGRESS') {
 		return '<a href="intake.php?case_sheet_id=' + row.case_sheet_id + '" class="btn btn-sm btn-warning">' +
@@ -1564,7 +1582,11 @@ function renderQueue(rows) {
 		html += '<tr class="queue-row" data-id="' + row.case_sheet_id + '">';
 		html += '<td class="queue-drag-handle"><i class="fas fa-grip-vertical"></i></td>';
 		html += '<td class="text-muted">' + (idx + 1) + '</td>';
-		html += '<td><a href="patients.php?action=view&id=' + row.patient_id + '" class="font-weight-bold text-primary">' + row.patient_name + '</a><br><small class="text-muted">' + meta + '</small></td>';
+		var riskBadge = '';
+		if (row.risk_level === 'HIGH') riskBadge = ' <span class="badge badge-danger">High risk</span>';
+		else if (row.risk_level === 'MEDIUM') riskBadge = ' <span class="badge badge-warning">Medium risk</span>';
+		else if (row.risk_level === 'LOW') riskBadge = ' <span class="badge badge-success">Low risk</span>';
+		html += '<td><a href="patients.php?action=view&id=' + row.patient_id + '" class="font-weight-bold text-primary">' + row.patient_name + '</a>' + riskBadge + '<br><small class="text-muted">' + meta + '</small></td>';
 		html += '<td>' + statusBadge(row.status) + '</td>';
 		html += '<td><span class="badge badge-info">' + (row.visit_type || '') + '</span></td>';
 		html += '<td>' + (row.chief_complaint || '') + '</td>';
