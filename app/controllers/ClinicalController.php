@@ -16,6 +16,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
 require_once __DIR__ . '/../config/record_scope.php';
+require_once __DIR__ . '/../config/case_access.php';
 
 class ClinicalController
 {
@@ -311,62 +312,165 @@ class ClinicalController
 
 	// ── Doctor claims case sheet for review ──────────────────
 
-	public function claimForReview(): void
-	{
-		$this->requireDoctorRole();
 
-		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-			header('Location: dashboard.php');
-			exit;
-		}
+public function claimForReview(): void
+{
+    $this->requireDoctorRole();
 
-		if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
-			$_SESSION['intake_error'] = 'Invalid request token.';
-			header('Location: dashboard.php');
-			exit;
-		}
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		$caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
-		if ($caseSheetId <= 0) {
-			header('Location: dashboard.php');
-			exit;
-		}
+    if (!hash_equals(
+        $_SESSION['csrf_token'] ?? '',
+        $_POST['csrf_token'] ?? ''
+    )) {
+        $_SESSION['intake_error'] = 'Invalid request token.';
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		$pdo = getDBConnection();
+    $caseSheetId = (int)($_POST['case_sheet_id'] ?? 0);
 
-		// Only the doctor already assigned to this case may start the review.
-		$stmt = $pdo->prepare(
-			'UPDATE case_sheets
-			    SET status = ?, updated_at = NOW()
-			  WHERE case_sheet_id = ?
-			    AND assigned_doctor_user_id = ?
-			    AND status IN (?, ?)'
-		);
-		$stmt->execute(['DOCTOR_REVIEW', $caseSheetId, (int)$_SESSION['user_id'], 'INTAKE_COMPLETE', 'SCHEDULED']);
+    if ($caseSheetId <= 0) {
+        header('Location: dashboard.php');
+        exit;
+    }
 
-		if ($stmt->rowCount() === 0) {
-			$_SESSION['dashboard_notice'] = 'This case is not assigned to you.';
-			header('Location: dashboard.php');
-			exit;
-		}
+    $doctorId = (int)$_SESSION['user_id'];
+    $doctorName = trim($_SESSION['user_name'] ?? '');
+    $pdo = getDBConnection();
 
-		$this->writeAuditLog(
-			$pdo, $caseSheetId, $_SESSION['user_id'],
-			'status', 'INTAKE_COMPLETE', 'DOCTOR_REVIEW'
-		);
+    try {
+        $pdo->beginTransaction();
 
-		// Advance linked appointment to IN_PROGRESS so it reflects active review
-		$pdo->prepare(
-			"UPDATE appointments SET status = 'IN_PROGRESS', updated_at = NOW()
-			  WHERE case_sheet_id = ? AND status IN ('SCHEDULED','CONFIRMED')"
-		)->execute([$caseSheetId]);
+        // Lock the case before claiming it.
+        $stmt = $pdo->prepare(
+            'SELECT status
+             FROM case_sheets
+             WHERE case_sheet_id = ?
+             FOR UPDATE'
+        );
+        $stmt->execute([$caseSheetId]);
+        $oldStatus = $stmt->fetchColumn();
 
-		header('Location: review.php?case_sheet_id=' . $caseSheetId);
-		exit;
-	}
+        if (!in_array(
+            $oldStatus,
+            ['INTAKE_COMPLETE', 'SCHEDULED'],
+            true
+        )) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] =
+                'This case is no longer available.';
+            header('Location: dashboard.php');
+            exit;
+        }
 
-	// ── Doctor review form ───────────────────────────────────
+        $stmt = $pdo->prepare(
+            'SELECT assigned_doctor_user_id
+               FROM case_sheets
+              WHERE case_sheet_id = ?'
+        );
+        $stmt->execute([$caseSheetId]);
+        if ((int)$stmt->fetchColumn() !== $doctorId) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] = 'This case is not assigned to you.';
+            header('Location: dashboard.php');
+            exit;
+        }
 
+        // Prevent discontinued doctors from reclaiming cases.
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM case_doctor_assignments
+             WHERE case_sheet_id = ?
+               AND doctor_user_id = ?
+               AND status = 'INACTIVE'"
+        );
+
+        $stmt->execute([$caseSheetId, $doctorId]);
+
+        if ((int)$stmt->fetchColumn() > 0) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] =
+                'You are not authorized to claim this case.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+        // Update the case.
+        $stmt = $pdo->prepare(
+            "UPDATE case_sheets
+             SET status = 'DOCTOR_REVIEW',
+                 assigned_doctor_user_id = ?,
+                 assigned_doctor_name = ?,
+                 updated_at = NOW()
+             WHERE case_sheet_id = ?
+               AND status IN ('INTAKE_COMPLETE', 'SCHEDULED')"
+        );
+
+        $stmt->execute([
+            $doctorId,
+            $doctorName,
+            $caseSheetId
+        ]);
+
+        if ($stmt->rowCount() !== 1) {
+            throw new RuntimeException('Case claim failed.');
+        }
+
+        // Create an active assignment.
+        $stmt = $pdo->prepare(
+            "INSERT INTO case_doctor_assignments
+                (case_sheet_id, doctor_user_id, status)
+             VALUES (?, ?, 'ACTIVE')"
+        );
+
+        $stmt->execute([$caseSheetId, $doctorId]);
+
+        // Record the status change.
+        $this->writeAuditLog(
+            $pdo,
+            $caseSheetId,
+            $doctorId,
+            'status',
+            $oldStatus,
+            'DOCTOR_REVIEW'
+        );
+
+        // Update the linked appointment.
+        $stmt = $pdo->prepare(
+            "UPDATE appointments
+             SET status = 'IN_PROGRESS',
+                 updated_at = NOW()
+             WHERE case_sheet_id = ?
+               AND status IN ('SCHEDULED', 'CONFIRMED')"
+        );
+
+        $stmt->execute([$caseSheetId]);
+
+        $pdo->commit();
+
+        header(
+            'Location: review.php?case_sheet_id=' . $caseSheetId
+        );
+        exit;
+
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        error_log('Case claim failed: ' . $e->getMessage());
+
+        $_SESSION['intake_error'] =
+            'Unable to claim this case. Please try again.';
+
+        header('Location: dashboard.php');
+        exit;
+    }
+}
 	public function doctorReview(): void
 	{
 		$this->requireDoctorRole();
@@ -385,14 +489,26 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
+        // Issue #37: Enforce active specialist access.
+        if (!doctorCanAccessCase(
+            $pdo,
+            $caseSheetId,
+            (int) $_SESSION['user_id']
+        )) {
+            $_SESSION['dashboard_notice'] =
+                'Case sheet not found or not assigned to you.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+
 		// Must be assigned to this doctor and status = DOCTOR_REVIEW
 		$stmt = $pdo->prepare(
 			'SELECT * FROM case_sheets
 			  WHERE case_sheet_id = ?
-			    AND assigned_doctor_user_id = ?
-			    AND status = ?'
+						AND status = ?'
 		);
-		$stmt->execute([$caseSheetId, $_SESSION['user_id'], 'DOCTOR_REVIEW']);
+		$stmt->execute([$caseSheetId, 'DOCTOR_REVIEW']);
 		$caseSheet = $stmt->fetch();
 
 		if (!$caseSheet) {
@@ -549,6 +665,20 @@ class ClinicalController
 
 		$pdo = getDBConnection();
 
+        // Issue #37: Deny discontinued or unauthorized doctors.
+        if (!doctorCanAccessCase(
+            $pdo,
+            $caseSheetId,
+            (int) $_SESSION['user_id']
+        )) {
+            $_SESSION['review_error'] =
+                'You are not authorized to close this case.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+
+
 		// Fetch current values for audit trail
 		$stmt = $pdo->prepare(
 			'SELECT cs.status, cs.closure_type, cs.is_closed, cs.is_locked,
@@ -695,6 +825,56 @@ class ClinicalController
 			exit;
 		}
 
+		
+    // Issue #34: Validate optional consent form upload
+    $consentFile = $_FILES['consent_form'] ?? null;
+    $consentMime = null;
+
+    if ($consentFile !== null &&
+        $consentFile['error'] !== UPLOAD_ERR_NO_FILE) {
+
+        if ($consentFile['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form upload failed.'
+            ]);
+            exit;
+        }
+
+        if ($consentFile['size'] > 5 * 1024 * 1024) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Consent form must be 5 MB or smaller.'
+            ]);
+            exit;
+        }
+
+        if (!is_uploaded_file($consentFile['tmp_name'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid uploaded file.'
+            ]);
+            exit;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $consentMime = $finfo->file($consentFile['tmp_name']);
+
+        $allowedTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png'
+        ];
+
+        if (!in_array($consentMime, $allowedTypes, true)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Only PDF, JPG, and PNG files are allowed.'
+            ]);
+            exit;
+        }
+    }
+
 		$firstName = trim($_POST['first_name'] ?? '');
 		$lastName  = trim($_POST['last_name'] ?? '');
 		$sex       = $_POST['sex'] ?? 'UNKNOWN';
@@ -766,6 +946,15 @@ if ($alternatePhoneType !== '' &&
 
 		$pdo  = getDBConnection();
 
+    // Issue #34: Begin transaction for patient registration
+    // and optional consent form upload.
+    $pdo->beginTransaction();
+
+    // Issue #34: Handle unexpected registration errors
+    $destination = null;
+
+    try {
+
 $stmt = $pdo->prepare(
     "INSERT INTO patients (
         first_name,
@@ -798,11 +987,101 @@ $stmt->execute([
 ]);
 
 		$patientId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Save uploaded consent form
+        if ($consentFile !== null &&
+            $consentFile['error'] === UPLOAD_ERR_OK) {
+
+            $storageDir = getenv('CONSENT_STORAGE_DIR');
+
+            if (!$storageDir ||
+                !is_dir($storageDir) ||
+                !is_writable($storageDir)) {
+                error_log('Consent storage directory unavailable.');
+				
+            // Issue #34: Undo patient registration if storage fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Consent storage is not configured.'
+                ]);
+                exit;
+            }
+
+            $extensions = [
+                'application/pdf' => 'pdf',
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png'
+            ];
+
+            $storedFilename = bin2hex(random_bytes(16))
+                . '.' . $extensions[$consentMime];
+
+            $destination = rtrim($storageDir, DIRECTORY_SEPARATOR)
+                . DIRECTORY_SEPARATOR . $storedFilename;
+
+            if (!move_uploaded_file(
+                $consentFile['tmp_name'],
+                $destination
+            )) {
+				
+            // Issue #34: Roll back registration if upload fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to save consent form.'
+                ]);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO patient_consent_forms
+                     (patient_id, original_filename,
+                      stored_filename, file_type, file_size,
+                      uploaded_by_user_id)
+                     VALUES (?, ?, ?, ?, ?, ?)'
+                );
+
+                $stmt->execute([
+                    $patientId,
+                    basename($consentFile['name']),
+                    $storedFilename,
+                    $consentMime,
+                    $consentFile['size'],
+                    $_SESSION['user_id']
+                ]);
+
+            } catch (Throwable $e) {
+                @unlink($destination);
+                error_log('Consent record save failed: ' . $e->getMessage());
+				
+            // Issue #34: Roll back registration if database save fails
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Unable to record consent form.'
+                ]);
+                exit;
+            }
+        }
+
 
 		// Fetch the auto-generated patient_code (set by database trigger)
 		$row = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ?');
 		$row->execute([$patientId]);
 		$patientCode = $row->fetchColumn();
+		
+        // Issue #34: Commit successful registration and consent upload
+        $pdo->commit();
 
 		echo json_encode([
 			'success'      => true,
@@ -812,7 +1091,28 @@ $stmt->execute([
 			'last_name'    => $lastName,
 		]);
 		exit;
-	}
+	
+        } catch (Throwable $e) {
+            // Issue #34: Clean up uploaded file on failure
+            if ($destination !== null && is_file($destination)) {
+                @unlink($destination);
+            }
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            error_log('Patient registration failed: ' . $e->getMessage());
+
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unable to complete patient registration.'
+            ]);
+            exit;
+        }
+    }
+
 
 	// ── Create case sheet (Step 1 POST) ─────────────────────
 
@@ -888,6 +1188,24 @@ $stmt->execute([
 		]);
 
 		$newId = (int)$pdo->lastInsertId();
+		
+        // Issue #34: Link initial registration consent to first case
+        $priorCases = $pdo->prepare(
+            'SELECT COUNT(*) FROM case_sheets
+             WHERE patient_id = ? AND case_sheet_id != ?'
+        );
+        $priorCases->execute([$patientId, $newId]);
+
+        if ((int)$priorCases->fetchColumn() === 0) {
+            $linkConsent = $pdo->prepare(
+                'UPDATE patient_consent_forms
+                 SET case_sheet_id = ?
+                 WHERE patient_id = ?
+                   AND case_sheet_id IS NULL'
+            );
+            $linkConsent->execute([$newId, $patientId]);
+        }
+
 
 		if (!empty($_FILES['consent_form']) && (int)($_FILES['consent_form']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
 			try {
@@ -1086,6 +1404,16 @@ $stmt->execute([
 			$stmt    = $pdo->prepare("SELECT $colList FROM patients WHERE patient_id = ?");
 			$stmt->execute([$patientId]);
 			$currentValues = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+			// If the patient's phone number changes, require verification again.
+if (array_key_exists('phone_e164', $fieldsToUpdate)) {
+    $oldPhone = $currentValues['phone_e164'] ?? null;
+    $newPhone = $fieldsToUpdate['phone_e164'];
+
+    if ($oldPhone !== $newPhone) {
+        $fieldsToUpdate['phone_verified_at'] = null;
+    }
+}
 
 			// ── Perform the update ─────────────────────────────────────────
 			$setClauses = array_map(fn($f) => "`$f` = ?", array_keys($fieldsToUpdate));
