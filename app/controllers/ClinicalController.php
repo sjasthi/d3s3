@@ -699,7 +699,50 @@ public function claimForReview(): void
 		exit;
 	}
 
-	// ── Patient search (AJAX) ───────────────────────────────
+	// ── Prior case sheets for follow-up linking (AJAX) ─────
+
+	public function priorCases(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		$patientId = (int)($_GET['patient_id'] ?? 0);
+		if ($patientId <= 0) {
+			echo json_encode(['success' => true, 'cases' => []]);
+			exit;
+		}
+
+		require_once __DIR__ . '/../config/case_sheet_code.php';
+		$pdo = getDBConnection();
+		$pStmt = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ? AND is_active = 1');
+		$pStmt->execute([$patientId]);
+		$patientCode = (string)($pStmt->fetchColumn() ?: '');
+		if ($patientCode === '') {
+			echo json_encode(['success' => false, 'cases' => []]);
+			exit;
+		}
+
+		$stmt = $pdo->prepare(
+			'SELECT case_sheet_id, visit_datetime, visit_type, status, chief_complaint
+			   FROM case_sheets
+			  WHERE patient_id = ?
+			  ORDER BY case_sheet_id ASC'
+		);
+		$stmt->execute([$patientId]);
+		$all = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$codes = caseSheetDisplayCodes($all, $patientCode);
+
+		// Newest first for the dropdown (limit 20)
+		$all = array_reverse($all);
+		$cases = [];
+		foreach (array_slice($all, 0, 20) as $row) {
+			$id = (int)$row['case_sheet_id'];
+			$row['display_code'] = $codes[$id] ?? ('#' . $id);
+			$cases[] = $row;
+		}
+		echo json_encode(['success' => true, 'cases' => $cases]);
+		exit;
+	}
 
 	public function patientSearch(): void
 	{
@@ -1068,13 +1111,40 @@ $stmt->execute([
 			return 'Patient not found.';
 		}
 
+		// Issue #5: follow-up visits link to a prior case sheet (1 patient → N sheets).
+		$priorId = null;
+		if ($visitType === 'FOLLOW_UP') {
+			$requested = (int)($_POST['prior_case_sheet_id'] ?? 0);
+			if ($requested > 0) {
+				$chk = $pdo->prepare(
+					'SELECT case_sheet_id FROM case_sheets WHERE case_sheet_id = ? AND patient_id = ?'
+				);
+				$chk->execute([$requested, $patientId]);
+				if ($chk->fetchColumn()) {
+					$priorId = $requested;
+				}
+			}
+			if ($priorId === null) {
+				$chk = $pdo->prepare(
+					'SELECT case_sheet_id FROM case_sheets
+					  WHERE patient_id = ?
+					  ORDER BY visit_datetime DESC, case_sheet_id DESC
+					  LIMIT 1'
+				);
+				$chk->execute([$patientId]);
+				$found = (int)$chk->fetchColumn();
+				$priorId = $found > 0 ? $found : null;
+			}
+		}
+
 		$stmt = $pdo->prepare(
 			'INSERT INTO case_sheets
-			    (patient_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
-			 VALUES (?, ?, ?, ?, ?, ?)'
+			    (patient_id, prior_case_sheet_id, visit_type, status, created_by_user_id, created_by_name, chief_complaint)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)'
 		);
 		$stmt->execute([
 			$patientId,
+			$priorId,
 			$visitType,
 			'INTAKE_IN_PROGRESS',
 			$_SESSION['user_id'],
