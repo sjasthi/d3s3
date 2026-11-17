@@ -15,6 +15,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/record_scope.php';
 require_once __DIR__ . '/../config/case_access.php';
 
 class ClinicalController
@@ -50,14 +51,24 @@ class ClinicalController
 			$caseSheet = $stmt->fetch();
 
 			if ($caseSheet) {
+				denyCaseUnlessTriageOwns($caseSheet);
+				// Issue 24: after the doctor submits the case, a nurse can view it but not edit it.
+				if (($caseSheet['status'] ?? '') === 'CLOSED'
+					&& in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true)) {
+					header('Location: intake.php?action=view&case_sheet_id=' . $caseSheetId);
+					exit;
+				}
+
 				$stmt = $pdo->prepare(
 					'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
 					        age_years, phone_e164, email, address_line1, city, state_province, postal_code,
-					        blood_group, allergies, emergency_contact_name, emergency_contact_phone
+					        blood_group, allergies, emergency_contact_name, emergency_contact_phone,
+					        created_by_user_id
 					   FROM patients WHERE patient_id = ?'
 				);
 				$stmt->execute([$caseSheet['patient_id']]);
 				$patient = $stmt->fetch();
+				denyPatientUnlessNurseOwns($patient ?: null);
 
 				// Load previous closed case sheet vitals for comparison panels in intake
 				$prevVitals = [];
@@ -201,15 +212,18 @@ class ClinicalController
 			header('Location: intake.php');
 			exit;
 		}
+		denyCaseUnlessTriageOwns($caseSheet);
 
 		$stmt = $pdo->prepare(
 			'SELECT patient_id, patient_code, first_name, last_name, sex, date_of_birth,
 			        age_years, phone_e164, email, address_line1, city, state_province, postal_code,
-			        blood_group, allergies, emergency_contact_name, emergency_contact_phone
+			        blood_group, allergies, emergency_contact_name, emergency_contact_phone,
+			        created_by_user_id
 			   FROM patients WHERE patient_id = ?'
 		);
 		$stmt->execute([$caseSheet['patient_id']]);
 		$patient = $stmt->fetch();
+		denyPatientUnlessNurseOwns($patient ?: null);
 
 		$labOrders = [];
 		try {
@@ -269,11 +283,20 @@ class ClinicalController
 		}
 
 		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare('SELECT status FROM case_sheets WHERE case_sheet_id = ?');
+		$stmt = $pdo->prepare('SELECT status, assigned_doctor_user_id FROM case_sheets WHERE case_sheet_id = ?');
 		$stmt->execute([$caseSheetId]);
 		$row = $stmt->fetch();
 
-		if (!$row || $row['status'] !== 'INTAKE_COMPLETE') {
+		$role = $_SESSION['user_role'] ?? '';
+		$status = is_array($row) ? (string)($row['status'] ?? '') : '';
+		$isAssignedDoctor = $role === 'DOCTOR'
+			&& is_array($row)
+			&& (int)($row['assigned_doctor_user_id'] ?? 0) === (int)($_SESSION['user_id'] ?? 0)
+			&& in_array($status, ['INTAKE_COMPLETE', 'DOCTOR_REVIEW'], true);
+		$canAmend = $isAssignedDoctor
+			|| ($role !== 'DOCTOR' && $status === 'INTAKE_COMPLETE' && can($role, 'case_sheets', 'W'));
+
+		if (!$row || !$canAmend) {
 			header('Location: intake.php?action=view&case_sheet_id=' . $caseSheetId);
 			exit;
 		}
@@ -340,6 +363,19 @@ public function claimForReview(): void
             $pdo->rollBack();
             $_SESSION['intake_error'] =
                 'This case is no longer available.';
+            header('Location: dashboard.php');
+            exit;
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT assigned_doctor_user_id
+               FROM case_sheets
+              WHERE case_sheet_id = ?'
+        );
+        $stmt->execute([$caseSheetId]);
+        if ((int)$stmt->fetchColumn() !== $doctorId) {
+            $pdo->rollBack();
+            $_SESSION['intake_error'] = 'This case is not assigned to you.';
             header('Location: dashboard.php');
             exit;
         }
@@ -744,6 +780,40 @@ public function claimForReview(): void
 		exit;
 	}
 
+	public function priorCases(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		$patientId = (int)($_GET['patient_id'] ?? 0);
+		if ($patientId <= 0) {
+			echo json_encode(['success' => true, 'cases' => []]);
+			exit;
+		}
+
+		$pdo = getDBConnection();
+		$patient = $pdo->prepare('SELECT * FROM patients WHERE patient_id = ?');
+		$patient->execute([$patientId]);
+		if (!nurseOwnsPatient($patient->fetch(PDO::FETCH_ASSOC) ?: null)) {
+			echo json_encode(['success' => false, 'cases' => []]);
+			exit;
+		}
+
+		$sql = 'SELECT case_sheet_id, visit_datetime, visit_type, status, chief_complaint
+		          FROM case_sheets
+		         WHERE patient_id = ?';
+		$params = [$patientId];
+		if (scopeRole() === 'TRIAGE_NURSE') {
+			$sql .= ' AND created_by_user_id = ?';
+			$params[] = (int)$_SESSION['user_id'];
+		}
+		$sql .= ' ORDER BY visit_datetime DESC, case_sheet_id DESC LIMIT 20';
+		$stmt = $pdo->prepare($sql);
+		$stmt->execute($params);
+		echo json_encode(['success' => true, 'cases' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+		exit;
+	}
+
 	public function patientSearch(): void
 	{
 		$this->requireClinicalRole();
@@ -757,6 +827,12 @@ public function claimForReview(): void
 
 		$pdo  = getDBConnection();
 		$like = '%' . $q . '%';
+		$ownerSql = '';
+		$ownerParams = [];
+		if (scopeRole() === 'NURSE') {
+			$ownerSql = ' AND created_by_user_id = ?';
+			$ownerParams[] = (int)$_SESSION['user_id'];
+		}
 		$stmt = $pdo->prepare(
 			'SELECT patient_id, patient_code, first_name, last_name,
 			        sex, age_years, phone_e164
@@ -765,11 +841,11 @@ public function claimForReview(): void
 			    AND (patient_code LIKE ?
 			      OR first_name LIKE ?
 			      OR last_name LIKE ?
-			      OR phone_e164 LIKE ?)
+			      OR phone_e164 LIKE ?)' . $ownerSql . '
 			  ORDER BY last_name, first_name
 			  LIMIT 10'
 		);
-		$stmt->execute([$like, $like, $like, $like]);
+		$stmt->execute(array_merge([$like, $like, $like, $like], $ownerParams));
 
 		echo json_encode(['success' => true, 'patients' => $stmt->fetchAll()]);
 		exit;
@@ -912,11 +988,11 @@ if ($alternatePhoneType !== '' &&
 		$ageYears = ($ageYears !== null && $ageYears !== '') ? (int)$ageYears : null;
 
 		$pdo  = getDBConnection();
-		
+
     // Issue #34: Begin transaction for patient registration
     // and optional consent form upload.
     $pdo->beginTransaction();
-		
+
     // Issue #34: Handle unexpected registration errors
     $destination = null;
 
@@ -934,8 +1010,9 @@ $stmt = $pdo->prepare(
         alternate_phone_e164,
         alternate_phone_type,
         intake_source,
-        first_seen_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())"
+        first_seen_date,
+        created_by_user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)"
 );
 
 $stmt->execute([
@@ -948,7 +1025,8 @@ $stmt->execute([
     $primaryPhoneType ?: null,
     $alternatePhone ?: null,
     $alternatePhoneType ?: null,
-    $intakeSource
+    $intakeSource,
+    (int)$_SESSION['user_id']
 ]);
 
 		$patientId = (int)$pdo->lastInsertId();
@@ -1111,27 +1189,27 @@ $stmt->execute([
 			return 'Patient not found.';
 		}
 
-		// Issue #5: follow-up visits link to a prior case sheet (1 patient → N sheets).
 		$priorId = null;
 		if ($visitType === 'FOLLOW_UP') {
 			$requested = (int)($_POST['prior_case_sheet_id'] ?? 0);
+			$scope = '';
+			$scopeParams = [];
+			if (scopeRole() === 'TRIAGE_NURSE') {
+				$scope = ' AND created_by_user_id = ?';
+				$scopeParams[] = (int)$_SESSION['user_id'];
+			}
 			if ($requested > 0) {
-				$chk = $pdo->prepare(
-					'SELECT case_sheet_id FROM case_sheets WHERE case_sheet_id = ? AND patient_id = ?'
-				);
-				$chk->execute([$requested, $patientId]);
+				$chk = $pdo->prepare('SELECT case_sheet_id FROM case_sheets WHERE case_sheet_id = ? AND patient_id = ?' . $scope);
+				$chk->execute(array_merge([$requested, $patientId], $scopeParams));
 				if ($chk->fetchColumn()) {
 					$priorId = $requested;
 				}
 			}
 			if ($priorId === null) {
 				$chk = $pdo->prepare(
-					'SELECT case_sheet_id FROM case_sheets
-					  WHERE patient_id = ?
-					  ORDER BY visit_datetime DESC, case_sheet_id DESC
-					  LIMIT 1'
+					'SELECT case_sheet_id FROM case_sheets WHERE patient_id = ?' . $scope . ' ORDER BY visit_datetime DESC, case_sheet_id DESC LIMIT 1'
 				);
-				$chk->execute([$patientId]);
+				$chk->execute(array_merge([$patientId], $scopeParams));
 				$found = (int)$chk->fetchColumn();
 				$priorId = $found > 0 ? $found : null;
 			}
@@ -1171,6 +1249,23 @@ $stmt->execute([
             $linkConsent->execute([$newId, $patientId]);
         }
 
+
+		if (!empty($_FILES['consent_form']) && (int)($_FILES['consent_form']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+			try {
+				require_once __DIR__ . '/../config/private_storage.php';
+				$saved = storePrivateFile($_FILES['consent_form'], 'case-files', ['pdf', 'jpg', 'jpeg', 'png', 'webp'], 8 * 1024 * 1024);
+				$pdo->prepare(
+					'INSERT INTO case_attachments
+					    (case_sheet_id, patient_id, kind, stored_name, original_name, mime_type, file_size, locked, uploaded_by_user_id)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)'
+				)->execute([
+					$newId, $patientId, 'consent', $saved['stored_name'], $saved['original_name'],
+					$saved['mime'], $saved['size'], (int)$_SESSION['user_id'],
+				]);
+			} catch (RuntimeException $e) {
+				// The case sheet is saved. Consent can be uploaded again on the verification tab.
+			}
+		}
 
 		$this->writeAuditLog(
 			$pdo, $newId, $_SESSION['user_id'],
