@@ -12,6 +12,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/permissions.php';
+require_once __DIR__ . '/../config/record_scope.php';
 require_once __DIR__ . '/../config/case_access.php';
 
 class AppointmentController
@@ -65,8 +66,10 @@ class AppointmentController
 			$todaySql .= ' AND a.doctor_user_id = ?';
 			$todayParams[] = (int)$_SESSION['user_id'];
 		} elseif ($role === 'TRIAGE_NURSE') {
-			// Scope by appointment creator (not case-sheet creator).
-			$todaySql .= ' AND a.created_by_user_id = ?';
+			$todaySql .= ' AND cs.created_by_user_id = ?';
+			$todayParams[] = (int)$_SESSION['user_id'];
+		} elseif ($role === 'NURSE') {
+			$todaySql .= ' AND p.created_by_user_id = ?';
 			$todayParams[] = (int)$_SESSION['user_id'];
 		}
 		$todaySql .= " ORDER BY COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -110,8 +113,10 @@ class AppointmentController
 			$upcomingSql .= ' AND a.doctor_user_id = ?';
 			$upcomingParams[] = (int)$_SESSION['user_id'];
 		} elseif ($role === 'TRIAGE_NURSE') {
-			// Scope by appointment creator (not case-sheet creator).
-			$upcomingSql .= ' AND a.created_by_user_id = ?';
+			$upcomingSql .= ' AND cs.created_by_user_id = ?';
+			$upcomingParams[] = (int)$_SESSION['user_id'];
+		} elseif ($role === 'NURSE') {
+			$upcomingSql .= ' AND p.created_by_user_id = ?';
 			$upcomingParams[] = (int)$_SESSION['user_id'];
 		}
 		$upcomingSql .= " ORDER BY a.scheduled_date ASC, COALESCE(a.scheduled_time, '23:59:59') ASC";
@@ -198,10 +203,15 @@ class AppointmentController
 			        OR p.last_name   LIKE ?
 			        OR CONCAT(p.first_name, ' ', COALESCE(p.last_name,'')) LIKE ?
 			    )
+			    " . (scopeRole() === 'NURSE' ? ' AND p.created_by_user_id = ? ' : '') . "
 			  ORDER BY p.first_name, p.last_name
 			  LIMIT 10"
 		);
-		$stmt->execute([$like, $like, $like, $like]);
+		$searchParams = [$like, $like, $like, $like];
+		if (scopeRole() === 'NURSE') {
+			$searchParams[] = (int)$_SESSION['user_id'];
+		}
+		$stmt->execute($searchParams);
 		$patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 		if (empty($patients)) {
@@ -762,9 +772,9 @@ if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
 			$pdo->prepare(
 				'INSERT INTO patients
 				    (first_name, last_name, date_of_birth, phone_e164, email,
-				     address_line1, city, first_seen_date)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())'
-			)->execute([$firstName, $lastName, $dob, $phone, $email, $address, $city]);
+				     address_line1, city, first_seen_date, created_by_user_id)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)'
+			)->execute([$firstName, $lastName, $dob, $phone, $email, $address, $city, (int)$_SESSION['user_id']]);
 
 			$patientId = (int)$pdo->lastInsertId();
 
@@ -971,9 +981,10 @@ if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
 			echo json_encode(['success' => false, 'message' => 'Permission denied.']);
 			exit;
 		} elseif ($role === 'TRIAGE_NURSE') {
-			// Triage nurses may reschedule only appointments they created.
-			if ((int)($appt['created_by_user_id'] ?? 0) !== (int)$_SESSION['user_id']) {
-				echo json_encode(['success' => false, 'message' => 'You can only reschedule appointments you created.']);
+			$own = $pdo->prepare('SELECT created_by_user_id FROM case_sheets WHERE case_sheet_id = ?');
+			$own->execute([(int)$appt['case_sheet_id']]);
+			if ((int)$own->fetchColumn() !== (int)$_SESSION['user_id']) {
+				echo json_encode(['success' => false, 'message' => 'You can only reschedule case sheets you created.']);
 				exit;
 			}
 		}

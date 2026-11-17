@@ -70,8 +70,23 @@ sessions/
 uploads/
 user_uploads/
 files/
+storage/case-files/
+storage/feedback-audio/
 !uploads/.gitkeep
+!uploads/.htaccess
+!uploads/assets/
+!uploads/assets/.gitkeep
 !files/.gitkeep
+
+# Private case / feedback files (keep placeholders)
+/storage/*
+!/storage/.htaccess
+!/storage/case-files/
+/storage/case-files/*
+!/storage/case-files/.gitkeep
+!/storage/feedback-audio/
+/storage/feedback-audio/*
+!/storage/feedback-audio/.gitkeep
 
 # ──────────────────────────────────────────────────────────────────
 # Database
@@ -120,3 +135,12 @@ presentation-notes.md
 *_backup
 *_old
 *.orig
+
+# ──────────────────────────────────────────────────────────────────
+# Private uploaded files (keep .htaccess / placeholders)
+# ──────────────────────────────────────────────────────────────────
+/storage/*
+!/storage/.htaccess
+!/storage/feedback-audio/
+/storage/feedback-audio/*
+!/storage/feedback-audio/.gitkeep

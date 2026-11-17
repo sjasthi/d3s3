@@ -142,6 +142,11 @@
 							Patient Lookup
 						</h5>
 						<small class="text-muted">Search by name and / or D.O.B.</small>
+						<?php if (can($_SESSION['user_role'] ?? '', 'case_sheets')): ?>
+						<div class="mt-1">
+							<a href="case_export.php"><i class="fas fa-file-excel mr-1"></i>Export case sheets to Excel</a>
+						</div>
+						<?php endif; ?>
 					</div>
 
 					<!-- Search form -->

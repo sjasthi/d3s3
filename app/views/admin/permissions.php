@@ -374,6 +374,7 @@
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
+<script src="assets/js/password-toggle.js"></script>
 <script>
 (function () {
 	'use strict';
