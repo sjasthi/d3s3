@@ -16,6 +16,7 @@ $isDashboardPage    = (strpos($currentPage, 'dashboard.php')    !== false && !$i
 $isProfilePage      = (strpos($currentPage, 'profile.php')      !== false);
 $isSettingsPage     = (strpos($currentPage, 'settings.php')     !== false);
 $isAssetsPage       = (strpos($currentPage, 'assets.php')       !== false);
+$isTestimonialsPage = (strpos($currentPage, 'testimonials.php') !== false);
 $isCalendarPage     = (strpos($currentPage, 'calendar.php')     !== false);
 $isIntakePage       = (strpos($currentPage, 'intake.php')       !== false);
 $isReviewPage       = (strpos($currentPage, 'review.php')       !== false);
@@ -296,6 +297,16 @@ if ($_navCanPatientData && !$isPortalMessagesPage) {
 					<a href="assets.php" class="nav-link <?= $isAssetsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-boxes"></i>
 						<p><?= __('nav_assets') ?></p>
+					</a>
+				</li>
+				<?php endif; ?>
+
+				<!-- Public testimonial videos – Issue #6 -->
+				<?php if ($_navCanAssets || $_navCanEvents): ?>
+				<li class="nav-item">
+					<a href="testimonials.php" class="nav-link <?= $isTestimonialsPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-video"></i>
+						<p><?= __('nav_testimonials') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
