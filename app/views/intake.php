@@ -1715,7 +1715,7 @@ load_language($_SESSION['language'] ?? 'en');
 			$search.val('').prop('disabled', true); $('#toggleNewPatient').prop('disabled', true); $('#newPatientSection').addClass('d-none');
 			loadPriorCases();
 		}
-		$('#clearPatient').on('click', function () { $patientId.val(''); $selected.addClass('d-none'); $search.prop('disabled', false).val('').focus(); $('#toggleNewPatient').prop('disabled', false); loadPriorCases(); });
+		$('#clearPatient').on('click', function () { $patientId.val(''); $selected.addClass('d-none'); $search.prop('disabled', false).val('').focus(); $('#toggleNewPatient').prop('disabled', false); $('#priorCaseWrap').addClass('d-none'); });
 		$(document).on('click', function (e) { if (!$(e.target).closest('#patientSearch, #searchResults').length) $results.hide(); });
 		$('#toggleNewPatient').on('click', function () { $('#newPatientSection').toggleClass('d-none'); });
 

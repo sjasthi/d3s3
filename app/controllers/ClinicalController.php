@@ -735,7 +735,50 @@ public function claimForReview(): void
 		exit;
 	}
 
-	// ── Patient search (AJAX) ───────────────────────────────
+	// ── Prior case sheets for follow-up linking (AJAX) ─────
+
+	public function priorCases(): void
+	{
+		$this->requireClinicalRole();
+		header('Content-Type: application/json');
+
+		$patientId = (int)($_GET['patient_id'] ?? 0);
+		if ($patientId <= 0) {
+			echo json_encode(['success' => true, 'cases' => []]);
+			exit;
+		}
+
+		require_once __DIR__ . '/../config/case_sheet_code.php';
+		$pdo = getDBConnection();
+		$pStmt = $pdo->prepare('SELECT patient_code FROM patients WHERE patient_id = ? AND is_active = 1');
+		$pStmt->execute([$patientId]);
+		$patientCode = (string)($pStmt->fetchColumn() ?: '');
+		if ($patientCode === '') {
+			echo json_encode(['success' => false, 'cases' => []]);
+			exit;
+		}
+
+		$stmt = $pdo->prepare(
+			'SELECT case_sheet_id, visit_datetime, visit_type, status, chief_complaint
+			   FROM case_sheets
+			  WHERE patient_id = ?
+			  ORDER BY case_sheet_id ASC'
+		);
+		$stmt->execute([$patientId]);
+		$all = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$codes = caseSheetDisplayCodes($all, $patientCode);
+
+		// Newest first for the dropdown (limit 20)
+		$all = array_reverse($all);
+		$cases = [];
+		foreach (array_slice($all, 0, 20) as $row) {
+			$id = (int)$row['case_sheet_id'];
+			$row['display_code'] = $codes[$id] ?? ('#' . $id);
+			$cases[] = $row;
+		}
+		echo json_encode(['success' => true, 'cases' => $cases]);
+		exit;
+	}
 
 	public function priorCases(): void
 	{

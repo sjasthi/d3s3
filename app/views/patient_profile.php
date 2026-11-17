@@ -668,8 +668,13 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 								</p>
 
 								<div id="caseSheetList">
+								<?php
+								require_once __DIR__ . '/../config/case_sheet_code.php';
+								$_csDisplayCodes = caseSheetDisplayCodes($caseSheets, (string)($patient['patient_code'] ?? ''));
+								?>
 								<?php foreach ($caseSheets as $_cs):
 									$_csId      = (int)$_cs['case_sheet_id'];
+									$_csCode    = $_csDisplayCodes[$_csId] ?? ('#' . $_csId);
 									$_csColor   = $_csStatusColors[$_cs['status']] ?? 'secondary';
 
 									// Determine if this entry has any clinical content to expand
@@ -720,6 +725,7 @@ $_backLabel = !empty($_backParams) ? 'Back to Results' : 'Back to Patients';
 										<div class="flex-grow-1" style="min-width:0">
 											<!-- Status + type badges -->
 											<div class="mb-1">
+												<span class="badge badge-dark text-monospace" title="Case sheet reference"><?= htmlspecialchars($_csCode) ?></span>
 												<span class="badge badge-<?= $_csColor ?>">
 													<?= htmlspecialchars($_csStatusLabels[$_cs['status']] ?? $_cs['status']) ?>
 												</span>
@@ -1071,8 +1077,8 @@ $caseConsentForms = array_filter(
 												</div>
 												<div class="row">
 													<div class="col-6 col-md-3">
-														<div class="cs-modal-field-label">Case Sheet #</div>
-														<div class="cs-modal-field-value text-monospace"><?= $_csId ?></div>
+														<div class="cs-modal-field-label">Case Sheet</div>
+														<div class="cs-modal-field-value text-monospace"><?= htmlspecialchars($_csDisplayCodes[$_csId] ?? ('#' . $_csId)) ?> <span class="text-muted small">(id <?= $_csId ?>)</span></div>
 													</div>
 													<div class="col-6 col-md-3">
 														<div class="cs-modal-field-label">Visit Date &amp; Time</div>
