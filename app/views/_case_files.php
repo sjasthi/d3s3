@@ -1,7 +1,8 @@
 <?php
 /**
- * One case-file panel. Set $caseFileKind, $caseFileCaseId, $caseFilePatientId,
- * $caseFileTitle, and $caseFileMode (image, file, or record) before including.
+ * Case-file panel (Issue #7: ultrasound images on the pelvic exam).
+ * Set before include: $caseFileKind, $caseFileCaseId, $caseFilePatientId,
+ * $caseFileTitle, $caseFileMode (image|file), optional $caseFileNote.
  */
 $caseFileKind = $caseFileKind ?? '';
 $caseFileCaseId = (int)($caseFileCaseId ?? 0);
@@ -10,15 +11,21 @@ $caseFileTitle = $caseFileTitle ?? 'File';
 $caseFileMode = $caseFileMode ?? 'file';
 $caseFileNote = $caseFileNote ?? '';
 $caseFileCsrf = $_SESSION['csrf_token'] ?? '';
+$caseFileCanUpload = can($_SESSION['user_role'] ?? '', 'case_sheets', 'W')
+	|| ($caseFileKind === 'lab_image' && can($_SESSION['user_role'] ?? '', 'labwork', 'W'));
 
 $caseFileRows = [];
 try {
 	$cfPdo = getDBConnection();
 	if ($caseFileCaseId > 0) {
-		$cfStmt = $cfPdo->prepare('SELECT * FROM case_attachments WHERE case_sheet_id = ? AND kind = ? ORDER BY attachment_id DESC');
+		$cfStmt = $cfPdo->prepare(
+			'SELECT * FROM case_attachments WHERE case_sheet_id = ? AND kind = ? ORDER BY attachment_id DESC'
+		);
 		$cfStmt->execute([$caseFileCaseId, $caseFileKind]);
 	} else {
-		$cfStmt = $cfPdo->prepare('SELECT * FROM case_attachments WHERE patient_id = ? AND kind = ? ORDER BY attachment_id DESC');
+		$cfStmt = $cfPdo->prepare(
+			'SELECT * FROM case_attachments WHERE patient_id = ? AND kind = ? ORDER BY attachment_id DESC'
+		);
 		$cfStmt->execute([$caseFilePatientId, $caseFileKind]);
 	}
 	$caseFileRows = $cfStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -64,6 +71,7 @@ $panelId = 'cf_' . preg_replace('/[^a-z0-9_]/', '', $caseFileKind) . '_' . $case
 			<?php endforeach; ?>
 		</div>
 		<div class="case-file-alert alert alert-danger d-none py-2"></div>
+    <?php if ($caseFileCanUpload): ?>
 		<?php if ($caseFileMode === 'record' && $caseFileLocked): ?>
 		<p class="text-muted small mb-0">This recording is locked and cannot be replaced.</p>
 		<?php elseif ($caseFileMode === 'record'): ?>
@@ -80,7 +88,8 @@ $panelId = 'cf_' . preg_replace('/[^a-z0-9_]/', '', $caseFileKind) . '_' . $case
 			<button type="button" class="btn btn-sm btn-primary ml-2 case-file-upload">Upload</button>
 		</div>
 		<?php endif; ?>
-	</div>
+<?php endif; ?>
+  </div>
 </div>
 <script>
 (function () {

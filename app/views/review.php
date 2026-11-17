@@ -1196,6 +1196,22 @@ load_language($_SESSION['language'] ?? 'en');
 													<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
 												</div>
 											</div>
+											<div class="row mt-2">
+												<div class="col-12 mb-0">
+													<label><?= __('usg_findings') ?></label>
+													<textarea class="form-control" name="exam_usg_findings" data-field="exam_usg_findings" rows="2"
+													          placeholder="<?= __('usg_findings_placeholder') ?>"><?= htmlspecialchars($examData['exam_usg_findings'] ?? '') ?></textarea>
+												</div>
+											</div>
+											<?php
+												$caseFileKind = 'ultrasound';
+												$caseFileCaseId = (int)$cs['case_sheet_id'];
+												$caseFilePatientId = (int)($cs['patient_id'] ?? $p['patient_id'] ?? 0);
+												$caseFileTitle = __('ultrasound');
+												$caseFileMode = 'image';
+												$caseFileNote = __('ultrasound_note');
+												require __DIR__ . '/_case_files.php';
+											?>
 										</div>
 									</div>
 

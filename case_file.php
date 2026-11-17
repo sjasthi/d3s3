@@ -11,6 +11,7 @@ require_once __DIR__ . '/app/config/session.php';
 require_once __DIR__ . '/app/config/database.php';
 require_once __DIR__ . '/app/config/permissions.php';
 require_once __DIR__ . '/app/config/private_storage.php';
+require __DIR__ . '/app/middleware/auth.php';
 require_once __DIR__ . '/app/config/record_scope.php';
 
 $action = $_GET['action'] ?? 'upload';
