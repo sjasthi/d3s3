@@ -412,6 +412,7 @@
 <script src="assets/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/adminlte.min.js"></script>
 <script src="assets/js/theme-toggle.js"></script>
+<script src="assets/js/password-toggle.js"></script>
 <script>
 document.getElementById('copyRegCodeBtn') && document.getElementById('copyRegCodeBtn').addEventListener('click', function() {
 	var input = document.getElementById('regCodeDisplay');

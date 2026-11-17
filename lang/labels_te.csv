@@ -256,6 +256,8 @@ nav_settings,సెట్టింగులు
 nav_admin_panel,అడ్మిన్ ప్యానెల్
 nav_assets,ఆస్తులు
 nav_press,ఫోటోలు మరియు ప్రెస్
+nav_case_export,ఎక్సెల్ ఎగుమతి
+nav_testimonials,టెస్టిమోనియల్స్
 nav_log_out,లాగ్ అవుట్
 role_super_admin,సూపర్ అడ్మిన్
 role_admin,అడ్మిన్
@@ -315,6 +317,10 @@ auto_saved_note,స్వయంచాలకంగా సేవ్ అయిం�
 left_breast,ఎడమ స్తనం
 right_breast,కుడి స్తనం
 pelvic_examination_label,పెల్విక్ పరీక్ష
+usg_findings,USG పరిశోధనలు
+usg_findings_placeholder,ఈ పెల్విక్ పరీక్షకు అల్ట్రాసౌండ్ పరిశోధనలు
+ultrasound,అల్ట్రాసౌండ్
+ultrasound_note,ఈ పెల్విక్ పరీక్షకు అల్ట్రాసౌండ్ చిత్రాన్ని అప్‌లోడ్ చేయండి. ఫైల్స్ కేస్ రికార్డ్‌తో ప్రైవేట్‌గా నిల్వ అవుతాయి.
 rectal_skin,మలద్వార చర్మం
 rectal_remarks,మలద్వార వ్యాఖ్యలు
 hypopharynx,హైపోఫారింక్స్

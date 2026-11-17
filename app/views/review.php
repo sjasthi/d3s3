@@ -236,6 +236,15 @@ load_language($_SESSION['language'] ?? 'en');
 
 		<section class="content">
 			<div class="container-fluid">
+				<?php
+					$caseFileKind = 'voice';
+					$caseFileCaseId = (int)$cs['case_sheet_id'];
+					$caseFilePatientId = (int)$p['patient_id'];
+					$caseFileTitle = 'Confidential voice recording';
+					$caseFileMode = 'record';
+					$caseFileNote = 'A saved recording is locked so it cannot be edited later.';
+					require __DIR__ . '/_case_files.php';
+				?>
 				<div class="card shadow-sm">
 					<div class="card-body">
 						<!-- ── This Visit (persistent, shown above all tabs) ── -->
@@ -265,6 +274,13 @@ load_language($_SESSION['language'] ?? 'en');
 								</div>
 								<?php endif; ?>
 								<div class="col-auto ml-auto">
+									<form method="post" action="intake.php?action=amend" class="d-inline mr-2">
+										<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+										<input type="hidden" name="case_sheet_id" value="<?= (int)$cs['case_sheet_id'] ?>">
+										<button type="submit" class="btn btn-sm btn-warning">
+											<i class="fas fa-pencil-alt mr-1"></i>Edit intake
+										</button>
+									</form>
 									<span class="text-muted small"><?= date('M j, Y g:i A', strtotime($cs['visit_datetime'])) ?></span>
 								</div>
 							</div>
@@ -1180,6 +1196,22 @@ load_language($_SESSION['language'] ?? 'en');
 													<input type="hidden" id="diag_pelvic" value="<?= htmlspecialchars($cs['diag_pelvic'] ?? '') ?>">
 												</div>
 											</div>
+											<div class="row mt-2">
+												<div class="col-12 mb-0">
+													<label><?= __('usg_findings') ?></label>
+													<textarea class="form-control" name="exam_usg_findings" data-field="exam_usg_findings" rows="2"
+													          placeholder="<?= __('usg_findings_placeholder') ?>"><?= htmlspecialchars($examData['exam_usg_findings'] ?? '') ?></textarea>
+												</div>
+											</div>
+											<?php
+												$caseFileKind = 'ultrasound';
+												$caseFileCaseId = (int)$cs['case_sheet_id'];
+												$caseFilePatientId = (int)($cs['patient_id'] ?? $p['patient_id'] ?? 0);
+												$caseFileTitle = __('ultrasound');
+												$caseFileMode = 'image';
+												$caseFileNote = __('ultrasound_note');
+												require __DIR__ . '/_case_files.php';
+											?>
 										</div>
 									</div>
 

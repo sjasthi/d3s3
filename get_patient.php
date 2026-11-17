@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/app/config/session.php';
 require_once __DIR__ . '/app/config/permissions.php';
+require_once __DIR__ . '/app/config/record_scope.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
@@ -34,14 +35,15 @@ try {
 		        age_years, sex, date_of_birth,
 		        address_line1, city, state_province, postal_code,
 		        phone_e164, emergency_contact_name, emergency_contact_phone,
-		        blood_group, allergies
+		        blood_group, allergies, created_by_user_id
 		   FROM patients
 		  WHERE patient_id = ?'
 	);
 	$stmt->execute([$patient_id]);
 	$patient = $stmt->fetch(PDO::FETCH_ASSOC);
 
-	if ($patient) {
+	if ($patient && nurseOwnsPatient($patient)) {
+		unset($patient['created_by_user_id']);
 		echo json_encode(['success' => true, 'patient' => $patient]);
 	} else {
 		echo json_encode(['success' => false, 'message' => 'Patient not found']);

@@ -54,6 +54,25 @@ if (!$caseSheetId || !$field) {
 	exit;
 }
 
+// Issue 24: a nurse cannot change a case sheet after the doctor has submitted it.
+$statusStmt = $pdo->prepare('SELECT status, created_by_user_id FROM case_sheets WHERE case_sheet_id = ?');
+$statusStmt->execute([$caseSheetId]);
+$caseRow = $statusStmt->fetch(PDO::FETCH_ASSOC);
+if (!$caseRow) {
+	echo json_encode(['success' => false, 'message' => 'Case sheet not found']);
+	exit;
+}
+$caseStatus = $caseRow['status'];
+if (($_SESSION['user_role'] ?? '') === 'TRIAGE_NURSE'
+	&& (int)$caseRow['created_by_user_id'] !== (int)$_SESSION['user_id']) {
+	echo json_encode(['success' => false, 'message' => 'You can only change case sheets you created.']);
+	exit;
+}
+if ($caseStatus === 'CLOSED' && in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true)) {
+	echo json_encode(['success' => false, 'message' => 'This case was submitted by the doctor and can no longer be changed.']);
+	exit;
+}
+
 // ── Field whitelists ────────────────────────────────────────
 
 // Direct columns (stored as-is in their own column)
@@ -102,6 +121,7 @@ $exam_fields = [
 	'exam_teeth', 'exam_tongue', 'exam_oropharynx',
 	'exam_hypo', 'exam_naso_pharynx', 'exam_larynx',
 	'exam_nose', 'exam_ears', 'exam_neck',
+	'exam_head_neck_note', 'exam_head_neck_note_color',
 	'exam_bones_joints', 'exam_abdomen_genital',
 	'exam_breast_left', 'exam_breast_right', 'exam_breast_axillary_nodes',
 	'exam_pelvic_cervix', 'exam_pelvic_uterus', 'exam_pelvic_ovaries', 'exam_pelvic_adnexa',

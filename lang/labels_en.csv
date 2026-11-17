@@ -256,6 +256,8 @@ nav_settings,Settings
 nav_admin_panel,Admin Panel
 nav_assets,Assets
 nav_press,Photos and press
+nav_case_export,Export Excel
+nav_testimonials,Testimonials
 nav_log_out,Log Out
 role_super_admin,Super Admin
 role_admin,Admin
@@ -315,6 +317,10 @@ auto_saved_note,Auto-saved. Every change is logged with your name and timestamp.
 left_breast,Left Breast
 right_breast,Right Breast
 pelvic_examination_label,Pelvic Examination
+usg_findings,USG Findings
+usg_findings_placeholder,Ultrasound findings for this pelvic examination
+ultrasound,Ultrasound
+ultrasound_note,Upload the ultrasound image for this pelvic examination. Files are stored privately with the case record.
 rectal_skin,Rectal Skin
 rectal_remarks,Rectal Remarks
 hypopharynx,Hypopharynx

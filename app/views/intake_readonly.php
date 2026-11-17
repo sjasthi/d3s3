@@ -94,9 +94,14 @@
 					$doctorName  = $caseSheet['doctor_first'] ? htmlspecialchars('Dr. ' . $caseSheet['doctor_first'] . ' ' . $caseSheet['doctor_last']) : null;
 					$createdBy   = $caseSheet['created_first'] ? htmlspecialchars($caseSheet['created_first'] . ' ' . $caseSheet['created_last']) : null;
 
-					$canAmend = can($_SESSION['user_role'] ?? '', 'case_sheets', 'W')
-					         && ($_SESSION['user_role'] ?? '') !== 'DOCTOR'
-					         && $caseSheet['status'] === 'INTAKE_COMPLETE';
+					$role = $_SESSION['user_role'] ?? '';
+					$isAssignedDoctor = $role === 'DOCTOR'
+					    && (int)($caseSheet['assigned_doctor_user_id'] ?? 0) === (int)($_SESSION['user_id'] ?? 0)
+					    && in_array($caseSheet['status'], ['INTAKE_COMPLETE', 'DOCTOR_REVIEW'], true);
+					$canAmend = $isAssignedDoctor
+					    || (can($role, 'case_sheets', 'W')
+					        && $role !== 'DOCTOR'
+					        && $caseSheet['status'] === 'INTAKE_COMPLETE');
 				?>
 				<div class="row align-items-center mb-2">
 					<div class="col">
@@ -139,6 +144,13 @@
 		<section class="content">
 			<div class="container-fluid">
 
+				<?php if (in_array($_SESSION['user_role'] ?? '', ['NURSE', 'TRIAGE_NURSE'], true) && ($caseSheet['status'] ?? '') === 'CLOSED'): ?>
+				<div class="alert alert-warning">
+					<i class="fas fa-lock mr-1"></i>
+					This case was submitted by the doctor. You can view it, but you can no longer change it.
+				</div>
+				<?php endif; ?>
+
 				<!-- ── Visit Details ──────────────────────────────────────────── -->
 				<div class="card section-card mb-3">
 					<div class="card-header">
@@ -149,6 +161,12 @@
 							<div class="col-sm-4 mb-3">
 								<div class="ro-label">Visit Type</div>
 								<div class="ro-value"><?= htmlspecialchars($caseSheet['visit_type'] ?? '') ?: '<span class="ro-empty">—</span>' ?></div>
+								<?php if (!empty($caseSheet['prior_case_sheet_id'])): ?>
+								<div class="small mt-1">
+									Follow-up of
+									<a href="intake.php?action=view&amp;case_sheet_id=<?= (int)$caseSheet['prior_case_sheet_id'] ?>">case #<?= (int)$caseSheet['prior_case_sheet_id'] ?></a>
+								</div>
+								<?php endif; ?>
 							</div>
 							<div class="col-sm-4 mb-3">
 								<div class="ro-label">Assigned Doctor</div>
@@ -371,7 +389,7 @@
 						'exam_gynae_pv'     => 'Gynaecology (PV)',
 						'exam_gynae_via'    => 'Gynaecology (VIA)',
 					];
-					$hasExam = array_filter(array_keys($examFields), fn($k) => !empty($exam[$k]));
+					$hasExam = array_filter(array_keys($examFields), fn($k) => !empty($exam[$k])) || !empty($exam['exam_head_neck_note']);
 				?>
 				<?php if ($hasExam): ?>
 				<div class="card section-card mb-3">
@@ -384,10 +402,18 @@
 								<?php if (!empty($exam[$key])): ?>
 								<div class="col-sm-6 col-md-4 mb-3">
 									<div class="ro-label"><?= htmlspecialchars($label) ?></div>
-									<div class="ro-value"><?= htmlspecialchars($exam[$key]) ?></div>
+									<div class="ro-value"><?= htmlspecialchars($exam[$key] === 'NORMAL' ? 'Normal' : ($exam[$key] === 'ABNORMAL' ? 'Abnormal' : $exam[$key])) ?></div>
 								</div>
 								<?php endif; ?>
 							<?php endforeach; ?>
+							<?php if (!empty($exam['exam_head_neck_note'])):
+								$noteColor = ($exam['exam_head_neck_note_color'] ?? '') === 'HIGH' ? '#dc3545' : ((($exam['exam_head_neck_note_color'] ?? '') === 'MEDIUM') ? '#6f42c1' : 'inherit');
+							?>
+							<div class="col-12 mb-3">
+								<div class="ro-label">Head and neck note</div>
+								<div class="ro-value" style="color:<?= $noteColor ?>;font-weight:600;white-space:pre-wrap"><?= htmlspecialchars($exam['exam_head_neck_note']) ?></div>
+							</div>
+							<?php endif; ?>
 						</div>
 					</div>
 				</div>
