@@ -70,7 +70,12 @@ sessions/
 uploads/
 user_uploads/
 files/
+storage/case-files/
+storage/feedback-audio/
 !uploads/.gitkeep
+!uploads/.htaccess
+!uploads/assets/
+!uploads/assets/.gitkeep
 !files/.gitkeep
 
 # Private case / feedback files (keep placeholders)

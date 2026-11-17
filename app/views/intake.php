@@ -185,7 +185,7 @@ load_language($_SESSION['language'] ?? 'en');
 				<!-- ============================================================ -->
 				<!-- STEP 1: Patient Selection / Case Sheet Creation              -->
 				<!-- ============================================================ -->
-				<form method="post" action="intake.php" id="intakeCreateForm">
+				<form method="post" action="intake.php" id="intakeCreateForm" enctype="multipart/form-data">
 					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>" />
 					<input type="hidden" name="patient_id" id="patientIdField" value="" />
 
@@ -272,7 +272,7 @@ load_language($_SESSION['language'] ?? 'en');
     <small class="form-text text-muted">
         Accepted formats: PDF, JPG, PNG. Maximum size: 5 MB.
     </small>
-</div>									
+</div>
 <!-- Issue #25: Source of Patient Intake -->
 <div class="row">
     <div class="col-md-6">
@@ -319,6 +319,18 @@ load_language($_SESSION['language'] ?? 'en');
 									</div>
 								</div>
 								<div class="col-md-8">
+									<div class="form-group d-none" id="priorCaseWrap">
+										<label for="priorCaseSheet">Prior case sheet</label>
+										<select class="form-control" id="priorCaseSheet" name="prior_case_sheet_id">
+											<option value="">Most recent case sheet</option>
+										</select>
+										<small class="text-muted">A follow-up opens a new case sheet and keeps a link to the earlier one.</small>
+									</div>
+									<div class="form-group">
+										<label for="consentForm">Consent form</label>
+										<input type="file" class="form-control-file" id="consentForm" name="consent_form" accept=".pdf,image/*" />
+										<small class="text-muted">Upload the consent document for this visit. It is stored with the case record.</small>
+									</div>
 									<div class="form-group">
 										<label for="chiefComplaint"><?= __('chief_complaint') ?> <span class="text-danger">*</span></label>
 										<input type="text" class="form-control" id="chiefComplaint" name="chief_complaint" maxlength="255" required placeholder="<?= __('chief_complaint_placeholder') ?>" />
@@ -355,10 +367,25 @@ load_language($_SESSION['language'] ?? 'en');
 				?>
 				<div class="card shadow-sm">
 					<div class="card-body">
+						<?php if (!empty($cs['prior_case_sheet_id'])): ?>
+						<div class="alert alert-info">
+							This is a follow-up. It is linked to prior case sheet
+							<a href="intake.php?action=view&amp;case_sheet_id=<?= (int)$cs['prior_case_sheet_id'] ?>">#<?= (int)$cs['prior_case_sheet_id'] ?></a>.
+						</div>
+						<?php endif; ?>
 						<div class="tab-content" id="intakeTabContent">
 
 							<!-- ── Verification Tab ────────────────── -->
 							<div class="tab-pane fade show active" id="tab-verification" role="tabpanel">
+								<?php
+									$caseFileKind = 'consent';
+									$caseFileCaseId = $csId;
+									$caseFilePatientId = (int)$p['patient_id'];
+									$caseFileTitle = 'Consent form';
+									$caseFileMode = 'file';
+									$caseFileNote = 'The consent document for this visit stays with the case record.';
+									require __DIR__ . '/_case_files.php';
+								?>
 								<div class="d-flex align-items-center justify-content-between mb-4">
 									<h4 class="mb-0"><?= __('patient_verification') ?></h4>
 									<div>
@@ -984,25 +1011,49 @@ load_language($_SESSION['language'] ?? 'en');
 											<h5 class="card-title mb-0"><i class="fas fa-head-side-cough mr-2"></i><?= __('head_and_neck') ?></h5>
 										</div>
 										<div class="card-body">
+											<?php
+												$headNeckFields = [
+													'exam_mouth' => __('mouth'),
+													'exam_lips' => __('lips'),
+													'exam_buccal_mucosa' => __('buccal_mucosa'),
+													'exam_teeth' => __('teeth'),
+													'exam_tongue' => __('tongue'),
+													'exam_oropharynx' => __('oropharynx'),
+													'exam_hypo' => __('hypo'),
+													'exam_naso_pharynx' => __('naso_pharynx'),
+													'exam_larynx' => __('larynx'),
+													'exam_nose' => __('nose'),
+													'exam_ears' => __('ears'),
+													'exam_neck' => __('neck'),
+												];
+												$headNeckNote = $examData['exam_head_neck_note'] ?? '';
+												$headNeckColor = $examData['exam_head_neck_note_color'] ?? '';
+											?>
 											<div class="row">
-												<div class="col-md-4 mb-3"><label><?= __('mouth') ?></label><input type="text" class="form-control" name="exam_mouth" data-field="exam_mouth" value="<?= htmlspecialchars($examData['exam_mouth'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('lips') ?></label><input type="text" class="form-control" name="exam_lips" data-field="exam_lips" value="<?= htmlspecialchars($examData['exam_lips'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('buccal_mucosa') ?></label><input type="text" class="form-control" name="exam_buccal_mucosa" data-field="exam_buccal_mucosa" value="<?= htmlspecialchars($examData['exam_buccal_mucosa'] ?? '') ?>" /></div>
+												<?php foreach ($headNeckFields as $field => $label):
+													$current = $examData[$field] ?? '';
+												?>
+												<div class="col-md-4 mb-3">
+													<label><?= $label ?></label>
+													<select class="form-control" name="<?= $field ?>" data-field="<?= $field ?>">
+														<option value="NORMAL" <?= ($current === '' || $current === 'NORMAL') ? 'selected' : '' ?>>Normal</option>
+														<option value="ABNORMAL" <?= $current === 'ABNORMAL' ? 'selected' : '' ?>>Abnormal</option>
+													</select>
+												</div>
+												<?php endforeach; ?>
 											</div>
-											<div class="row">
-												<div class="col-md-4 mb-3"><label><?= __('teeth') ?></label><input type="text" class="form-control" name="exam_teeth" data-field="exam_teeth" value="<?= htmlspecialchars($examData['exam_teeth'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('tongue') ?></label><input type="text" class="form-control" name="exam_tongue" data-field="exam_tongue" value="<?= htmlspecialchars($examData['exam_tongue'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('oropharynx') ?></label><input type="text" class="form-control" name="exam_oropharynx" data-field="exam_oropharynx" value="<?= htmlspecialchars($examData['exam_oropharynx'] ?? '') ?>" /></div>
+											<div class="form-group mb-3">
+												<label for="headNeckNoteColor">Note color</label>
+												<select class="form-control" id="headNeckNoteColor" name="exam_head_neck_note_color" data-field="exam_head_neck_note_color">
+													<option value="" <?= $headNeckColor === '' ? 'selected' : '' ?>>No color</option>
+													<option value="HIGH" <?= $headNeckColor === 'HIGH' ? 'selected' : '' ?>>Red — High risk</option>
+													<option value="MEDIUM" <?= $headNeckColor === 'MEDIUM' ? 'selected' : '' ?>>Violet — Medium risk</option>
+												</select>
 											</div>
-											<div class="row">
-												<div class="col-md-4 mb-3"><label><?= __('hypo') ?></label><input type="text" class="form-control" name="exam_hypo" data-field="exam_hypo" value="<?= htmlspecialchars($examData['exam_hypo'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('naso_pharynx') ?></label><input type="text" class="form-control" name="exam_naso_pharynx" data-field="exam_naso_pharynx" value="<?= htmlspecialchars($examData['exam_naso_pharynx'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('larynx') ?></label><input type="text" class="form-control" name="exam_larynx" data-field="exam_larynx" value="<?= htmlspecialchars($examData['exam_larynx'] ?? '') ?>" /></div>
-											</div>
-											<div class="row">
-												<div class="col-md-4 mb-3"><label><?= __('nose') ?></label><input type="text" class="form-control" name="exam_nose" data-field="exam_nose" value="<?= htmlspecialchars($examData['exam_nose'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('ears') ?></label><input type="text" class="form-control" name="exam_ears" data-field="exam_ears" value="<?= htmlspecialchars($examData['exam_ears'] ?? '') ?>" /></div>
-												<div class="col-md-4 mb-3"><label><?= __('neck') ?></label><input type="text" class="form-control" name="exam_neck" data-field="exam_neck" value="<?= htmlspecialchars($examData['exam_neck'] ?? '') ?>" /></div>
+											<div class="form-group mb-3">
+												<label for="headNeckNote">Note</label>
+												<textarea class="form-control" id="headNeckNote" name="exam_head_neck_note" data-field="exam_head_neck_note" rows="3" placeholder="Record abnormal head and neck findings"><?= htmlspecialchars($headNeckNote) ?></textarea>
+												<small class="text-muted">Red marks a high-risk finding. Violet marks a medium-risk finding.</small>
 											</div>
 											<div class="row">
 												<div class="col-md-6 mb-3"><label><?= __('bones_joints') ?></label><input type="text" class="form-control" name="exam_bones_joints" data-field="exam_bones_joints" value="<?= htmlspecialchars($examData['exam_bones_joints'] ?? '') ?>" /></div>
@@ -1075,6 +1126,15 @@ load_language($_SESSION['language'] ?? 'en');
 											?>
 										</div>
 									</div>
+									<?php
+										$caseFileKind = 'voice';
+										$caseFileCaseId = $csId;
+										$caseFilePatientId = (int)$p['patient_id'];
+										$caseFileTitle = 'Confidential voice recording';
+										$caseFileMode = 'record';
+										$caseFileNote = 'A saved recording is locked so it cannot be edited later.';
+										require __DIR__ . '/_case_files.php';
+									?>
 									<div class="card card-outline card-secondary mb-3">
 										<div class="card-header">
 											<h5 class="card-title mb-0"><i class="fas fa-notes-medical mr-2"></i><?= __('rectal_examination') ?></h5>
@@ -1283,7 +1343,14 @@ load_language($_SESSION['language'] ?? 'en');
 										<div class="card-body">
 											<div class="form-group">
 												<label><?= __('risk_level') ?></label>
-												<textarea class="form-control" name="summary_risk_level" data-field="summary_risk_level" rows="3"><?= htmlspecialchars($summaryData['summary_risk_level'] ?? '') ?></textarea>
+												<?php $riskLevel = $summaryData['summary_risk_level'] ?? ''; ?>
+												<select class="form-control" name="summary_risk_level" data-field="summary_risk_level">
+													<option value="">Select risk level</option>
+													<option value="HIGH" <?= $riskLevel === 'HIGH' ? 'selected' : '' ?>>High</option>
+													<option value="MEDIUM" <?= $riskLevel === 'MEDIUM' ? 'selected' : '' ?>>Medium</option>
+													<option value="LOW" <?= $riskLevel === 'LOW' ? 'selected' : '' ?>>Low</option>
+												</select>
+												<small class="text-muted">High-risk patients are shown first in the queue.</small>
 											</div>
 											<div class="form-group">
 												<label><?= __('referral') ?></label>
@@ -1403,6 +1470,24 @@ load_language($_SESSION['language'] ?? 'en');
 				}
 			});
 		}
+
+		function applyHeadNeckNoteColor() {
+			var color = $('#headNeckNoteColor').val();
+			var note = document.getElementById('headNeckNote');
+			if (!note) return;
+			if (color === 'HIGH') {
+				note.style.color = '#dc3545';
+				note.style.fontWeight = '600';
+			} else if (color === 'MEDIUM') {
+				note.style.color = '#6f42c1';
+				note.style.fontWeight = '600';
+			} else {
+				note.style.color = '';
+				note.style.fontWeight = '';
+			}
+		}
+		applyHeadNeckNoteColor();
+		$('#headNeckNoteColor').on('change', applyHeadNeckNoteColor);
 
 		$('.intake-auto-save').on('change', 'input, select, textarea', function () {
 			var field = $(this).data('field');
@@ -1635,12 +1720,12 @@ load_language($_SESSION['language'] ?? 'en');
 			$('#selectedPatientPhone').text(p.phone_e164 ? ' | ' + p.phone_e164 : '');
 			$selected.removeClass('d-none'); $results.hide().empty();
 			$search.val('').prop('disabled', true); $('#toggleNewPatient').prop('disabled', true); $('#newPatientSection').addClass('d-none');
+			loadPriorCases();
 		}
-		$('#clearPatient').on('click', function () { $patientId.val(''); $selected.addClass('d-none'); $search.prop('disabled', false).val('').focus(); $('#toggleNewPatient').prop('disabled', false); });
+		$('#clearPatient').on('click', function () { $patientId.val(''); $selected.addClass('d-none'); $search.prop('disabled', false).val('').focus(); $('#toggleNewPatient').prop('disabled', false); $('#priorCaseWrap').addClass('d-none'); });
 		$(document).on('click', function (e) { if (!$(e.target).closest('#patientSearch, #searchResults').length) $results.hide(); });
 		$('#toggleNewPatient').on('click', function () { $('#newPatientSection').toggleClass('d-none'); });
 
-		
 $('#registerPatientBtn').on('click', function () {
     var $btn = $(this);
     var $err = $('#registerError');
@@ -1718,8 +1803,21 @@ $('#registerPatientBtn').on('click', function () {
     });
 });
 
-
 		$('#intakeCreateForm').on('submit', function (e) { if (!$patientId.val()) { e.preventDefault(); alert('Please select or register a patient first.'); } });
+		function loadPriorCases() {
+			var patientId = $patientId.val();
+			var isFollowUp = $('#visitType').val() === 'FOLLOW_UP';
+			$('#priorCaseWrap').toggleClass('d-none', !isFollowUp);
+			if (!isFollowUp || !patientId) return;
+			$.getJSON('intake.php?action=prior-cases&patient_id=' + encodeURIComponent(patientId), function (data) {
+				var $sel = $('#priorCaseSheet').empty().append('<option value="">Most recent case sheet</option>');
+				(data.cases || []).forEach(function (c) {
+					var label = (c.visit_datetime || '') + ' · ' + (c.chief_complaint || c.status || ('Case ' + c.case_sheet_id));
+					$sel.append($('<option>').val(c.case_sheet_id).text(label));
+				});
+			});
+		}
+		$('#visitType').on('change', loadPriorCases);
 	}
 })();
 </script>
