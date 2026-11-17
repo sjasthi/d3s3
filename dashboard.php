@@ -1441,12 +1441,13 @@ var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
 var currentApptId = null;
 
 $(document).on('click', '.taReschedBtn, .taCancelBtn', function () {
-	currentApptId = parseInt($(this).data('appt-id'));
-	var caseSheetId = parseInt($(this).data('case-sheet-id'));
-	var patientName = $(this).data('patient-name');
-	var patientCode = $(this).data('patient-code');
-	var docName     = $(this).data('doc-name');
-	var time        = $(this).data('scheduled-time') || '—';
+	// Use attr() for hyphenated data-* keys — jQuery data() can miss them.
+	currentApptId = parseInt($(this).attr('data-appt-id'), 10);
+	var caseSheetId = parseInt($(this).attr('data-case-sheet-id'), 10);
+	var patientName = $(this).attr('data-patient-name');
+	var patientCode = $(this).attr('data-patient-code');
+	var docName     = $(this).attr('data-doc-name');
+	var time        = $(this).attr('data-scheduled-time') || '—';
 	$('#aamPatientName').text(patientName);
 	$('#aamInfo').html(patientCode + ' &middot; ' + time + ' &middot; ' + docName);
 	$('#aamStartIntakeBtn').attr('href', 'intake.php?case_sheet_id=' + caseSheetId);
@@ -1676,8 +1677,9 @@ document.addEventListener('DOMContentLoaded', function () {
 	var noShowApptId = null;
 
 	$(document).on('click', '.no-show-btn', function () {
-		noShowApptId = $(this).data('appointment-id');
-		$('#noShowPatientName').text($(this).data('patient-name'));
+		// Use attr() for hyphenated data-* keys — jQuery data() can miss them.
+		noShowApptId = $(this).attr('data-appointment-id');
+		$('#noShowPatientName').text($(this).attr('data-patient-name'));
 		$('#noShowAlert').addClass('d-none').text('');
 		$('#noShowChoicePanel').removeClass('d-none');
 		$('#noShowReschedulePanel').addClass('d-none');

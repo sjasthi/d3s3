@@ -959,7 +959,10 @@ if (($_SESSION['user_role'] ?? '') === 'DOCTOR') {
 		}
 
 		$pdo  = getDBConnection();
-		$stmt = $pdo->prepare('SELECT appointment_id, case_sheet_id, doctor_user_id, status FROM appointments WHERE appointment_id = ?');
+		$stmt = $pdo->prepare(
+			'SELECT appointment_id, case_sheet_id, doctor_user_id, status, created_by_user_id
+			   FROM appointments WHERE appointment_id = ?'
+		);
 		$stmt->execute([$appointmentId]);
 		$appt = $stmt->fetch(PDO::FETCH_ASSOC);
 
