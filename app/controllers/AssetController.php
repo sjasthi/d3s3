@@ -8,9 +8,10 @@
  *   processSendToPatient()  – POST: create a patient_assets record
  *   processRemoveSend()     – POST: delete a patient_assets record
  *
- * Storage model:
- *   LOCAL  – file uploaded via PHP and stored under uploads/assets/; served by download()
- *   URL    – external link (video, audio, hosted doc); no local file
+ * Storage model (Issue #1):
+ *   LOCAL  – file under uploads/assets/ (Apache denied); served only by download()
+ *            Use for private audio and other clinic-owned files.
+ *   URL    – external link (YouTube video, public/private audio URL, hosted doc)
  *   OTHER  – catch-all; resource_url may be supplied
  *
  * Roles that can send assets to a patient's portal:
@@ -38,6 +39,15 @@ class AssetController
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
         'application/vnd.ms-excel'                                                 => 'xls',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'        => 'xlsx',
+        // Private audio (Issue #1) — host on server; stream via download()
+        'audio/mpeg'                                                               => 'mp3',
+        'audio/mp3'                                                                => 'mp3',
+        'audio/wav'                                                                => 'wav',
+        'audio/x-wav'                                                              => 'wav',
+        'audio/ogg'                                                                => 'ogg',
+        'audio/webm'                                                               => 'webm',
+        'audio/mp4'                                                                => 'm4a',
+        'audio/x-m4a'                                                              => 'm4a',
     ];
 
     /** MIME → inline (true) or force-download (false) */
@@ -47,6 +57,14 @@ class AssetController
         'image/png'       => true,
         'image/gif'       => true,
         'image/webp'      => true,
+        'audio/mpeg'      => true,
+        'audio/mp3'       => true,
+        'audio/wav'       => true,
+        'audio/x-wav'     => true,
+        'audio/ogg'       => true,
+        'audio/webm'      => true,
+        'audio/mp4'       => true,
+        'audio/x-m4a'     => true,
     ];
 
     // ── Auth helpers ──────────────────────────────────────────────────────────
@@ -646,7 +664,7 @@ class AssetController
         $mimeType = $finfo->file($file['tmp_name']);
 
         if (!isset(self::ALLOWED_MIME[$mimeType])) {
-            return 'File type not allowed. Accepted types: PDF, images (JPEG/PNG/GIF/WebP), Word documents, Excel spreadsheets.';
+            return 'File type not allowed. Accepted types: PDF, images (JPEG/PNG/GIF/WebP), Word/Excel, and audio (MP3/WAV/OGG/M4A/WebM).';
         }
 
         $ext     = self::ALLOWED_MIME[$mimeType];

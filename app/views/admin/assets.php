@@ -174,8 +174,8 @@
 														'DOCUMENT' => 'Document (Word/Excel)',
 														'FORM'     => 'Form',
 														'IMAGE'    => 'Image',
-														'VIDEO'    => 'Video (URL)',
-														'AUDIO'    => 'Audio (URL)',
+														'VIDEO'    => 'Video (YouTube / URL)',
+														'AUDIO'    => 'Audio (URL or upload)',
 														'OTHER'    => 'Other',
 													];
 													foreach ($types as $val => $lbl):
@@ -230,10 +230,10 @@
 										<label for="asset_file" class="small font-weight-bold text-muted">Upload File</label>
 										<div class="custom-file">
 											<input type="file" class="custom-file-input" id="asset_file" name="asset_file"
-											       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp" />
+											       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.mp3,.wav,.ogg,.m4a,.webm,audio/*" />
 											<label class="custom-file-label" for="asset_file">Choose file…</label>
 										</div>
-										<small class="text-muted">Max 20 MB. Accepted: PDF, Word, Excel, images (JPEG/PNG/GIF/WebP).</small>
+										<small class="text-muted">Max 20 MB. Accepted: PDF, Word, Excel, images, and audio (MP3/WAV/OGG/M4A). Private audio should use <strong>Upload File</strong> (not a public link).</small>
 										<?php if (!$isCreate && !empty($editAsset['file_name'])): ?>
 										<div class="file-info-existing mt-1">
 											<i class="fas fa-paperclip mr-1"></i>
@@ -258,7 +258,7 @@
 											       value="<?= htmlspecialchars($editAsset['resource_url'] ?? '') ?>"
 											       placeholder="https://…" />
 										</div>
-										<small class="text-muted">For videos, audio, or externally hosted documents.</small>
+										<small class="text-muted">Videos stay on YouTube (paste the link). Public audio can use an external URL; private clinic audio should use Upload File instead.</small>
 									</div>
 
 									<!-- Notes -->
@@ -637,8 +637,8 @@ $(document).on('change', '.custom-file-input', function () {
 	$(this).siblings('.custom-file-label').text(name || 'Choose file…');
 });
 
-// ── Storage type toggle ──────────────────────────────────────────────────
-var URL_TYPES = ['VIDEO', 'AUDIO'];
+// ── Storage type toggle (Issue #1: videos = URL; audio = URL or local upload) ──
+var URL_ONLY_TYPES = ['VIDEO'];
 
 function applyStorageType(val) {
 	$('#storage_type').val(val);
@@ -646,15 +646,27 @@ function applyStorageType(val) {
 	$('.storage-btn[data-storage="' + val + '"]').removeClass('btn-outline-secondary').addClass('btn-primary');
 	$('.storage-local-fields').toggle(val === 'LOCAL');
 	$('.storage-url-fields').toggle(val === 'URL' || val === 'OTHER');
+	// Videos must stay as external links (YouTube); disable Upload File for VIDEO
+	var isVideo = $('#asset_type').val() === 'VIDEO';
+	$('.storage-btn[data-storage="LOCAL"]').prop('disabled', isVideo);
 }
 
 // On asset type change, auto-set sensible storage default
 $('#asset_type').on('change', function () {
 	var assetType = $(this).val();
-	if (URL_TYPES.indexOf(assetType) !== -1) {
+	if (URL_ONLY_TYPES.indexOf(assetType) !== -1) {
 		applyStorageType('URL');
-	} else if ($('#storage_type').val() === 'URL' && URL_TYPES.indexOf(assetType) === -1) {
+	} else if (assetType === 'AUDIO') {
+		// Keep current storage if already LOCAL/URL; default new audio to URL
+		if (!$('#storage_type').val()) {
+			applyStorageType('URL');
+		} else {
+			applyStorageType($('#storage_type').val());
+		}
+	} else if ($('#storage_type').val() === 'URL' && URL_ONLY_TYPES.indexOf(assetType) === -1 && assetType !== 'AUDIO') {
 		applyStorageType('LOCAL');
+	} else {
+		applyStorageType($('#storage_type').val() || 'LOCAL');
 	}
 });
 
