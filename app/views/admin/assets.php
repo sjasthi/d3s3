@@ -194,10 +194,10 @@
 												<input type="text" name="category" id="category" class="form-control"
 												       list="categoryList"
 												       value="<?= htmlspecialchars($editAsset['category'] ?? '') ?>"
-												       placeholder="e.g. Testimonials, Patient Education" />
+												       placeholder="e.g. Patient Education, Press Coverage, Photos" />
 												<datalist id="categoryList">
 													<?php
-													$suggestedCategories = ['Testimonials', 'Press Coverage', 'Photos'];
+													$suggestedCategories = ['Press Coverage', 'Photos', 'Testimonials'];
 													$categoryOptions = array_values(array_unique(array_merge(
 														$suggestedCategories,
 														$categories ?? []

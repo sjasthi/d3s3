@@ -16,6 +16,7 @@ $isDashboardPage    = (strpos($currentPage, 'dashboard.php')    !== false && !$i
 $isProfilePage      = (strpos($currentPage, 'profile.php')      !== false);
 $isSettingsPage     = (strpos($currentPage, 'settings.php')     !== false);
 $isAssetsPage       = (strpos($currentPage, 'assets.php')       !== false);
+$isPressPage        = (strpos($currentPage, 'press.php')        !== false);
 $isTestimonialsPage = (strpos($currentPage, 'testimonials.php') !== false);
 $isCalendarPage     = (strpos($currentPage, 'calendar.php')     !== false);
 $isIntakePage       = (strpos($currentPage, 'intake.php')       !== false);
@@ -301,6 +302,12 @@ if ($_navCanPatientData && !$isPortalMessagesPage) {
 				</li>
 				<?php endif; ?>
 
+				<!-- Photos & press – assets or events read (Issue #9) -->
+				<?php if ($_navCanAssets || $_navCanEvents): ?>
+				<li class="nav-item">
+					<a href="press.php" class="nav-link <?= $isPressPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-newspaper"></i>
+						<p><?= __('nav_press') ?></p>
 				<!-- Public testimonial videos – Issue #6 -->
 				<?php if ($_navCanAssets || $_navCanEvents): ?>
 				<li class="nav-item">
