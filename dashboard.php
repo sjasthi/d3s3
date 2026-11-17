@@ -732,6 +732,15 @@ $roleLabel = [
 						<?php endif; ?>
 					</a>
 				</div>
+
+				<?php if (can($_userRole, 'case_sheets')): ?>
+				<div class="col-6 col-sm-4 col-md-2 mb-2">
+					<a href="case_export.php" class="qa-tile">
+						<i class="fas fa-file-excel qa-icon text-success"></i>
+						<span class="qa-label">Export Excel</span>
+					</a>
+				</div>
+				<?php endif; ?>
 			</div>
 
 			<!-- ── Today's Stats ─────────────────────────────────────── -->

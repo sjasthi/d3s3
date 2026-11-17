@@ -25,6 +25,7 @@ $isMessagesPage     = (strpos($currentPage, 'messages.php')     !== false);
 $isTasksPage        = (strpos($currentPage, 'tasks.php')        !== false);
 $isAppointmentsPage = (strpos($currentPage, 'appointments.php') !== false);
 $isPatientsPage     = (strpos($currentPage, 'patients.php')     !== false);
+$isCaseExportPage   = (strpos($currentPage, 'case_export.php')  !== false);
 $isLabResultsPage   = (strpos($currentPage, 'lab_results.php')  !== false);
 $isAnalyticsPage        = (strpos($currentPage, 'analytics.php')        !== false);
 $isPortalMessagesPage   = (strpos($currentPage, 'portal_messages.php')  !== false);
@@ -162,6 +163,16 @@ if ($_navCanPatientData && !$isPortalMessagesPage) {
 					<a href="patients.php" class="nav-link <?= $isPatientsPage ? 'active' : '' ?>">
 						<i class="nav-icon fas fa-user-injured"></i>
 						<p><?= __('nav_patients') ?></p>
+					</a>
+				</li>
+				<?php endif; ?>
+
+				<!-- Case sheet Excel export – Issue #8 -->
+				<?php if ($_navCanCaseSheetsRead): ?>
+				<li class="nav-item">
+					<a href="case_export.php" class="nav-link <?= $isCaseExportPage ? 'active' : '' ?>">
+						<i class="nav-icon fas fa-file-excel"></i>
+						<p><?= __('nav_case_export') ?></p>
 					</a>
 				</li>
 				<?php endif; ?>
