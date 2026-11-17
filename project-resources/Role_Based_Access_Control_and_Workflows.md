@@ -1,6 +1,8 @@
 
 # Operations & Access Control Specification
 
+Stakeholder → role codes from Issue #2: [issues/stakeholders-and-roles.md](issues/stakeholders-and-roles.md).
+
 ## 1. End-to-End Workflow Definitions
 
 ### 1.1 Case Sheet Workflow
