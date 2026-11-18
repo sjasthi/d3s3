@@ -361,6 +361,33 @@ SUPER_ADMIN and ADMIN can manage portal accounts from the patient profile page (
 
 ---
 
+## Fall 2026 Capstone Development Updates (FP10)
+
+The following contributions were merged as part of the Fall 2026 ICS 499 capstone work. These links document the scope and review history of each change; local test results recorded in the pull requests do not necessarily establish that every feature has been verified in production.
+
+| Issue | Development update | Pull request |
+|-------|--------------------|--------------|
+| [#1](https://github.com/sjasthi/d3s3/issues/1) | Improved the Asset Library, authenticated downloads, and protection of uploaded files. | [#55](https://github.com/sjasthi/d3s3/pull/55) |
+| [#2](https://github.com/sjasthi/d3s3/issues/2) | Documented project stakeholders, staff roles, and role-based access. | [#54](https://github.com/sjasthi/d3s3/pull/54) |
+| [#3](https://github.com/sjasthi/d3s3/issues/3) | Documented CareSystem requirements, implementation status, and future enhancements. | [#53](https://github.com/sjasthi/d3s3/pull/53) |
+| [#4](https://github.com/sjasthi/d3s3/issues/4) | Documented the VIT team composition and updated module ownership references. | [#52](https://github.com/sjasthi/d3s3/pull/52) |
+| [#5](https://github.com/sjasthi/d3s3/issues/5) | Documented database tables; added sequential case-sheet display codes and links between follow-up and earlier case sheets. | [#51](https://github.com/sjasthi/d3s3/pull/51) |
+| [#6](https://github.com/sjasthi/d3s3/issues/6) | Added public testimonial resources, including YouTube Shorts and a Google Drive folder. | [#50](https://github.com/sjasthi/d3s3/pull/50) |
+| [#7](https://github.com/sjasthi/d3s3/issues/7) | Updated pelvic examination and USG findings fields; added securely stored ultrasound attachments. | [#49](https://github.com/sjasthi/d3s3/pull/49) |
+| [#8](https://github.com/sjasthi/d3s3/issues/8) | Added searchable case-sheet records with an Excel-compatible export that respects filters. | [#48](https://github.com/sjasthi/d3s3/pull/48) |
+| [#9](https://github.com/sjasthi/d3s3/issues/9) | Added Photos and Press Coverage resources and related navigation. | [#47](https://github.com/sjasthi/d3s3/pull/47) |
+| [#12](https://github.com/sjasthi/d3s3/issues/12) | Added optional audio attachments to text feedback with protected storage and authenticated playback. | [#46](https://github.com/sjasthi/d3s3/pull/46) |
+| [#14](https://github.com/sjasthi/d3s3/issues/14) | Corrected triage-nurse appointment rescheduling and added case-sheet ownership checks. | [#45](https://github.com/sjasthi/d3s3/pull/45) |
+
+### Deployment and verification notes
+
+- Database-backed additions require the relevant migrations: `033_feedback_audio.sql` (audio feedback), `034_press_coverage_photos.sql` (press and photos), `035_case_attachments_ultrasound.sql` (case attachments), `036_public_testimonial_videos.sql` (testimonials), and `037_prior_case_sheet_id.sql` (follow-up case-sheet links). Back up each target database and apply only migrations not yet present.
+- The web server must have the appropriate write permissions for private uploads while direct browser access to uploaded patient files and recordings remains blocked. Validate authorization and external-resource sharing settings in each deployment environment.
+- The triage-nurse rescheduling change was functionally tested for an authorized account; a live cross-account authorization test with a second triage-nurse account was not documented as complete in [PR #45](https://github.com/sjasthi/d3s3/pull/45).
+- For implementation details, test evidence, and current follow-up work, consult the linked pull requests and [repository issues](https://github.com/sjasthi/d3s3/issues).
+
+---
+
 ## Features
 
 **Phase 1** — Authentication, role-based access control, admin dashboard, user management, employee self-registration, and user profiles.
